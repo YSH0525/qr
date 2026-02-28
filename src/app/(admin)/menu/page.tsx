@@ -20,7 +20,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Pencil, ImageIcon } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  ImageIcon,
+  Trash2,
+  FolderPlus,
+  Settings,
+} from "lucide-react";
 
 interface Category {
   id: string;
@@ -48,6 +55,14 @@ export default function MenuPage() {
   const [categories, setCategories] = useState<CategoryWithItems[]>([]);
   const [editItem, setEditItem] = useState<MenuItem | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [catDialogOpen, setCatDialogOpen] = useState(false);
+  const [catManagerOpen, setCatManagerOpen] = useState(false);
+  const [editCategory, setEditCategory] = useState<Category | null>(null);
+  const [newCatName, setNewCatName] = useState("");
+  const [newCatOrder, setNewCatOrder] = useState("0");
+  const [deleteCatConfirm, setDeleteCatConfirm] = useState<Category | null>(
+    null
+  );
 
   const fetchMenu = () => {
     fetch("/api/menu")
@@ -61,35 +76,132 @@ export default function MenuPage() {
 
   const formatPrice = (price: number) => price.toLocaleString("ko-KR") + "원";
 
+  const addCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const res = await fetch("/api/menu/categories", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: newCatName,
+        displayOrder: parseInt(newCatOrder) || 0,
+      }),
+    });
+    if (res.ok) {
+      setNewCatName("");
+      setNewCatOrder("0");
+      setCatDialogOpen(false);
+      fetchMenu();
+      toast.success("카테고리가 추가되었습니다");
+    } else {
+      const data = await res.json();
+      toast.error(data.error || "카테고리 추가 실패");
+    }
+  };
+
+  const updateCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editCategory) return;
+
+    const res = await fetch(`/api/menu/categories/${editCategory.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: newCatName,
+        displayOrder: parseInt(newCatOrder) || 0,
+      }),
+    });
+    if (res.ok) {
+      setEditCategory(null);
+      setNewCatName("");
+      setNewCatOrder("0");
+      setCatDialogOpen(false);
+      fetchMenu();
+      toast.success("카테고리가 수정되었습니다");
+    } else {
+      const data = await res.json();
+      toast.error(data.error || "카테고리 수정 실패");
+    }
+  };
+
+  const deleteCategory = async (cat: Category) => {
+    const res = await fetch(`/api/menu/categories/${cat.id}`, {
+      method: "DELETE",
+    });
+    if (res.ok) {
+      setDeleteCatConfirm(null);
+      fetchMenu();
+      toast.success(`"${cat.name}" 카테고리가 삭제되었습니다`);
+    } else {
+      const data = await res.json();
+      toast.error(data.error || "카테고리 삭제 실패");
+    }
+  };
+
+  const openEditCategory = (cat: Category) => {
+    setEditCategory(cat);
+    setNewCatName(cat.name);
+    setNewCatOrder(cat.displayOrder.toString());
+    setCatDialogOpen(true);
+  };
+
+  const openAddCategory = () => {
+    setEditCategory(null);
+    setNewCatName("");
+    setNewCatOrder("0");
+    setCatDialogOpen(true);
+  };
+
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">메뉴 관리</h1>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => setEditItem(null)}>
-              <Plus className="w-4 h-4 mr-2" />
-              메뉴 추가
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>
-                {editItem ? "메뉴 수정" : "새 메뉴 추가"}
-              </DialogTitle>
-            </DialogHeader>
-            <MenuForm
-              categories={categories}
-              item={editItem}
-              onSave={() => {
-                setDialogOpen(false);
-                fetchMenu();
-                toast.success("저장되었습니다");
-              }}
-            />
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setCatManagerOpen(true)}>
+            <Settings className="w-4 h-4 mr-2" />
+            카테고리 관리
+          </Button>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => setEditItem(null)}>
+                <Plus className="w-4 h-4 mr-2" />
+                메뉴 추가
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>
+                  {editItem ? "메뉴 수정" : "새 메뉴 추가"}
+                </DialogTitle>
+              </DialogHeader>
+              <MenuForm
+                categories={categories}
+                item={editItem}
+                onSave={() => {
+                  setDialogOpen(false);
+                  fetchMenu();
+                  toast.success("저장되었습니다");
+                }}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
+
+      {categories.length === 0 && (
+        <Card>
+          <CardContent className="py-12 text-center text-gray-500">
+            <FolderPlus className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+            <p className="text-lg font-medium mb-2">카테고리가 없습니다</p>
+            <p className="text-sm mb-4">
+              먼저 카테고리를 추가한 후 메뉴를 등록하세요.
+            </p>
+            <Button onClick={openAddCategory}>
+              <Plus className="w-4 h-4 mr-2" />
+              카테고리 추가
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {categories.map((category) => (
         <Card key={category.id} className="mb-6">
@@ -139,10 +251,152 @@ export default function MenuPage() {
                   </div>
                 </div>
               ))}
+              {category.items.length === 0 && (
+                <p className="text-sm text-gray-400 col-span-full">
+                  등록된 메뉴가 없습니다.
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
       ))}
+
+      {/* Category Manager Dialog */}
+      <Dialog open={catManagerOpen} onOpenChange={setCatManagerOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>카테고리 관리</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {categories.map((cat) => (
+              <div
+                key={cat.id}
+                className="flex items-center justify-between border rounded-lg p-3"
+              >
+                <div>
+                  <span className="font-medium">{cat.name}</span>
+                  <span className="text-xs text-gray-400 ml-2">
+                    순서: {cat.displayOrder}
+                  </span>
+                  <span className="text-xs text-gray-400 ml-2">
+                    ({cat.items.length}개 메뉴)
+                  </span>
+                </div>
+                <div className="flex gap-1">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setCatManagerOpen(false);
+                      openEditCategory(cat);
+                    }}
+                  >
+                    <Pencil className="w-3 h-3" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-red-500 hover:text-red-700"
+                    onClick={() => {
+                      setCatManagerOpen(false);
+                      setDeleteCatConfirm(cat);
+                    }}
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+            {categories.length === 0 && (
+              <p className="text-sm text-gray-400 text-center py-4">
+                등록된 카테고리가 없습니다.
+              </p>
+            )}
+          </div>
+          <Button
+            className="w-full"
+            onClick={() => {
+              setCatManagerOpen(false);
+              openAddCategory();
+            }}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            카테고리 추가
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      {/* Category Add/Edit Dialog */}
+      <Dialog open={catDialogOpen} onOpenChange={setCatDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {editCategory ? "카테고리 수정" : "새 카테고리 추가"}
+            </DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={editCategory ? updateCategory : addCategory}
+            className="space-y-4"
+          >
+            <div>
+              <label className="text-sm font-medium">카테고리 이름</label>
+              <Input
+                value={newCatName}
+                onChange={(e) => setNewCatName(e.target.value)}
+                placeholder="예: 음료, 식사, 간식"
+                required
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">표시 순서</label>
+              <Input
+                type="number"
+                value={newCatOrder}
+                onChange={(e) => setNewCatOrder(e.target.value)}
+                placeholder="0"
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                숫자가 작을수록 먼저 표시됩니다.
+              </p>
+            </div>
+            <Button type="submit" className="w-full">
+              {editCategory ? "수정" : "추가"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Category Delete Confirmation */}
+      <Dialog
+        open={!!deleteCatConfirm}
+        onOpenChange={() => setDeleteCatConfirm(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>카테고리 삭제 확인</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-600 py-2">
+            <strong>&quot;{deleteCatConfirm?.name}&quot;</strong> 카테고리를 정말
+            삭제하시겠습니까?
+          </p>
+          <div className="flex gap-2 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteCatConfirm(null)}
+            >
+              취소
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() =>
+                deleteCatConfirm && deleteCategory(deleteCatConfirm)
+              }
+            >
+              삭제
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -194,6 +448,11 @@ function MenuForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!categoryId) {
+      toast.error("카테고리를 선택해주세요");
+      return;
+    }
+
     const body = {
       name,
       price: parseInt(price),
@@ -226,7 +485,7 @@ function MenuForm({
         <label className="text-sm font-medium">카테고리</label>
         <Select value={categoryId} onValueChange={setCategoryId}>
           <SelectTrigger>
-            <SelectValue />
+            <SelectValue placeholder="카테고리를 선택하세요" />
           </SelectTrigger>
           <SelectContent>
             {categories.map((cat) => (
@@ -236,6 +495,11 @@ function MenuForm({
             ))}
           </SelectContent>
         </Select>
+        {categories.length === 0 && (
+          <p className="text-xs text-red-500 mt-1">
+            먼저 카테고리를 추가해주세요.
+          </p>
+        )}
       </div>
       <div>
         <label className="text-sm font-medium">메뉴명</label>
@@ -289,7 +553,7 @@ function MenuForm({
           판매 가능
         </label>
       </div>
-      <Button type="submit" className="w-full">
+      <Button type="submit" className="w-full" disabled={categories.length === 0}>
         {item ? "수정" : "추가"}
       </Button>
     </form>
