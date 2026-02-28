@@ -1,3 +1,4 @@
+import { config } from "dotenv";
 import { initializeApp } from "firebase/app";
 import {
   getFirestore,
@@ -7,6 +8,9 @@ import {
   getDocs,
 } from "firebase/firestore";
 import { v4 as uuidv4 } from "uuid";
+
+// Load .env.local for standalone script execution
+config({ path: ".env.local" });
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
