@@ -21,7 +21,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, QrCode, Printer } from "lucide-react";
+import { Plus, QrCode, Printer, Trash2, Power } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import Link from "next/link";
 
@@ -38,6 +38,7 @@ export default function RoomsPage() {
   const [newRoom, setNewRoom] = useState({ roomNumber: "", floor: "" });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [qrRoom, setQrRoom] = useState<Room | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<Room | null>(null);
 
   const fetchRooms = () => {
     fetch("/api/rooms")
@@ -64,6 +65,37 @@ export default function RoomsPage() {
     } else {
       const data = await res.json();
       toast.error(data.error || "객실 추가 실패");
+    }
+  };
+
+  const toggleRoom = async (room: Room) => {
+    const res = await fetch(`/api/rooms/${room.roomId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isActive: !room.isActive }),
+    });
+    if (res.ok) {
+      fetchRooms();
+      toast.success(
+        room.isActive ? "객실이 비활성화되었습니다" : "객실이 활성화되었습니다"
+      );
+    } else {
+      const data = await res.json();
+      toast.error(data.error || "상태 변경 실패");
+    }
+  };
+
+  const deleteRoom = async (room: Room) => {
+    const res = await fetch(`/api/rooms/${room.roomId}`, {
+      method: "DELETE",
+    });
+    if (res.ok) {
+      setDeleteConfirm(null);
+      fetchRooms();
+      toast.success(`${room.roomNumber}호가 삭제되었습니다`);
+    } else {
+      const data = await res.json();
+      toast.error(data.error || "삭제 실패");
     }
   };
 
@@ -128,6 +160,7 @@ export default function RoomsPage() {
                 <TableHead>상태</TableHead>
                 <TableHead>QR 코드</TableHead>
                 <TableHead>안내문</TableHead>
+                <TableHead>관리</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -161,6 +194,27 @@ export default function RoomsPage() {
                         안내문
                       </Button>
                     </Link>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => toggleRoom(room)}
+                        title={room.isActive ? "비활성화" : "활성화"}
+                      >
+                        <Power className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                        onClick={() => setDeleteConfirm(room)}
+                        title="삭제"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -197,6 +251,36 @@ export default function RoomsPage() {
               </Button>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={!!deleteConfirm}
+        onOpenChange={() => setDeleteConfirm(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>객실 삭제 확인</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-600 py-2">
+            <strong>{deleteConfirm?.roomNumber}호</strong>를 정말
+            삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+          </p>
+          <div className="flex gap-2 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteConfirm(null)}
+            >
+              취소
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => deleteConfirm && deleteRoom(deleteConfirm)}
+            >
+              삭제
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

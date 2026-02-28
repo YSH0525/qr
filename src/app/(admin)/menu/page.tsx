@@ -215,7 +215,8 @@ function MenuForm({
     if (res.ok) {
       onSave();
     } else {
-      toast.error("저장에 실패했습니다");
+      const data = await res.json();
+      toast.error(data.error || "저장에 실패했습니다");
     }
   };
 

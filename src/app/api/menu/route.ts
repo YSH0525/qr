@@ -44,11 +44,33 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+
+    if (!body.name || !body.price || !body.categoryId) {
+      return NextResponse.json(
+        { error: "메뉴명, 가격, 카테고리는 필수입니다" },
+        { status: 400 }
+      );
+    }
+
+    // Verify category exists
+    const catDoc = await getDocs(
+      query(
+        collection(firestore, "menuCategories"),
+        where("__name__", "==", body.categoryId)
+      )
+    );
+    if (catDoc.empty) {
+      return NextResponse.json(
+        { error: "존재하지 않는 카테고리입니다" },
+        { status: 400 }
+      );
+    }
+
     const data = {
       categoryId: body.categoryId,
       name: body.name,
       description: body.description || null,
-      price: body.price,
+      price: Number(body.price),
       imageUrl: body.imageUrl || null,
       isAvailable: body.isAvailable ?? true,
       displayOrder: body.displayOrder || 0,
@@ -57,7 +79,8 @@ export async function POST(req: NextRequest) {
     const docRef = await addDoc(collection(firestore, "menuItems"), data);
 
     return NextResponse.json({ id: docRef.id, ...data }, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: "메뉴 생성 실패" }, { status: 500 });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "메뉴 생성 실패";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

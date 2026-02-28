@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile } from "fs/promises";
-import path from "path";
+import { storage } from "@/lib/firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { v4 as uuidv4 } from "uuid";
 
 export async function POST(req: NextRequest) {
@@ -13,16 +13,21 @@ export async function POST(req: NextRequest) {
     }
 
     const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
+    const buffer = new Uint8Array(bytes);
 
     const ext = file.name.split(".").pop() || "jpg";
-    const fileName = `${uuidv4()}.${ext}`;
-    const filePath = path.join(process.cwd(), "public", "uploads", fileName);
+    const fileName = `menu-images/${uuidv4()}.${ext}`;
+    const storageRef = ref(storage, fileName);
 
-    await writeFile(filePath, buffer);
+    await uploadBytes(storageRef, buffer, {
+      contentType: file.type,
+    });
 
-    return NextResponse.json({ url: `/uploads/${fileName}` });
-  } catch {
-    return NextResponse.json({ error: "파일 업로드 실패" }, { status: 500 });
+    const url = await getDownloadURL(storageRef);
+
+    return NextResponse.json({ url });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "파일 업로드 실패";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
