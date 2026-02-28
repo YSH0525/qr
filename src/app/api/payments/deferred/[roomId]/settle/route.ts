@@ -2,17 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { orders, rooms } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import { verifySession } from "@/lib/auth";
 
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ roomId: string }> }
 ) {
-  const isAuth = await verifySession();
-  if (!isAuth) {
-    return NextResponse.json({ error: "인증이 필요합니다" }, { status: 401 });
-  }
-
   const { roomId } = await params;
 
   const room = await db

@@ -1,14 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   ClipboardList,
   DoorOpen,
   UtensilsCrossed,
   CreditCard,
-  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -22,12 +21,6 @@ const navItems = [
 
 export function AdminSidebar() {
   const pathname = usePathname();
-  const router = useRouter();
-
-  const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
-  };
 
   return (
     <aside className="w-64 bg-gray-900 text-white min-h-screen flex flex-col">
@@ -52,15 +45,6 @@ export function AdminSidebar() {
           </Link>
         ))}
       </nav>
-      <div className="p-4 border-t border-gray-700">
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition w-full"
-        >
-          <LogOut className="w-5 h-5" />
-          로그아웃
-        </button>
-      </div>
     </aside>
   );
 }

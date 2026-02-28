@@ -2,18 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { orders, rooms } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { verifySession } from "@/lib/auth";
 import { orderEvents } from "@/lib/sse";
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ orderId: string }> }
 ) {
-  const isAuth = await verifySession();
-  if (!isAuth) {
-    return NextResponse.json({ error: "인증이 필요합니다" }, { status: 401 });
-  }
-
   const { orderId } = await params;
   const { status } = await req.json();
 

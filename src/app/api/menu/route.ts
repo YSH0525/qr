@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { menuCategories, menuItems } from "@/db/schema";
-import { verifySession } from "@/lib/auth";
 import { eq, asc } from "drizzle-orm";
 
 export async function GET() {
@@ -25,11 +24,6 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const isAuth = await verifySession();
-  if (!isAuth) {
-    return NextResponse.json({ error: "인증이 필요합니다" }, { status: 401 });
-  }
-
   try {
     const body = await req.json();
     const result = db

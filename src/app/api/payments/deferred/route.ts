@@ -2,14 +2,8 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { orders, rooms } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import { verifySession } from "@/lib/auth";
 
 export async function GET() {
-  const isAuth = await verifySession();
-  if (!isAuth) {
-    return NextResponse.json({ error: "인증이 필요합니다" }, { status: 401 });
-  }
-
   // Get all rooms with deferred unpaid orders
   const allRooms = await db.select().from(rooms).where(eq(rooms.isActive, true));
 
