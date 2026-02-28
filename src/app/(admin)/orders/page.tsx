@@ -1,6 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useOrderSSE } from "@/hooks/use-sse";
+import { useNotificationSound } from "@/hooks/use-audio";
+import { useBrowserNotification } from "@/hooks/use-notification";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -19,15 +22,55 @@ import {
 import type { OrderWithItems, OrderStatus, PaymentStatus } from "@/types";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
+import { toast } from "sonner";
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
+  const { playNewOrderAlert } = useNotificationSound();
+  const { notify } = useBrowserNotification();
+
+  const fetchOrders = useCallback(async () => {
+    const res = await fetch("/api/orders");
+    if (res.ok) {
+      setOrders(await res.json());
+    }
+  }, []);
 
   useEffect(() => {
-    fetch("/api/orders")
-      .then((r) => r.json())
-      .then(setOrders);
-  }, []);
+    fetchOrders();
+  }, [fetchOrders]);
+
+  useOrderSSE(
+    useCallback(
+      (event: string, data: Record<string, unknown>) => {
+        if (event === "new-order") {
+          const order = data as unknown as OrderWithItems;
+          setOrders((prev) => [order, ...prev]);
+
+          playNewOrderAlert(order.roomNumber, order.items || []);
+
+          const itemText = (order.items || [])
+            .map((i) => `${i.menuItemName} x${i.quantity}`)
+            .join(", ");
+          notify(
+            `새 주문! ${order.roomNumber}호`,
+            itemText || "새로운 주문이 들어왔습니다"
+          );
+
+          toast.success(`새 주문! ${order.roomNumber}호`);
+        } else if (event === "order-updated") {
+          setOrders((prev) =>
+            prev.map((o) =>
+              o.orderId === (data as Record<string, unknown>).orderId
+                ? { ...o, ...(data as Partial<OrderWithItems>) }
+                : o
+            )
+          );
+        }
+      },
+      [playNewOrderAlert, notify]
+    )
+  );
 
   const formatPrice = (price: number) => price.toLocaleString("ko-KR") + "원";
 
@@ -76,7 +119,14 @@ export default function OrdersPage() {
             </TableHeader>
             <TableBody>
               {orders.map((order) => (
-                <TableRow key={order.orderId}>
+                <TableRow
+                  key={order.orderId}
+                  className={
+                    order.status === "pending"
+                      ? "bg-orange-50"
+                      : undefined
+                  }
+                >
                   <TableCell className="font-mono text-xs">
                     {order.orderId}
                   </TableCell>

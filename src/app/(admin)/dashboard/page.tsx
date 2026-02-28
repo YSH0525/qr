@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useOrderSSE } from "@/hooks/use-sse";
 import { useNotificationSound } from "@/hooks/use-audio";
+import { useBrowserNotification } from "@/hooks/use-notification";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +16,8 @@ import {
 
 export default function DashboardPage() {
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
-  const { play } = useNotificationSound();
+  const { playNewOrderAlert } = useNotificationSound();
+  const { notify } = useBrowserNotification();
 
   const fetchOrders = useCallback(async () => {
     const res = await fetch("/api/orders");
@@ -32,10 +34,27 @@ export default function DashboardPage() {
     useCallback(
       (event: string, data: Record<string, unknown>) => {
         if (event === "new-order") {
-          setOrders((prev) => [data as unknown as OrderWithItems, ...prev]);
-          play();
+          const order = data as unknown as OrderWithItems;
+          setOrders((prev) => [order, ...prev]);
+
+          // 효과음 + TTS 음성 알림
+          playNewOrderAlert(
+            order.roomNumber,
+            order.items || []
+          );
+
+          // 브라우저 푸시 알림 (다른 탭에 있어도 표시)
+          const itemText = (order.items || [])
+            .map((i) => `${i.menuItemName} x${i.quantity}`)
+            .join(", ");
+          notify(
+            `새 주문! ${order.roomNumber}호`,
+            itemText || "새로운 주문이 들어왔습니다"
+          );
+
+          // 토스트 알림
           toast.success(
-            `새 주문! ${(data as Record<string, unknown>).roomNumber}호`
+            `새 주문! ${order.roomNumber}호`
           );
         } else if (event === "order-updated") {
           setOrders((prev) =>
@@ -47,7 +66,7 @@ export default function DashboardPage() {
           );
         }
       },
-      [play]
+      [playNewOrderAlert, notify]
     )
   );
 

@@ -5,31 +5,91 @@ import { useCallback, useRef } from "react";
 export function useNotificationSound() {
   const audioContextRef = useRef<AudioContext | null>(null);
 
-  const play = useCallback(() => {
+  const getContext = useCallback(() => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new AudioContext();
+    }
+    return audioContextRef.current;
+  }, []);
+
+  // 배달의민족 스타일 효과음 (띠링~ 2연타)
+  const playChime = useCallback(() => {
     try {
-      if (!audioContextRef.current) {
-        audioContextRef.current = new AudioContext();
-      }
-      const ctx = audioContextRef.current;
-      const oscillator = ctx.createOscillator();
-      const gainNode = ctx.createGain();
+      const ctx = getContext();
 
-      oscillator.connect(gainNode);
-      gainNode.connect(ctx.destination);
+      // 첫 번째 음 (높은 띠링)
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.type = "sine";
+      osc1.frequency.setValueAtTime(880, ctx.currentTime);
+      osc1.frequency.setValueAtTime(1320, ctx.currentTime + 0.08);
+      gain1.gain.setValueAtTime(0.4, ctx.currentTime);
+      gain1.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+      osc1.start(ctx.currentTime);
+      osc1.stop(ctx.currentTime + 0.3);
 
-      oscillator.frequency.setValueAtTime(800, ctx.currentTime);
-      oscillator.frequency.setValueAtTime(1000, ctx.currentTime + 0.1);
-      oscillator.frequency.setValueAtTime(800, ctx.currentTime + 0.2);
-
-      gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-
-      oscillator.start(ctx.currentTime);
-      oscillator.stop(ctx.currentTime + 0.5);
+      // 두 번째 음 (더 높은 띠링)
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.type = "sine";
+      osc2.frequency.setValueAtTime(1100, ctx.currentTime + 0.2);
+      osc2.frequency.setValueAtTime(1760, ctx.currentTime + 0.28);
+      gain2.gain.setValueAtTime(0.0001, ctx.currentTime);
+      gain2.gain.setValueAtTime(0.4, ctx.currentTime + 0.2);
+      gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+      osc2.start(ctx.currentTime + 0.2);
+      osc2.stop(ctx.currentTime + 0.5);
     } catch {
       // Audio not available
     }
+  }, [getContext]);
+
+  // TTS 음성 알림: "새 주문이 들어왔습니다. {객실번호}호, {메뉴내용}"
+  const speak = useCallback((text: string) => {
+    try {
+      if (!("speechSynthesis" in window)) return;
+
+      // 이전 음성 중단
+      window.speechSynthesis.cancel();
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "ko-KR";
+      utterance.rate = 1.1;
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
+
+      // 한국어 음성 선택
+      const voices = window.speechSynthesis.getVoices();
+      const koVoice = voices.find((v) => v.lang.startsWith("ko"));
+      if (koVoice) {
+        utterance.voice = koVoice;
+      }
+
+      window.speechSynthesis.speak(utterance);
+    } catch {
+      // TTS not available
+    }
   }, []);
 
-  return { play };
+  // 효과음 + TTS 조합
+  const playNewOrderAlert = useCallback(
+    (roomNumber: string, items: { menuItemName: string; quantity: number }[]) => {
+      playChime();
+
+      const itemText = items
+        .map((i) => `${i.menuItemName} ${i.quantity}개`)
+        .join(", ");
+      const text = `새 주문이 들어왔습니다. ${roomNumber}호, ${itemText}`;
+
+      // 효과음 끝난 후 TTS 재생
+      setTimeout(() => speak(text), 600);
+    },
+    [playChime, speak]
+  );
+
+  return { play: playChime, speak, playNewOrderAlert };
 }
