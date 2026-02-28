@@ -26,7 +26,7 @@ import { QRCodeSVG } from "qrcode.react";
 import Link from "next/link";
 
 interface Room {
-  id: number;
+  id: string;
   roomNumber: string;
   roomId: string;
   floor: string | null;

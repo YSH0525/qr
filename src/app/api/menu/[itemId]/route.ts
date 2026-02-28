@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
-import { menuItems } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { firestore } from "@/lib/firebase";
+import { doc, updateDoc, getDoc } from "firebase/firestore";
 
 export async function PUT(
   req: NextRequest,
@@ -11,22 +10,19 @@ export async function PUT(
   const body = await req.json();
 
   try {
-    const result = db
-      .update(menuItems)
-      .set({
-        name: body.name,
-        description: body.description,
-        price: body.price,
-        imageUrl: body.imageUrl,
-        isAvailable: body.isAvailable,
-        categoryId: body.categoryId,
-        displayOrder: body.displayOrder,
-      })
-      .where(eq(menuItems.id, parseInt(itemId)))
-      .returning()
-      .get();
+    const ref = doc(firestore, "menuItems", itemId);
+    await updateDoc(ref, {
+      name: body.name,
+      description: body.description,
+      price: body.price,
+      imageUrl: body.imageUrl,
+      isAvailable: body.isAvailable,
+      categoryId: body.categoryId,
+      displayOrder: body.displayOrder,
+    });
 
-    return NextResponse.json(result);
+    const updated = await getDoc(ref);
+    return NextResponse.json({ id: updated.id, ...updated.data() });
   } catch {
     return NextResponse.json({ error: "메뉴 수정 실패" }, { status: 500 });
   }
@@ -38,10 +34,8 @@ export async function DELETE(
 ) {
   const { itemId } = await params;
 
-  db.update(menuItems)
-    .set({ isAvailable: false })
-    .where(eq(menuItems.id, parseInt(itemId)))
-    .run();
+  const ref = doc(firestore, "menuItems", itemId);
+  await updateDoc(ref, { isAvailable: false });
 
   return NextResponse.json({ success: true });
 }

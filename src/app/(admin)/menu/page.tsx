@@ -23,15 +23,15 @@ import { toast } from "sonner";
 import { Plus, Pencil, ImageIcon } from "lucide-react";
 
 interface Category {
-  id: number;
+  id: string;
   name: string;
   displayOrder: number;
   isActive: boolean;
 }
 
 interface MenuItem {
-  id: number;
-  categoryId: number;
+  id: string;
+  categoryId: string;
   name: string;
   description: string | null;
   price: number;
@@ -197,7 +197,7 @@ function MenuForm({
     const body = {
       name,
       price: parseInt(price),
-      categoryId: parseInt(categoryId),
+      categoryId,
       description: description || undefined,
       imageUrl: imageUrl || undefined,
       isAvailable,

@@ -36,7 +36,7 @@ export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
 };
 
 export interface CartItem {
-  menuItemId: number;
+  menuItemId: string;
   name: string;
   price: number;
   quantity: number;
@@ -44,9 +44,9 @@ export interface CartItem {
 }
 
 export interface OrderWithItems {
-  id: number;
+  id: string;
   orderId: string;
-  roomId: number;
+  roomId: string;
   roomNumber: string;
   status: OrderStatus;
   paymentMethod: PaymentMethod;

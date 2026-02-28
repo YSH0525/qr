@@ -1,51 +1,50 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
-import { orders, rooms } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { firestore } from "@/lib/firebase";
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+  updateDoc,
+} from "firebase/firestore";
 import { kakaoPayReady } from "@/lib/kakaopay";
 
 export async function POST(req: NextRequest) {
   try {
     const { orderId } = await req.json();
 
-    const order = await db
-      .select({
-        id: orders.id,
-        orderId: orders.orderId,
-        roomId: orders.roomId,
-        totalAmount: orders.totalAmount,
-        paymentMethod: orders.paymentMethod,
-      })
-      .from(orders)
-      .where(eq(orders.orderId, orderId))
-      .get();
+    const orderSnap = await getDocs(
+      query(
+        collection(firestore, "orders"),
+        where("orderId", "==", orderId)
+      )
+    );
 
-    if (!order) {
-      return NextResponse.json({ error: "주문을 찾을 수 없습니다" }, { status: 404 });
+    if (orderSnap.empty) {
+      return NextResponse.json(
+        { error: "주문을 찾을 수 없습니다" },
+        { status: 404 }
+      );
     }
 
-    const room = await db
-      .select()
-      .from(rooms)
-      .where(eq(rooms.id, order.roomId))
-      .get();
-
-    if (!room) {
-      return NextResponse.json({ error: "객실을 찾을 수 없습니다" }, { status: 404 });
-    }
+    const orderDoc = orderSnap.docs[0];
+    const order = orderDoc.data() as {
+      orderId: string;
+      roomId: string;
+      roomNumber: string;
+      roomUuid: string;
+      totalAmount: number;
+    };
 
     const result = await kakaoPayReady({
       orderId: order.orderId,
-      itemName: `${room.roomNumber}호 주문`,
+      itemName: `${order.roomNumber}호 주문`,
       totalAmount: order.totalAmount,
-      roomId: room.roomId,
+      roomId: order.roomUuid,
     });
 
     // Save TID for approval step
-    db.update(orders)
-      .set({ kakaoTid: result.tid })
-      .where(eq(orders.id, order.id))
-      .run();
+    await updateDoc(orderDoc.ref, { kakaoTid: result.tid });
 
     return NextResponse.json({
       tid: result.tid,

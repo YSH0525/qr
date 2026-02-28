@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Printer } from "lucide-react";
 
 interface Room {
-  id: number;
+  id: string;
   roomNumber: string;
   roomId: string;
   floor: string | null;

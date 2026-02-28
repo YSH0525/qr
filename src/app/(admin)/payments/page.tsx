@@ -15,13 +15,13 @@ import { toast } from "sonner";
 
 interface DeferredPayment {
   room: {
-    id: number;
+    id: string;
     roomNumber: string;
     roomId: string;
     floor: string | null;
   };
   deferredOrders: {
-    id: number;
+    id: string;
     orderId: string;
     totalAmount: number;
     createdAt: string;

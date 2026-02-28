@@ -10,7 +10,7 @@ export const roomSchema = z.object({
 });
 
 export const menuItemSchema = z.object({
-  categoryId: z.number().int().positive(),
+  categoryId: z.string().min(1),
   name: z.string().min(1, "메뉴명을 입력하세요"),
   description: z.string().optional(),
   price: z.number().int().min(0, "가격은 0 이상이어야 합니다"),
@@ -28,7 +28,7 @@ export const orderSchema = z.object({
   items: z
     .array(
       z.object({
-        menuItemId: z.number().int().positive(),
+        menuItemId: z.string().min(1),
         quantity: z.number().int().min(1),
       })
     )

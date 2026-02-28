@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
-import { orders, rooms } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { firestore } from "@/lib/firebase";
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+  updateDoc,
+} from "firebase/firestore";
 
 export async function POST(
   _req: NextRequest,
@@ -9,35 +14,47 @@ export async function POST(
 ) {
   const { roomId } = await params;
 
-  const room = await db
-    .select()
-    .from(rooms)
-    .where(eq(rooms.roomId, roomId))
-    .get();
+  // Find room by UUID
+  const roomSnap = await getDocs(
+    query(
+      collection(firestore, "rooms"),
+      where("roomId", "==", roomId)
+    )
+  );
 
-  if (!room) {
-    return NextResponse.json({ error: "객실을 찾을 수 없습니다" }, { status: 404 });
+  if (roomSnap.empty) {
+    return NextResponse.json(
+      { error: "객실을 찾을 수 없습니다" },
+      { status: 404 }
+    );
   }
 
-  // Settle all deferred orders for this room
-  const updated = db
-    .update(orders)
-    .set({
-      paymentStatus: "paid",
-      updatedAt: new Date().toISOString(),
-    })
-    .where(
-      and(
-        eq(orders.roomId, room.id),
-        eq(orders.paymentMethod, "deferred"),
-        eq(orders.paymentStatus, "deferred")
-      )
+  const roomDoc = roomSnap.docs[0];
+
+  // Get all deferred orders for this room
+  const deferredSnap = await getDocs(
+    query(
+      collection(firestore, "orders"),
+      where("roomId", "==", roomDoc.id),
+      where("paymentMethod", "==", "deferred"),
+      where("paymentStatus", "==", "deferred")
     )
-    .returning()
-    .all();
+  );
+
+  const updatedAt = new Date().toISOString();
+  let totalAmount = 0;
+
+  for (const orderDoc of deferredSnap.docs) {
+    await updateDoc(orderDoc.ref, {
+      paymentStatus: "paid",
+      updatedAt,
+    });
+    const data = orderDoc.data() as { totalAmount: number };
+    totalAmount += data.totalAmount;
+  }
 
   return NextResponse.json({
-    settled: updated.length,
-    totalAmount: updated.reduce((sum, o) => sum + o.totalAmount, 0),
+    settled: deferredSnap.size,
+    totalAmount,
   });
 }

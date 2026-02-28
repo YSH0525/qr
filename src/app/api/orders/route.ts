@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
-import { orders, orderItems, menuItems, rooms } from "@/db/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { firestore } from "@/lib/firebase";
+import {
+  collection,
+  getDocs,
+  addDoc,
+  doc,
+  getDoc,
+  query,
+  where,
+  orderBy,
+} from "firebase/firestore";
 import { orderEvents } from "@/lib/sse";
 import { format } from "date-fns";
 
@@ -18,45 +26,34 @@ export async function GET(req: NextRequest) {
   const status = searchParams.get("status");
   const roomId = searchParams.get("roomId");
 
-  let query = db
-    .select({
-      id: orders.id,
-      orderId: orders.orderId,
-      roomId: orders.roomId,
-      roomNumber: rooms.roomNumber,
-      status: orders.status,
-      paymentMethod: orders.paymentMethod,
-      paymentStatus: orders.paymentStatus,
-      totalAmount: orders.totalAmount,
-      note: orders.note,
-      createdAt: orders.createdAt,
-      updatedAt: orders.updatedAt,
-    })
-    .from(orders)
-    .innerJoin(rooms, eq(orders.roomId, rooms.id))
-    .orderBy(desc(orders.createdAt))
-    .$dynamic();
-
-  const conditions = [];
+  // Build query constraints
+  const constraints: ReturnType<typeof where>[] = [];
   if (status) {
-    conditions.push(eq(orders.status, status));
+    constraints.push(where("status", "==", status));
   }
   if (roomId) {
-    conditions.push(eq(rooms.roomId, roomId));
-  }
-  if (conditions.length > 0) {
-    query = query.where(and(...conditions));
+    constraints.push(where("roomUuid", "==", roomId));
   }
 
-  const orderList = await query;
+  const ordersSnap = await getDocs(
+    query(
+      collection(firestore, "orders"),
+      ...constraints,
+      orderBy("createdAt", "desc")
+    )
+  );
 
-  // Attach items to each order
   const result = await Promise.all(
-    orderList.map(async (order) => {
-      const items = await db
-        .select()
-        .from(orderItems)
-        .where(eq(orderItems.orderId, order.id));
+    ordersSnap.docs.map(async (d) => {
+      const order = { id: d.id, ...d.data() };
+      // Get order items subcollection
+      const itemsSnap = await getDocs(
+        collection(firestore, "orders", d.id, "items")
+      );
+      const items = itemsSnap.docs.map((item) => ({
+        id: item.id,
+        ...item.data(),
+      }));
       return { ...order, items };
     })
   );
@@ -70,37 +67,49 @@ export async function POST(req: NextRequest) {
     const { roomId: roomUuid, items, paymentMethod, note } = body;
 
     // Find room by UUID
-    const room = await db
-      .select()
-      .from(rooms)
-      .where(eq(rooms.roomId, roomUuid))
-      .get();
+    const roomSnap = await getDocs(
+      query(
+        collection(firestore, "rooms"),
+        where("roomId", "==", roomUuid)
+      )
+    );
 
-    if (!room) {
-      return NextResponse.json({ error: "객실을 찾을 수 없습니다" }, { status: 404 });
+    if (roomSnap.empty) {
+      return NextResponse.json(
+        { error: "객실을 찾을 수 없습니다" },
+        { status: 404 }
+      );
     }
+
+    const room = { id: roomSnap.docs[0].id, ...roomSnap.docs[0].data() } as {
+      id: string;
+      roomId: string;
+      roomNumber: string;
+    };
 
     // Get menu items and calculate total
     let totalAmount = 0;
     const itemDetails = [];
     for (const item of items) {
-      const menuItem = await db
-        .select()
-        .from(menuItems)
-        .where(eq(menuItems.id, item.menuItemId))
-        .get();
+      const menuItemDoc = await getDoc(
+        doc(firestore, "menuItems", item.menuItemId)
+      );
 
-      if (!menuItem) {
+      if (!menuItemDoc.exists()) {
         return NextResponse.json(
           { error: `메뉴를 찾을 수 없습니다 (ID: ${item.menuItemId})` },
           { status: 404 }
         );
       }
 
+      const menuItem = menuItemDoc.data() as {
+        name: string;
+        price: number;
+      };
       const subtotal = menuItem.price * item.quantity;
       totalAmount += subtotal;
       itemDetails.push({
-        menuItemId: menuItem.id,
+        menuItemId: menuItemDoc.id,
         menuItemName: menuItem.name,
         menuItemPrice: menuItem.price,
         quantity: item.quantity,
@@ -110,32 +119,40 @@ export async function POST(req: NextRequest) {
 
     const orderId = generateOrderId();
     const paymentStatus = paymentMethod === "deferred" ? "deferred" : "pending";
+    const now = new Date().toISOString();
 
-    // Create order
-    const order = db
-      .insert(orders)
-      .values({
-        orderId,
-        roomId: room.id,
-        status: "pending",
-        paymentMethod,
-        paymentStatus,
-        totalAmount,
-        note: note || null,
-      })
-      .returning()
-      .get();
+    const orderData = {
+      orderId,
+      roomId: room.id,
+      roomUuid: room.roomId,
+      roomNumber: room.roomNumber,
+      status: "pending",
+      paymentMethod,
+      paymentStatus,
+      totalAmount,
+      note: note || null,
+      kakaoTid: null,
+      createdAt: now,
+      updatedAt: now,
+    };
 
-    // Create order items
+    // Create order document
+    const orderRef = await addDoc(
+      collection(firestore, "orders"),
+      orderData
+    );
+
+    // Create order items in subcollection
     for (const item of itemDetails) {
-      db.insert(orderItems)
-        .values({ orderId: order.id, ...item })
-        .run();
+      await addDoc(
+        collection(firestore, "orders", orderRef.id, "items"),
+        item
+      );
     }
 
     const fullOrder = {
-      ...order,
-      roomNumber: room.roomNumber,
+      id: orderRef.id,
+      ...orderData,
       items: itemDetails,
     };
 

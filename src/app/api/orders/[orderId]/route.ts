@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
-import { orders, orderItems, rooms } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { firestore } from "@/lib/firebase";
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+} from "firebase/firestore";
 
 export async function GET(
   _req: NextRequest,
@@ -9,34 +13,28 @@ export async function GET(
 ) {
   const { orderId } = await params;
 
-  const order = await db
-    .select({
-      id: orders.id,
-      orderId: orders.orderId,
-      roomId: orders.roomId,
-      roomNumber: rooms.roomNumber,
-      status: orders.status,
-      paymentMethod: orders.paymentMethod,
-      paymentStatus: orders.paymentStatus,
-      totalAmount: orders.totalAmount,
-      note: orders.note,
-      kakaoTid: orders.kakaoTid,
-      createdAt: orders.createdAt,
-      updatedAt: orders.updatedAt,
-    })
-    .from(orders)
-    .innerJoin(rooms, eq(orders.roomId, rooms.id))
-    .where(eq(orders.orderId, orderId))
-    .get();
+  const orderSnap = await getDocs(
+    query(
+      collection(firestore, "orders"),
+      where("orderId", "==", orderId)
+    )
+  );
 
-  if (!order) {
-    return NextResponse.json({ error: "주문을 찾을 수 없습니다" }, { status: 404 });
+  if (orderSnap.empty) {
+    return NextResponse.json(
+      { error: "주문을 찾을 수 없습니다" },
+      { status: 404 }
+    );
   }
 
-  const items = await db
-    .select()
-    .from(orderItems)
-    .where(eq(orderItems.orderId, order.id));
+  const orderDoc = orderSnap.docs[0];
+  const order = { id: orderDoc.id, ...orderDoc.data() };
+
+  // Get order items subcollection
+  const itemsSnap = await getDocs(
+    collection(firestore, "orders", orderDoc.id, "items")
+  );
+  const items = itemsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
   return NextResponse.json({ ...order, items });
 }

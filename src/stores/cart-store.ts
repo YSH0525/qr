@@ -8,8 +8,8 @@ interface CartStore {
   items: CartItem[];
   roomId: string | null;
   addItem: (item: Omit<CartItem, "quantity">) => void;
-  removeItem: (menuItemId: number) => void;
-  updateQuantity: (menuItemId: number, quantity: number) => void;
+  removeItem: (menuItemId: string) => void;
+  updateQuantity: (menuItemId: string, quantity: number) => void;
   clearCart: () => void;
   setRoomId: (roomId: string) => void;
   totalAmount: () => number;

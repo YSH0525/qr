@@ -9,13 +9,13 @@ import { ShoppingCart, Plus, Minus, ImageIcon } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 interface Category {
-  id: number;
+  id: string;
   name: string;
   items: MenuItem[];
 }
 
 interface MenuItem {
-  id: number;
+  id: string;
   name: string;
   description: string | null;
   price: number;
@@ -24,7 +24,7 @@ interface MenuItem {
 }
 
 interface Room {
-  id: number;
+  id: string;
   roomNumber: string;
   roomId: string;
 }
@@ -37,7 +37,7 @@ export default function RoomMenuPage({
   const { roomId } = use(params);
   const [room, setRoom] = useState<Room | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [activeCategory, setActiveCategory] = useState<number | null>(null);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [error, setError] = useState("");
   const router = useRouter();
 
@@ -63,7 +63,7 @@ export default function RoomMenuPage({
   }, [roomId, setRoomId]);
 
   const formatPrice = (price: number) => price.toLocaleString("ko-KR");
-  const getCartQuantity = (menuItemId: number) =>
+  const getCartQuantity = (menuItemId: string) =>
     cartItems.find((i) => i.menuItemId === menuItemId)?.quantity || 0;
 
   if (error) {

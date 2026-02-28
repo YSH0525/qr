@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db";
-import { orders, rooms } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { firestore } from "@/lib/firebase";
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+  updateDoc,
+} from "firebase/firestore";
 import { orderEvents } from "@/lib/sse";
 
 export async function PATCH(
@@ -21,30 +26,34 @@ export async function PATCH(
   ];
 
   if (!validStatuses.includes(status)) {
-    return NextResponse.json({ error: "잘못된 상태값입니다" }, { status: 400 });
+    return NextResponse.json(
+      { error: "잘못된 상태값입니다" },
+      { status: 400 }
+    );
   }
 
-  const updated = db
-    .update(orders)
-    .set({ status, updatedAt: new Date().toISOString() })
-    .where(eq(orders.orderId, orderId))
-    .returning()
-    .get();
+  const orderSnap = await getDocs(
+    query(
+      collection(firestore, "orders"),
+      where("orderId", "==", orderId)
+    )
+  );
 
-  if (!updated) {
-    return NextResponse.json({ error: "주문을 찾을 수 없습니다" }, { status: 404 });
+  if (orderSnap.empty) {
+    return NextResponse.json(
+      { error: "주문을 찾을 수 없습니다" },
+      { status: 404 }
+    );
   }
 
-  const room = await db
-    .select()
-    .from(rooms)
-    .where(eq(rooms.id, updated.roomId))
-    .get();
+  const orderDoc = orderSnap.docs[0];
+  const updatedAt = new Date().toISOString();
 
-  orderEvents.broadcast("order-updated", {
-    ...updated,
-    roomNumber: room?.roomNumber,
-  });
+  await updateDoc(orderDoc.ref, { status, updatedAt });
+
+  const updated = { id: orderDoc.id, ...orderDoc.data(), status, updatedAt };
+
+  orderEvents.broadcast("order-updated", updated);
 
   return NextResponse.json(updated);
 }

@@ -1,27 +1,41 @@
 import { NextResponse } from "next/server";
-import { db } from "@/db";
-import { orders, rooms } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { firestore } from "@/lib/firebase";
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+} from "firebase/firestore";
 
 export async function GET() {
-  // Get all rooms with deferred unpaid orders
-  const allRooms = await db.select().from(rooms).where(eq(rooms.isActive, true));
+  // Get all active rooms
+  const roomsSnap = await getDocs(
+    query(
+      collection(firestore, "rooms"),
+      where("isActive", "==", true)
+    )
+  );
 
   const result = await Promise.all(
-    allRooms.map(async (room) => {
-      const deferredOrders = await db
-        .select()
-        .from(orders)
-        .where(
-          and(
-            eq(orders.roomId, room.id),
-            eq(orders.paymentMethod, "deferred"),
-            eq(orders.paymentStatus, "deferred")
-          )
-        );
+    roomsSnap.docs.map(async (roomDoc) => {
+      const room = { id: roomDoc.id, ...roomDoc.data() };
 
+      // Get deferred unpaid orders for this room
+      const deferredSnap = await getDocs(
+        query(
+          collection(firestore, "orders"),
+          where("roomId", "==", roomDoc.id),
+          where("paymentMethod", "==", "deferred"),
+          where("paymentStatus", "==", "deferred")
+        )
+      );
+
+      const deferredOrders = deferredSnap.docs.map((d) => ({
+        id: d.id,
+        ...(d.data() as { totalAmount: number; [key: string]: unknown }),
+      }));
       const totalDeferred = deferredOrders.reduce(
-        (sum, o) => sum + o.totalAmount,
+        (sum, o) => sum + (o.totalAmount || 0),
         0
       );
 
