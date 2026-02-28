@@ -11,11 +11,7 @@ import {
 
 export async function GET() {
   const catSnap = await getDocs(
-    query(
-      collection(firestore, "menuCategories"),
-      where("isActive", "==", true),
-      orderBy("displayOrder")
-    )
+    query(collection(firestore, "menuCategories"), orderBy("displayOrder"))
   );
 
   const itemSnap = await getDocs(
@@ -32,11 +28,13 @@ export async function GET() {
     id: d.id,
   }));
 
-  const result = catSnap.docs.map((d) => ({
-    ...d.data(),
-    id: d.id,
-    items: items.filter((item) => item.categoryId === d.id),
-  }));
+  const result = catSnap.docs
+    .filter((d) => d.data().isActive !== false)
+    .map((d) => ({
+      ...d.data(),
+      id: d.id,
+      items: items.filter((item) => item.categoryId === d.id),
+    }));
 
   return NextResponse.json(result);
 }
