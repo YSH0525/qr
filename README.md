@@ -2,6 +2,34 @@
 
 호텔 객실에 비치된 QR 코드를 스캔하여 편의점 상품을 주문하고, 프런트에서 실시간으로 관리하는 시스템입니다.
 
+## 바로 실행하기 (설치 없이)
+
+### GitHub Codespaces (가장 간편)
+
+GitHub 저장소 페이지에서 아래 버튼을 클릭하면 브라우저에서 바로 실행됩니다:
+
+1. GitHub 저장소 페이지에서 초록색 **`<> Code`** 버튼 클릭
+2. **Codespaces** 탭 선택
+3. **`Create codespace on main`** 클릭
+
+자동으로 의존성 설치 → 환경변수 설정 → DB 초기화 → 서버 실행까지 완료됩니다.
+브라우저에서 바로 `http://localhost:3000` 접속 가능합니다.
+
+> 관리자 비밀번호 기본값: `your-admin-password` (`.env.local` 수정으로 변경 가능)
+
+### StackBlitz (더 빠른 시작)
+
+아래 URL을 브라우저에 입력하면 즉시 실행됩니다:
+
+```
+https://stackblitz.com/github/YSH0525/qr
+```
+
+> StackBlitz는 WebContainer 기반이라 SQLite native 모듈이 제한될 수 있습니다.
+> Codespaces 사용을 권장합니다.
+
+---
+
 ## 기술 스택
 
 - **프레임워크**: Next.js 16 (App Router)

@@ -1,0 +1,13 @@
+{
+  "name": "호텔 QR 주문 시스템",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
+  "postCreateCommand": "npm install && cp -n .env.example .env.local && npm run db:seed",
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": {
+      "label": "Hotel QR App",
+      "onAutoForward": "openBrowser"
+    }
+  },
+  "postStartCommand": "npm run dev"
+}
