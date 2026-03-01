@@ -99,21 +99,27 @@ export default function ServiceSettingsPage() {
 
   const addItem = async () => {
     if (!selectedCatId) return;
-    const res = await fetch("/api/service-items", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...newItem,
-        categoryId: selectedCatId,
-        displayOrder: items.length,
-        isAvailable: true,
-      }),
-    });
-    if (res.ok) {
-      toast.success("아이템이 추가되었습니다");
-      setItemOpen(false);
-      setNewItem({ name: "", icon: "package" });
-      fetchItems(selectedCatId);
+    try {
+      const res = await fetch("/api/service-items", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...newItem,
+          categoryId: selectedCatId,
+          displayOrder: items.length,
+          isAvailable: true,
+        }),
+      });
+      if (res.ok) {
+        toast.success("아이템이 추가되었습니다");
+        setItemOpen(false);
+        setNewItem({ name: "", icon: "package" });
+        fetchItems(selectedCatId);
+      } else {
+        toast.error("아이템 등록에 실패했습니다");
+      }
+    } catch {
+      toast.error("아이템 등록 중 오류가 발생했습니다");
     }
   };
 

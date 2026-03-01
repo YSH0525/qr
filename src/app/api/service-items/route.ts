@@ -10,38 +10,54 @@ import {
 } from "firebase/firestore";
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const categoryId = searchParams.get("categoryId");
+  try {
+    const { searchParams } = new URL(req.url);
+    const categoryId = searchParams.get("categoryId");
 
-  const constraints: ReturnType<typeof where>[] = [];
-  if (categoryId) {
-    constraints.push(where("categoryId", "==", categoryId));
+    let snap;
+    if (categoryId) {
+      snap = await getDocs(
+        query(
+          collection(firestore, "serviceItems"),
+          where("categoryId", "==", categoryId)
+        )
+      );
+    } else {
+      snap = await getDocs(
+        query(
+          collection(firestore, "serviceItems"),
+          orderBy("displayOrder", "asc")
+        )
+      );
+    }
+
+    const items = snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => ((a as unknown as Record<string, number>).displayOrder ?? 0) - ((b as unknown as Record<string, number>).displayOrder ?? 0));
+    return NextResponse.json(items);
+  } catch (e) {
+    console.error("Service items GET error:", e);
+    return NextResponse.json([], { status: 200 });
   }
-
-  const snap = await getDocs(
-    query(
-      collection(firestore, "serviceItems"),
-      ...constraints,
-      orderBy("displayOrder", "asc")
-    )
-  );
-
-  const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  return NextResponse.json(items);
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const now = new Date().toISOString();
+  try {
+    const body = await req.json();
+    const now = new Date().toISOString();
 
-  const docRef = await addDoc(collection(firestore, "serviceItems"), {
-    name: body.name,
-    icon: body.icon,
-    categoryId: body.categoryId,
-    isAvailable: body.isAvailable ?? true,
-    displayOrder: body.displayOrder ?? 0,
-    createdAt: now,
-  });
+    const docRef = await addDoc(collection(firestore, "serviceItems"), {
+      name: body.name,
+      icon: body.icon || "package",
+      categoryId: body.categoryId,
+      isAvailable: body.isAvailable ?? true,
+      displayOrder: body.displayOrder ?? 0,
+      createdAt: now,
+    });
 
-  return NextResponse.json({ id: docRef.id, ...body }, { status: 201 });
+    return NextResponse.json({ id: docRef.id, ...body }, { status: 201 });
+  } catch (e) {
+    console.error("Service item POST error:", e);
+    return NextResponse.json({ error: "아이템 등록 실패" }, { status: 500 });
+  }
 }
