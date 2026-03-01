@@ -9,17 +9,29 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
-import { CheckCircle, Volume2 } from "lucide-react";
+import { CheckCircle, Volume2, Wallet, ChevronDown, ChevronUp } from "lucide-react";
 import type { OrderWithItems } from "@/types";
 import {
   ORDER_STATUS_LABELS,
   PAYMENT_METHOD_LABELS,
 } from "@/types";
 
+interface DeferredPayment {
+  room: {
+    id: string;
+    roomNumber: string;
+    roomId: string;
+  };
+  totalDeferred: number;
+  orderCount: number;
+}
+
 export default function DashboardPage() {
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [animatingCards, setAnimatingCards] = useState<Set<string>>(new Set());
   const [audioEnabled, setAudioEnabled] = useState(false);
+  const [deferredPayments, setDeferredPayments] = useState<DeferredPayment[]>([]);
+  const [showDeferred, setShowDeferred] = useState(true);
   const { playNewOrderAlert, playAcceptSound, playCompleteSound } =
     useNotificationSound();
   const { notify } = useBrowserNotification();
@@ -45,9 +57,17 @@ export default function DashboardPage() {
     }
   }, []);
 
+  const fetchDeferred = useCallback(async () => {
+    const res = await fetch("/api/payments/deferred");
+    if (res.ok) {
+      setDeferredPayments(await res.json());
+    }
+  }, []);
+
   useEffect(() => {
     fetchOrders();
-  }, [fetchOrders]);
+    fetchDeferred();
+  }, [fetchOrders, fetchDeferred]);
 
   useOrderSSE(
     useCallback(
@@ -67,6 +87,11 @@ export default function DashboardPage() {
           );
 
           toast.success(`새 주문! ${order.roomNumber}호`);
+
+          // 후불 주문이면 미정산 현황 갱신
+          if (order.paymentMethod === "deferred") {
+            fetchDeferred();
+          }
         } else if (event === "order-updated") {
           setOrders((prev) =>
             prev.map((o) =>
@@ -77,7 +102,7 @@ export default function DashboardPage() {
           );
         }
       },
-      [playNewOrderAlert, notify]
+      [playNewOrderAlert, notify, fetchDeferred]
     )
   );
 
@@ -155,6 +180,24 @@ export default function DashboardPage() {
     }
   };
 
+  const handleSettle = async (roomId: string, roomNumber: string) => {
+    if (!confirm(`${roomNumber}호의 후불결제를 모두 정산하시겠습니까?`)) return;
+
+    const res = await fetch(`/api/payments/deferred/${roomId}/settle`, {
+      method: "POST",
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      toast.success(
+        `${roomNumber}호 정산 완료: ${data.settled}건, ${data.totalAmount.toLocaleString()}원`
+      );
+      fetchDeferred();
+    } else {
+      toast.error("정산 처리 실패");
+    }
+  };
+
   const handleReject = async (orderId: string) => {
     const res = await fetch(`/api/orders/${orderId}/status`, {
       method: "PATCH",
@@ -192,7 +235,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-4 gap-4 mb-6">
         <Card>
           <CardContent className="p-4 text-center">
             <p className="text-3xl font-bold text-orange-500">
@@ -215,6 +258,15 @@ export default function DashboardPage() {
               {completedOrders.length}
             </p>
             <p className="text-sm text-gray-500">완료</p>
+          </CardContent>
+        </Card>
+        <Card className={deferredPayments.length > 0 ? "border-red-200 bg-red-50/30" : ""}>
+          <CardContent className="p-4 text-center">
+            <p className={`text-3xl font-bold ${deferredPayments.length > 0 ? "text-red-500" : "text-gray-400"}`}>
+              {deferredPayments.reduce((sum, p) => sum + p.totalDeferred, 0).toLocaleString()}
+              <span className="text-base">원</span>
+            </p>
+            <p className="text-sm text-gray-500">후불 미정산</p>
           </CardContent>
         </Card>
       </div>
@@ -306,6 +358,58 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* 후불 미정산 현황 */}
+      {deferredPayments.length > 0 && (
+        <div className="mt-6">
+          <button
+            onClick={() => setShowDeferred((v) => !v)}
+            className="flex items-center gap-2 text-lg font-semibold text-red-600 mb-3 hover:text-red-700 transition"
+          >
+            <Wallet className="w-5 h-5" />
+            후불 미정산 현황
+            <Badge variant="destructive" className="ml-1">
+              {deferredPayments.length}개 객실
+            </Badge>
+            {showDeferred ? (
+              <ChevronUp className="w-4 h-4" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
+          </button>
+
+          {showDeferred && (
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              {deferredPayments.map((p) => (
+                <Card key={p.room.id} className="border-red-100">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-lg font-bold">
+                        {p.room.roomNumber}호
+                      </span>
+                      <Badge variant="outline" className="text-red-600 border-red-200">
+                        {p.orderCount}건
+                      </Badge>
+                    </div>
+                    <p className="text-xl font-bold text-red-600 mb-3">
+                      {p.totalDeferred.toLocaleString()}원
+                    </p>
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      onClick={() =>
+                        handleSettle(p.room.roomId, p.room.roomNumber)
+                      }
+                    >
+                      정산 완료
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
