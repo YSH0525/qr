@@ -27,9 +27,9 @@ export async function kakaoPayReady(params: {
       quantity: 1,
       total_amount: params.totalAmount,
       tax_free_amount: 0,
-      approval_url: `${baseUrl}/room/${params.roomId}/payment/success?orderId=${params.orderId}`,
-      cancel_url: `${baseUrl}/room/${params.roomId}/payment/cancel?orderId=${params.orderId}`,
-      fail_url: `${baseUrl}/room/${params.roomId}/payment/fail?orderId=${params.orderId}`,
+      approval_url: `${baseUrl}/api/payments/kakaopay/approve?orderId=${params.orderId}`,
+      cancel_url: `${baseUrl}/api/payments/kakaopay/cancel?orderId=${params.orderId}`,
+      fail_url: `${baseUrl}/api/payments/kakaopay/fail?orderId=${params.orderId}`,
     }),
   });
 
