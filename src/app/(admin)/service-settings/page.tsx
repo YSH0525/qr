@@ -21,7 +21,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Settings2 } from "lucide-react";
 import type { ServiceCategory, ServiceItem } from "@/types/service";
 import { SERVICE_TYPE_LABELS } from "@/types/service";
 
@@ -229,15 +229,14 @@ export default function ServiceSettingsPage() {
                 <TableHead>타입</TableHead>
                 <TableHead>설명</TableHead>
                 <TableHead>상태</TableHead>
-                <TableHead>관리</TableHead>
+                <TableHead></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {categories.map((cat) => (
                 <TableRow
                   key={cat.id}
-                  className={`cursor-pointer ${selectedCatId === cat.id ? "bg-blue-50" : ""}`}
-                  onClick={() => setSelectedCatId(cat.id)}
+                  className={selectedCatId === cat.id ? "bg-blue-50" : ""}
                 >
                   <TableCell className="font-semibold">{cat.name}</TableCell>
                   <TableCell>
@@ -266,23 +265,38 @@ export default function ServiceSettingsPage() {
                     </Button>
                   </TableCell>
                   <TableCell>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-red-500"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteCategory(cat.id);
-                      }}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      {cat.type === "amenity" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedCatId(selectedCatId === cat.id ? null : cat.id);
+                          }}
+                        >
+                          <Settings2 className="w-4 h-4 mr-1" />
+                          비품 관리
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-red-500"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteCategory(cat.id);
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
               {categories.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-gray-400 py-8">
+                  <TableCell colSpan={6} className="text-center text-gray-400 py-8">
                     등록된 서비스가 없습니다
                   </TableCell>
                 </TableRow>
