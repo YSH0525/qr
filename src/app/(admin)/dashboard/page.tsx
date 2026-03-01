@@ -79,7 +79,7 @@ export default function DashboardPage() {
 
     if (res.ok) {
       toast(`${order.roomNumber}호 주문 접수!`, {
-        description: "조리를 시작합니다",
+        description: "처리를 시작합니다",
         icon: <CheckCircle className="text-green-500" />,
       });
 
