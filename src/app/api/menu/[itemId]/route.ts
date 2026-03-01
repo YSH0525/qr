@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { firestore } from "@/lib/firebase";
-import { doc, updateDoc, getDoc } from "firebase/firestore";
+import { doc, updateDoc, getDoc, deleteDoc } from "firebase/firestore";
 
 export async function PUT(
   req: NextRequest,
@@ -34,8 +34,11 @@ export async function DELETE(
 ) {
   const { itemId } = await params;
 
-  const ref = doc(firestore, "menuItems", itemId);
-  await updateDoc(ref, { isAvailable: false });
-
-  return NextResponse.json({ success: true });
+  try {
+    const ref = doc(firestore, "menuItems", itemId);
+    await deleteDoc(ref);
+    return NextResponse.json({ success: true });
+  } catch {
+    return NextResponse.json({ error: "메뉴 삭제 실패" }, { status: 500 });
+  }
 }

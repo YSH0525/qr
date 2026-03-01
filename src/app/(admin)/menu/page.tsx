@@ -63,6 +63,9 @@ export default function MenuPage() {
   const [deleteCatConfirm, setDeleteCatConfirm] = useState<Category | null>(
     null
   );
+  const [deleteItemConfirm, setDeleteItemConfirm] = useState<MenuItem | null>(
+    null
+  );
 
   const fetchMenu = () => {
     fetch("/api/menu")
@@ -134,6 +137,18 @@ export default function MenuPage() {
     } else {
       const data = await res.json();
       toast.error(data.error || "카테고리 삭제 실패");
+    }
+  };
+
+  const deleteMenuItem = async (item: MenuItem) => {
+    const res = await fetch(`/api/menu/${item.id}`, { method: "DELETE" });
+    if (res.ok) {
+      setDeleteItemConfirm(null);
+      fetchMenu();
+      toast.success(`"${item.name}" 메뉴가 삭제되었습니다`);
+    } else {
+      const data = await res.json();
+      toast.error(data.error || "메뉴 삭제 실패");
     }
   };
 
@@ -236,18 +251,28 @@ export default function MenuPage() {
                     <p className="text-sm text-gray-500">
                       {formatPrice(item.price)}
                     </p>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="mt-1"
-                      onClick={() => {
-                        setEditItem(item);
-                        setDialogOpen(true);
-                      }}
-                    >
-                      <Pencil className="w-3 h-3 mr-1" />
-                      수정
-                    </Button>
+                    <div className="flex gap-1 mt-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setEditItem(item);
+                          setDialogOpen(true);
+                        }}
+                      >
+                        <Pencil className="w-3 h-3 mr-1" />
+                        수정
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-red-500 hover:text-red-700"
+                        onClick={() => setDeleteItemConfirm(item)}
+                      >
+                        <Trash2 className="w-3 h-3 mr-1" />
+                        삭제
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -390,6 +415,38 @@ export default function MenuPage() {
               variant="destructive"
               onClick={() =>
                 deleteCatConfirm && deleteCategory(deleteCatConfirm)
+              }
+            >
+              삭제
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Menu Item Delete Confirmation */}
+      <Dialog
+        open={!!deleteItemConfirm}
+        onOpenChange={() => setDeleteItemConfirm(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>메뉴 삭제 확인</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-600 py-2">
+            <strong>&quot;{deleteItemConfirm?.name}&quot;</strong> 메뉴를 정말
+            삭제하시겠습니까? 삭제된 메뉴는 복구할 수 없습니다.
+          </p>
+          <div className="flex gap-2 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteItemConfirm(null)}
+            >
+              취소
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() =>
+                deleteItemConfirm && deleteMenuItem(deleteItemConfirm)
               }
             >
               삭제
