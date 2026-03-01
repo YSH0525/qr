@@ -3,8 +3,8 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 
 export const metadata: Metadata = {
-  title: "호텔 편의점 - QR 주문 시스템",
-  description: "호텔 객실에서 QR로 간편하게 주문하세요",
+  title: "Easy Tap - 객실 서비스",
+  description: "QR 코드로 간편하게 객실 서비스를 이용하세요",
 };
 
 export default function RootLayout({
