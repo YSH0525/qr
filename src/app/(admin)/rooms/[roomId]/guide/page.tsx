@@ -53,7 +53,7 @@ export default function RoomGuidePage({
           {/* Hotel Name & Branding */}
           <div>
             <h1 className="text-3xl font-bold text-gray-900">
-              {process.env.NEXT_PUBLIC_HOTEL_NAME || "Easy Tap"}
+              Easy Tap
             </h1>
             <p className="text-gray-500 mt-1">객실 서비스 안내</p>
           </div>
