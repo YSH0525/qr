@@ -8,6 +8,7 @@ import {
   DoorOpen,
   UtensilsCrossed,
   CreditCard,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +18,7 @@ const navItems = [
   { href: "/rooms", label: "객실 관리", icon: DoorOpen },
   { href: "/menu", label: "메뉴 관리", icon: UtensilsCrossed },
   { href: "/payments", label: "후불 정산", icon: CreditCard },
+  { href: "/sales", label: "매출 분석", icon: BarChart3 },
 ];
 
 export function AdminSidebar() {
