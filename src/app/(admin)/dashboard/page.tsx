@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useOrderSSE } from "@/hooks/use-sse";
 import { useNotificationSound } from "@/hooks/use-audio";
 import { useBrowserNotification } from "@/hooks/use-notification";
@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import confetti from "canvas-confetti";
+import { CheckCircle } from "lucide-react";
 import type { OrderWithItems } from "@/types";
 import {
   ORDER_STATUS_LABELS,
@@ -16,7 +18,9 @@ import {
 
 export default function DashboardPage() {
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
-  const { playNewOrderAlert } = useNotificationSound();
+  const [animatingCards, setAnimatingCards] = useState<Set<string>>(new Set());
+  const { playNewOrderAlert, playAcceptSound, playCompleteSound } =
+    useNotificationSound();
   const { notify } = useBrowserNotification();
 
   const fetchOrders = useCallback(async () => {
@@ -37,13 +41,8 @@ export default function DashboardPage() {
           const order = data as unknown as OrderWithItems;
           setOrders((prev) => [order, ...prev]);
 
-          // 효과음 + TTS 음성 알림
-          playNewOrderAlert(
-            order.roomNumber,
-            order.items || []
-          );
+          playNewOrderAlert(order.roomNumber, order.items || []);
 
-          // 브라우저 푸시 알림 (다른 탭에 있어도 표시)
           const itemText = (order.items || [])
             .map((i) => `${i.menuItemName} x${i.quantity}`)
             .join(", ");
@@ -52,10 +51,7 @@ export default function DashboardPage() {
             itemText || "새로운 주문이 들어왔습니다"
           );
 
-          // 토스트 알림
-          toast.success(
-            `새 주문! ${order.roomNumber}호`
-          );
+          toast.success(`새 주문! ${order.roomNumber}호`);
         } else if (event === "order-updated") {
           setOrders((prev) =>
             prev.map((o) =>
@@ -70,15 +66,89 @@ export default function DashboardPage() {
     )
   );
 
-  const updateStatus = async (orderId: string, status: string) => {
+  const handleAccept = async (order: OrderWithItems) => {
+    // 카드 애니메이션 시작
+    setAnimatingCards((prev) => new Set(prev).add(order.orderId));
+    playAcceptSound();
+
+    const res = await fetch(`/api/orders/${order.orderId}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "accepted" }),
+    });
+
+    if (res.ok) {
+      toast(`${order.roomNumber}호 주문 접수!`, {
+        description: "조리를 시작합니다",
+        icon: <CheckCircle className="text-green-500" />,
+      });
+
+      // 애니메이션 후 데이터 갱신
+      setTimeout(() => {
+        fetchOrders();
+        setAnimatingCards((prev) => {
+          const next = new Set(prev);
+          next.delete(order.orderId);
+          return next;
+        });
+      }, 400);
+    }
+  };
+
+  const handleComplete = async (
+    order: OrderWithItems,
+    e: React.MouseEvent
+  ) => {
+    setAnimatingCards((prev) => new Set(prev).add(order.orderId));
+    playCompleteSound();
+
+    // 버튼 위치에서 컨페티 발사
+    const rect = (e.target as HTMLElement).getBoundingClientRect();
+    const x = (rect.left + rect.width / 2) / window.innerWidth;
+    const y = (rect.top + rect.height / 2) / window.innerHeight;
+
+    confetti({
+      particleCount: 80,
+      spread: 60,
+      origin: { x, y },
+      colors: ["#22c55e", "#16a34a", "#4ade80", "#86efac", "#fbbf24"],
+      ticks: 150,
+      gravity: 1.2,
+      scalar: 0.9,
+    });
+
+    const res = await fetch(`/api/orders/${order.orderId}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "completed" }),
+    });
+
+    if (res.ok) {
+      toast(`${order.roomNumber}호 주문 완료!`, {
+        description: "고객에게 전달해주세요",
+        icon: <span className="text-xl">🎉</span>,
+      });
+
+      setTimeout(() => {
+        fetchOrders();
+        setAnimatingCards((prev) => {
+          const next = new Set(prev);
+          next.delete(order.orderId);
+          return next;
+        });
+      }, 500);
+    }
+  };
+
+  const handleReject = async (orderId: string) => {
     const res = await fetch(`/api/orders/${orderId}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status: "rejected" }),
     });
     if (res.ok) {
       fetchOrders();
-      toast.success(`주문 상태가 변경되었습니다`);
+      toast.error("주문이 거절되었습니다");
     }
   };
 
@@ -86,7 +156,9 @@ export default function DashboardPage() {
   const preparingOrders = orders.filter(
     (o) => o.status === "accepted" || o.status === "preparing"
   );
-  const completedOrders = orders.filter((o) => o.status === "completed").slice(0, 20);
+  const completedOrders = orders
+    .filter((o) => o.status === "completed")
+    .slice(0, 20);
 
   return (
     <div className="p-6">
@@ -132,18 +204,22 @@ export default function DashboardPage() {
               <OrderCard
                 key={order.orderId}
                 order={order}
+                isAnimating={animatingCards.has(order.orderId)}
+                animationType="accept"
                 actions={
                   <>
                     <Button
                       size="sm"
-                      onClick={() => updateStatus(order.orderId, "accepted")}
+                      className="transition-all duration-150 active:scale-90 hover:shadow-lg"
+                      onClick={() => handleAccept(order)}
                     >
                       접수
                     </Button>
                     <Button
                       size="sm"
                       variant="destructive"
-                      onClick={() => updateStatus(order.orderId, "rejected")}
+                      className="transition-all duration-150 active:scale-90"
+                      onClick={() => handleReject(order.orderId)}
                     >
                       거절
                     </Button>
@@ -167,11 +243,13 @@ export default function DashboardPage() {
               <OrderCard
                 key={order.orderId}
                 order={order}
+                isAnimating={animatingCards.has(order.orderId)}
+                animationType="complete"
                 actions={
                   <Button
                     size="sm"
-                    className="bg-green-600 hover:bg-green-700"
-                    onClick={() => updateStatus(order.orderId, "completed")}
+                    className="bg-green-600 hover:bg-green-700 transition-all duration-150 active:scale-90 hover:shadow-lg"
+                    onClick={(e) => handleComplete(order, e)}
                   >
                     완료
                   </Button>
@@ -208,10 +286,15 @@ export default function DashboardPage() {
 function OrderCard({
   order,
   actions,
+  isAnimating,
+  animationType,
 }: {
   order: OrderWithItems;
   actions?: React.ReactNode;
+  isAnimating?: boolean;
+  animationType?: "accept" | "complete";
 }) {
+  const cardRef = useRef<HTMLDivElement>(null);
   const formatPrice = (price: number) =>
     price.toLocaleString("ko-KR") + "원";
 
@@ -224,8 +307,24 @@ function OrderCard({
     return `${hours}시간 전`;
   };
 
+  const animClass = isAnimating
+    ? animationType === "accept"
+      ? "scale-95 opacity-50 border-green-400 shadow-green-200 shadow-lg"
+      : "scale-90 opacity-0 translate-y-4"
+    : "scale-100 opacity-100 translate-y-0";
+
   return (
-    <Card>
+    <Card
+      ref={cardRef}
+      className={`transition-all duration-400 ease-in-out ${animClass}`}
+    >
+      {/* 접수 시 체크 오버레이 */}
+      {isAnimating && animationType === "accept" && (
+        <div className="absolute inset-0 flex items-center justify-center bg-green-50/80 rounded-lg z-10 animate-in fade-in duration-200">
+          <CheckCircle className="w-12 h-12 text-green-500 animate-in zoom-in duration-300" />
+        </div>
+      )}
+
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">{order.roomNumber}호</CardTitle>
@@ -263,9 +362,7 @@ function OrderCard({
           </span>
           <Badge variant="outline">{ORDER_STATUS_LABELS[order.status]}</Badge>
         </div>
-        {actions && (
-          <div className="flex gap-2 pt-2">{actions}</div>
-        )}
+        {actions && <div className="flex gap-2 pt-2">{actions}</div>}
       </CardContent>
     </Card>
   );
