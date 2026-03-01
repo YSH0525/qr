@@ -181,11 +181,48 @@ export function useNotificationSound() {
     }
   }, [getContext]);
 
+  // 서비스 요청 알림음: 벨 톤 (딩~딩~딩~ 3연타 내림)
+  const playServiceAlert = useCallback(() => {
+    try {
+      const ctx = getContext();
+      const t = ctx.currentTime;
+      const notes = [1175, 988, 784]; // D6, B5, G5 — 내림차순 벨
+
+      notes.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, t + i * 0.18);
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.setValueAtTime(0.35, t + i * 0.18);
+        gain.gain.exponentialRampToValueAtTime(0.01, t + i * 0.18 + 0.3);
+        osc.start(t + i * 0.18);
+        osc.stop(t + i * 0.18 + 0.3);
+      });
+    } catch {
+      // Audio not available
+    }
+  }, [getContext]);
+
+  // 서비스 요청 효과음 + TTS 조합
+  const playServiceRequestAlert = useCallback(
+    (roomNumber: string, categoryName: string) => {
+      playServiceAlert();
+      const text = `${roomNumber}호, ${categoryName} 요청입니다`;
+      setTimeout(() => speak(text), 700);
+    },
+    [playServiceAlert, speak]
+  );
+
   return {
     play: playChime,
     speak,
     playNewOrderAlert,
     playAcceptSound,
     playCompleteSound,
+    playServiceAlert,
+    playServiceRequestAlert,
   };
 }

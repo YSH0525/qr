@@ -9,14 +9,18 @@ import {
   UtensilsCrossed,
   CreditCard,
   BarChart3,
+  ConciergeBell,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/dashboard", label: "대시보드", icon: LayoutDashboard },
   { href: "/orders", label: "주문 내역", icon: ClipboardList },
+  { href: "/services", label: "서비스 요청", icon: ConciergeBell },
   { href: "/rooms", label: "객실 관리", icon: DoorOpen },
   { href: "/menu", label: "메뉴 관리", icon: UtensilsCrossed },
+  { href: "/service-settings", label: "서비스 설정", icon: Settings },
   { href: "/payments", label: "후불 정산", icon: CreditCard },
   { href: "/sales", label: "매출 분석", icon: BarChart3 },
 ];
@@ -27,7 +31,7 @@ export function AdminSidebar() {
   return (
     <aside className="w-64 bg-gray-900 text-white min-h-screen flex flex-col">
       <div className="p-6 border-b border-gray-700">
-        <h1 className="text-xl font-bold">호텔 편의점</h1>
+        <h1 className="text-xl font-bold">Easy Tap</h1>
         <p className="text-sm text-gray-400 mt-1">관리자 시스템</p>
       </div>
       <nav className="flex-1 p-4 space-y-1">

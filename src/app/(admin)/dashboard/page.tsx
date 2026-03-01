@@ -20,9 +20,12 @@ import {
   Clock,
 } from "lucide-react";
 import type { OrderWithItems } from "@/types";
+import type { ServiceRequest } from "@/types/service";
 import {
   ORDER_STATUS_LABELS,
   PAYMENT_METHOD_LABELS,
+  SERVICE_TYPE_LABELS,
+  SERVICE_STATUS_LABELS,
 } from "@/types";
 
 interface DeferredPayment {
@@ -59,7 +62,9 @@ export default function DashboardPage() {
   const [deferredPayments, setDeferredPayments] = useState<DeferredPayment[]>([]);
   const [showDeferred, setShowDeferred] = useState(true);
   const [todaySummary, setTodaySummary] = useState<TodaySummary | null>(null);
-  const { playNewOrderAlert, playAcceptSound, playCompleteSound } =
+  const [activeTab, setActiveTab] = useState<"orders" | "services">("orders");
+  const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>([]);
+  const { playNewOrderAlert, playAcceptSound, playCompleteSound, playServiceRequestAlert, speak } =
     useNotificationSound();
   const { notify } = useBrowserNotification();
 
@@ -99,18 +104,27 @@ export default function DashboardPage() {
     }
   }, []);
 
+  const fetchServiceRequests = useCallback(async () => {
+    const res = await fetch("/api/service-requests");
+    if (res.ok) {
+      setServiceRequests(await res.json());
+    }
+  }, []);
+
   useEffect(() => {
     fetchOrders();
     fetchDeferred();
     fetchTodaySummary();
-  }, [fetchOrders, fetchDeferred, fetchTodaySummary]);
+    fetchServiceRequests();
+  }, [fetchOrders, fetchDeferred, fetchTodaySummary, fetchServiceRequests]);
 
   // SSE 재연결 시 전체 데이터 동기화
   const handleSSEReconnect = useCallback(() => {
     fetchOrders();
     fetchDeferred();
     fetchTodaySummary();
-  }, [fetchOrders, fetchDeferred, fetchTodaySummary]);
+    fetchServiceRequests();
+  }, [fetchOrders, fetchDeferred, fetchTodaySummary, fetchServiceRequests]);
 
   useOrderSSE(
     useCallback(
@@ -146,9 +160,23 @@ export default function DashboardPage() {
                 : o
             )
           );
+        } else if (event === "new-service-request") {
+          const req = data as unknown as ServiceRequest;
+          setServiceRequests((prev) => [req, ...prev]);
+          playServiceRequestAlert(req.roomNumber, req.categoryName);
+          notify(`서비스 요청! ${req.roomNumber}호`, req.categoryName);
+          toast.success(`서비스 요청! ${req.roomNumber}호 — ${req.categoryName}`);
+        } else if (event === "service-request-updated") {
+          setServiceRequests((prev) =>
+            prev.map((r) =>
+              r.requestId === (data as Record<string, unknown>).requestId
+                ? { ...r, ...(data as Partial<ServiceRequest>) }
+                : r
+            )
+          );
         }
       },
-      [playNewOrderAlert, notify, fetchDeferred, fetchTodaySummary]
+      [playNewOrderAlert, playServiceRequestAlert, notify, fetchDeferred, fetchTodaySummary]
     ),
     handleSSEReconnect
   );
@@ -262,6 +290,36 @@ export default function DashboardPage() {
     }
   };
 
+  const handleServiceAccept = async (req: ServiceRequest) => {
+    playAcceptSound();
+    const res = await fetch(`/api/service-requests/${req.requestId}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "accepted" }),
+    });
+    if (res.ok) {
+      toast.success(`${req.roomNumber}호 ${req.categoryName} 접수!`);
+      fetchServiceRequests();
+    }
+  };
+
+  const handleServiceComplete = async (req: ServiceRequest) => {
+    playCompleteSound();
+    const res = await fetch(`/api/service-requests/${req.requestId}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "completed" }),
+    });
+    if (res.ok) {
+      toast.success(`${req.roomNumber}호 ${req.categoryName} 완료!`);
+      fetchServiceRequests();
+    }
+  };
+
+  const pendingServices = serviceRequests.filter((r) => r.status === "requested");
+  const acceptedServices = serviceRequests.filter((r) => r.status === "accepted");
+  const completedServices = serviceRequests.filter((r) => r.status === "completed").slice(0, 20);
+
   const pendingOrders = orders.filter((o) => o.status === "pending");
   const preparingOrders = orders.filter(
     (o) => o.status === "accepted" || o.status === "preparing"
@@ -273,7 +331,38 @@ export default function DashboardPage() {
   return (
     <div className="p-6 h-screen flex flex-col overflow-hidden">
       <div className="flex items-center justify-between mb-4 shrink-0">
-        <h1 className="text-2xl font-bold">주문 대시보드</h1>
+        <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+          <button
+            onClick={() => setActiveTab("orders")}
+            className={`px-4 py-2 rounded-md text-sm font-semibold transition ${
+              activeTab === "orders"
+                ? "bg-white shadow text-gray-900"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            주문
+            {pendingOrders.length > 0 && (
+              <Badge variant="destructive" className="ml-2 text-xs">
+                {pendingOrders.length}
+              </Badge>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab("services")}
+            className={`px-4 py-2 rounded-md text-sm font-semibold transition ${
+              activeTab === "services"
+                ? "bg-white shadow text-gray-900"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            서비스 요청
+            {pendingServices.length > 0 && (
+              <Badge variant="destructive" className="ml-2 text-xs">
+                {pendingServices.length}
+              </Badge>
+            )}
+          </button>
+        </div>
         {!audioEnabled && (
           <Button
             variant="outline"
@@ -364,175 +453,287 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* 운영 현황 Stats */}
-      <div className="grid grid-cols-4 gap-4 mb-4 shrink-0">
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-3xl font-bold text-orange-500">
-              {pendingOrders.length}
-            </p>
-            <p className="text-sm text-gray-500">신규 주문</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-3xl font-bold text-blue-500">
-              {preparingOrders.length}
-            </p>
-            <p className="text-sm text-gray-500">준비중</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-3xl font-bold text-green-500">
-              {completedOrders.length}
-            </p>
-            <p className="text-sm text-gray-500">완료</p>
-          </CardContent>
-        </Card>
-        <Card className={deferredPayments.length > 0 ? "border-red-200 bg-red-50/30" : ""}>
-          <CardContent className="p-4 text-center">
-            <p className={`text-3xl font-bold ${deferredPayments.length > 0 ? "text-red-500" : "text-gray-400"}`}>
-              {deferredPayments.reduce((sum, p) => sum + p.totalDeferred, 0).toLocaleString()}
-              <span className="text-base">원</span>
-            </p>
-            <p className="text-sm text-gray-500">후불 미정산</p>
-          </CardContent>
-        </Card>
-      </div>
+      {/* === 주문 탭 === */}
+      {activeTab === "orders" && (
+        <>
+          {/* 운영 현황 Stats */}
+          <div className="grid grid-cols-4 gap-4 mb-4 shrink-0">
+            <Card>
+              <CardContent className="p-4 text-center">
+                <p className="text-3xl font-bold text-orange-500">
+                  {pendingOrders.length}
+                </p>
+                <p className="text-sm text-gray-500">신규 주문</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <p className="text-3xl font-bold text-blue-500">
+                  {preparingOrders.length}
+                </p>
+                <p className="text-sm text-gray-500">준비중</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <p className="text-3xl font-bold text-green-500">
+                  {completedOrders.length}
+                </p>
+                <p className="text-sm text-gray-500">완료</p>
+              </CardContent>
+            </Card>
+            <Card className={deferredPayments.length > 0 ? "border-red-200 bg-red-50/30" : ""}>
+              <CardContent className="p-4 text-center">
+                <p className={`text-3xl font-bold ${deferredPayments.length > 0 ? "text-red-500" : "text-gray-400"}`}>
+                  {deferredPayments.reduce((sum, p) => sum + p.totalDeferred, 0).toLocaleString()}
+                  <span className="text-base">원</span>
+                </p>
+                <p className="text-sm text-gray-500">후불 미정산</p>
+              </CardContent>
+            </Card>
+          </div>
 
-      {/* 후불 미정산 현황 — Stats 바로 아래 */}
-      {deferredPayments.length > 0 && (
-        <div className="mb-4 shrink-0">
-          <button
-            onClick={() => setShowDeferred((v) => !v)}
-            className="flex items-center gap-2 text-sm font-semibold text-red-600 mb-2 hover:text-red-700 transition"
-          >
-            <Wallet className="w-4 h-4" />
-            후불 미정산 현황
-            <Badge variant="destructive" className="ml-1 text-xs">
-              {deferredPayments.length}개 객실
-            </Badge>
-            {showDeferred ? (
-              <ChevronUp className="w-3 h-3" />
-            ) : (
-              <ChevronDown className="w-3 h-3" />
-            )}
-          </button>
+          {/* 후불 미정산 현황 */}
+          {deferredPayments.length > 0 && (
+            <div className="mb-4 shrink-0">
+              <button
+                onClick={() => setShowDeferred((v) => !v)}
+                className="flex items-center gap-2 text-sm font-semibold text-red-600 mb-2 hover:text-red-700 transition"
+              >
+                <Wallet className="w-4 h-4" />
+                후불 미정산 현황
+                <Badge variant="destructive" className="ml-1 text-xs">
+                  {deferredPayments.length}개 객실
+                </Badge>
+                {showDeferred ? (
+                  <ChevronUp className="w-3 h-3" />
+                ) : (
+                  <ChevronDown className="w-3 h-3" />
+                )}
+              </button>
 
-          {showDeferred && (
-            <div className="flex gap-3 overflow-x-auto pb-1">
-              {deferredPayments.map((p) => (
-                <Card key={p.room.id} className="border-red-100 shrink-0 w-52">
-                  <CardContent className="p-3 flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="font-bold">{p.room.roomNumber}호 <span className="text-xs font-normal text-gray-400">{p.orderCount}건</span></p>
-                      <p className="text-lg font-bold text-red-600">{p.totalDeferred.toLocaleString()}원</p>
-                    </div>
-                    <Button
-                      size="sm"
-                      className="shrink-0"
-                      onClick={() =>
-                        handleSettle(p.room.roomId, p.room.roomNumber)
-                      }
-                    >
-                      정산
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
+              {showDeferred && (
+                <div className="flex gap-3 overflow-x-auto pb-1">
+                  {deferredPayments.map((p) => (
+                    <Card key={p.room.id} className="border-red-100 shrink-0 w-52">
+                      <CardContent className="p-3 flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-bold">{p.room.roomNumber}호 <span className="text-xs font-normal text-gray-400">{p.orderCount}건</span></p>
+                          <p className="text-lg font-bold text-red-600">{p.totalDeferred.toLocaleString()}원</p>
+                        </div>
+                        <Button
+                          size="sm"
+                          className="shrink-0"
+                          onClick={() =>
+                            handleSettle(p.room.roomId, p.room.roomNumber)
+                          }
+                        >
+                          정산
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </div>
           )}
-        </div>
+
+          {/* 3-Column Kanban Board */}
+          <div className="grid grid-cols-3 gap-4 min-h-0 flex-1">
+            {/* Pending */}
+            <div className="flex flex-col min-h-0">
+              <h2 className="text-lg font-semibold mb-3 text-orange-600 shrink-0">
+                신규 주문
+              </h2>
+              <div className="space-y-3 overflow-y-auto flex-1 pr-1">
+                {pendingOrders.map((order) => (
+                  <OrderCard
+                    key={order.orderId}
+                    order={order}
+                    isAnimating={animatingCards.has(order.orderId)}
+                    animationType="accept"
+                    actions={
+                      <>
+                        <Button
+                          size="sm"
+                          className="transition-all duration-150 active:scale-90 hover:shadow-lg"
+                          onClick={() => handleAccept(order)}
+                        >
+                          접수
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="transition-all duration-150 active:scale-90"
+                          onClick={() => handleReject(order.orderId)}
+                        >
+                          거절
+                        </Button>
+                      </>
+                    }
+                  />
+                ))}
+                {pendingOrders.length === 0 && (
+                  <p className="text-gray-400 text-sm text-center py-8">
+                    대기중인 주문이 없습니다
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Preparing */}
+            <div className="flex flex-col min-h-0">
+              <h2 className="text-lg font-semibold mb-3 text-blue-600 shrink-0">준비중</h2>
+              <div className="space-y-3 overflow-y-auto flex-1 pr-1">
+                {preparingOrders.map((order) => (
+                  <OrderCard
+                    key={order.orderId}
+                    order={order}
+                    isAnimating={animatingCards.has(order.orderId)}
+                    animationType="complete"
+                    actions={
+                      <Button
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700 transition-all duration-150 active:scale-90 hover:shadow-lg"
+                        onClick={(e) => handleComplete(order, e)}
+                      >
+                        완료
+                      </Button>
+                    }
+                  />
+                ))}
+                {preparingOrders.length === 0 && (
+                  <p className="text-gray-400 text-sm text-center py-8">
+                    준비중인 주문이 없습니다
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Completed */}
+            <div className="flex flex-col min-h-0">
+              <h2 className="text-lg font-semibold mb-3 text-green-600 shrink-0">완료</h2>
+              <div className="space-y-3 overflow-y-auto flex-1 pr-1">
+                {completedOrders.map((order) => (
+                  <OrderCard key={order.orderId} order={order} />
+                ))}
+                {completedOrders.length === 0 && (
+                  <p className="text-gray-400 text-sm text-center py-8">
+                    완료된 주문이 없습니다
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
       )}
 
-      {/* 3-Column Kanban Board — 남은 공간 전부 사용, 각 컬럼 개별 스크롤 */}
-      <div className="grid grid-cols-3 gap-4 min-h-0 flex-1">
-        {/* Pending */}
-        <div className="flex flex-col min-h-0">
-          <h2 className="text-lg font-semibold mb-3 text-orange-600 shrink-0">
-            신규 주문
-          </h2>
-          <div className="space-y-3 overflow-y-auto flex-1 pr-1">
-            {pendingOrders.map((order) => (
-              <OrderCard
-                key={order.orderId}
-                order={order}
-                isAnimating={animatingCards.has(order.orderId)}
-                animationType="accept"
-                actions={
-                  <>
-                    <Button
-                      size="sm"
-                      className="transition-all duration-150 active:scale-90 hover:shadow-lg"
-                      onClick={() => handleAccept(order)}
-                    >
-                      접수
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      className="transition-all duration-150 active:scale-90"
-                      onClick={() => handleReject(order.orderId)}
-                    >
-                      거절
-                    </Button>
-                  </>
-                }
-              />
-            ))}
-            {pendingOrders.length === 0 && (
-              <p className="text-gray-400 text-sm text-center py-8">
-                대기중인 주문이 없습니다
-              </p>
-            )}
+      {/* === 서비스 요청 탭 === */}
+      {activeTab === "services" && (
+        <>
+          {/* 서비스 현황 Stats */}
+          <div className="grid grid-cols-3 gap-4 mb-4 shrink-0">
+            <Card>
+              <CardContent className="p-4 text-center">
+                <p className="text-3xl font-bold text-orange-500">
+                  {pendingServices.length}
+                </p>
+                <p className="text-sm text-gray-500">요청됨</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <p className="text-3xl font-bold text-blue-500">
+                  {acceptedServices.length}
+                </p>
+                <p className="text-sm text-gray-500">접수됨</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <p className="text-3xl font-bold text-green-500">
+                  {completedServices.length}
+                </p>
+                <p className="text-sm text-gray-500">완료</p>
+              </CardContent>
+            </Card>
           </div>
-        </div>
 
-        {/* Preparing */}
-        <div className="flex flex-col min-h-0">
-          <h2 className="text-lg font-semibold mb-3 text-blue-600 shrink-0">준비중</h2>
-          <div className="space-y-3 overflow-y-auto flex-1 pr-1">
-            {preparingOrders.map((order) => (
-              <OrderCard
-                key={order.orderId}
-                order={order}
-                isAnimating={animatingCards.has(order.orderId)}
-                animationType="complete"
-                actions={
-                  <Button
-                    size="sm"
-                    className="bg-green-600 hover:bg-green-700 transition-all duration-150 active:scale-90 hover:shadow-lg"
-                    onClick={(e) => handleComplete(order, e)}
-                  >
-                    완료
-                  </Button>
-                }
-              />
-            ))}
-            {preparingOrders.length === 0 && (
-              <p className="text-gray-400 text-sm text-center py-8">
-                준비중인 주문이 없습니다
-              </p>
-            )}
-          </div>
-        </div>
+          {/* 3-Column Service Kanban */}
+          <div className="grid grid-cols-3 gap-4 min-h-0 flex-1">
+            {/* 요청됨 */}
+            <div className="flex flex-col min-h-0">
+              <h2 className="text-lg font-semibold mb-3 text-orange-600 shrink-0">
+                요청됨
+              </h2>
+              <div className="space-y-3 overflow-y-auto flex-1 pr-1">
+                {pendingServices.map((req) => (
+                  <ServiceCard
+                    key={req.id}
+                    request={req}
+                    actions={
+                      <Button
+                        size="sm"
+                        className="transition-all duration-150 active:scale-90 hover:shadow-lg"
+                        onClick={() => handleServiceAccept(req)}
+                      >
+                        접수
+                      </Button>
+                    }
+                  />
+                ))}
+                {pendingServices.length === 0 && (
+                  <p className="text-gray-400 text-sm text-center py-8">
+                    대기중인 요청이 없습니다
+                  </p>
+                )}
+              </div>
+            </div>
 
-        {/* Completed */}
-        <div className="flex flex-col min-h-0">
-          <h2 className="text-lg font-semibold mb-3 text-green-600 shrink-0">완료</h2>
-          <div className="space-y-3 overflow-y-auto flex-1 pr-1">
-            {completedOrders.map((order) => (
-              <OrderCard key={order.orderId} order={order} />
-            ))}
-            {completedOrders.length === 0 && (
-              <p className="text-gray-400 text-sm text-center py-8">
-                완료된 주문이 없습니다
-              </p>
-            )}
+            {/* 접수됨 */}
+            <div className="flex flex-col min-h-0">
+              <h2 className="text-lg font-semibold mb-3 text-blue-600 shrink-0">접수됨</h2>
+              <div className="space-y-3 overflow-y-auto flex-1 pr-1">
+                {acceptedServices.map((req) => (
+                  <ServiceCard
+                    key={req.id}
+                    request={req}
+                    actions={
+                      <Button
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700 transition-all duration-150 active:scale-90 hover:shadow-lg"
+                        onClick={() => handleServiceComplete(req)}
+                      >
+                        완료
+                      </Button>
+                    }
+                  />
+                ))}
+                {acceptedServices.length === 0 && (
+                  <p className="text-gray-400 text-sm text-center py-8">
+                    접수된 요청이 없습니다
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* 완료 */}
+            <div className="flex flex-col min-h-0">
+              <h2 className="text-lg font-semibold mb-3 text-green-600 shrink-0">완료</h2>
+              <div className="space-y-3 overflow-y-auto flex-1 pr-1">
+                {completedServices.map((req) => (
+                  <ServiceCard key={req.id} request={req} />
+                ))}
+                {completedServices.length === 0 && (
+                  <p className="text-gray-400 text-sm text-center py-8">
+                    완료된 요청이 없습니다
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }
@@ -615,6 +816,84 @@ function OrderCard({
             {formatPrice(order.totalAmount)}
           </span>
           <Badge variant="outline">{ORDER_STATUS_LABELS[order.status]}</Badge>
+        </div>
+        {actions && <div className="flex gap-2 pt-2">{actions}</div>}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ServiceCard({
+  request,
+  actions,
+}: {
+  request: ServiceRequest;
+  actions?: React.ReactNode;
+}) {
+  const timeAgo = (dateStr: string) => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "방금 전";
+    if (mins < 60) return `${mins}분 전`;
+    const hours = Math.floor(mins / 60);
+    return `${hours}시간 전`;
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <span className="text-xl">{request.categoryIcon}</span>
+            {request.roomNumber}호
+          </CardTitle>
+          <Badge variant="outline">
+            {SERVICE_TYPE_LABELS[request.type]}
+          </Badge>
+        </div>
+        <p className="text-xs text-gray-400">{timeAgo(request.createdAt)}</p>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <p className="text-sm font-medium">{request.categoryName}</p>
+
+        {/* 비품 요청 아이템 목록 */}
+        {request.items && request.items.length > 0 && (
+          <div className="space-y-1">
+            {request.items.map((item, idx) => (
+              <div key={idx} className="flex justify-between text-sm text-gray-600">
+                <span>{item.name}</span>
+                <span>x{item.quantity}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 체크아웃 연장 정보 */}
+        {request.type === "checkout_extension" && request.extensionHours && (
+          <div className="text-sm bg-blue-50 p-2 rounded">
+            <span className="text-blue-700 font-medium">
+              +{request.extensionHours}시간 연장
+            </span>
+            {request.extensionAmount && (
+              <span className="text-blue-500 ml-2">
+                ({request.extensionAmount.toLocaleString()}원 후불)
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* 메모 */}
+        {request.note && (
+          <p className="text-xs text-orange-600 bg-orange-50 p-2 rounded">
+            메모: {request.note}
+          </p>
+        )}
+
+        <div className="flex justify-between items-center pt-2 border-t">
+          <span className="text-xs text-gray-400">{request.requestId}</span>
+          <Badge variant="outline">
+            {SERVICE_STATUS_LABELS[request.status]}
+          </Badge>
         </div>
         {actions && <div className="flex gap-2 pt-2">{actions}</div>}
       </CardContent>

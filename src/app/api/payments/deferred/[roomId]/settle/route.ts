@@ -82,11 +82,48 @@ export async function POST(
     })
   );
 
+  // Settle checkout extension fees from service requests
+  const roomUuid = (roomDoc.data() as { roomId: string }).roomId;
+  const extensionSnap = await getDocs(
+    query(
+      collection(firestore, "serviceRequests"),
+      where("roomUuid", "==", roomUuid),
+      where("paymentStatus", "==", "deferred")
+    )
+  );
+
+  const settledExtensions = await Promise.all(
+    extensionSnap.docs.map(async (extDoc) => {
+      await updateDoc(extDoc.ref, {
+        paymentStatus: "paid",
+        updatedAt: settledAt,
+      });
+
+      const extData = extDoc.data() as {
+        requestId: string;
+        categoryName: string;
+        extensionHours: number;
+        extensionAmount: number;
+        createdAt: string;
+      };
+      totalAmount += extData.extensionAmount || 0;
+
+      return {
+        requestId: extData.requestId,
+        categoryName: extData.categoryName,
+        extensionHours: extData.extensionHours,
+        extensionAmount: extData.extensionAmount,
+        createdAt: extData.createdAt,
+      };
+    })
+  );
+
   return NextResponse.json({
-    settled: deferredSnap.size,
+    settled: deferredSnap.size + extensionSnap.size,
     totalAmount,
     roomNumber: roomData.roomNumber,
     settledAt,
     orders: settledOrders,
+    extensions: settledExtensions,
   });
 }

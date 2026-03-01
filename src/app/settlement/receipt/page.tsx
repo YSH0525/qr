@@ -17,12 +17,21 @@ interface SettledOrder {
   items: SettlementItem[];
 }
 
+interface SettledExtension {
+  requestId: string;
+  categoryName: string;
+  extensionHours: number;
+  extensionAmount: number;
+  createdAt: string;
+}
+
 interface SettlementData {
   settled: number;
   totalAmount: number;
   roomNumber: string;
   settledAt: string;
   orders: SettledOrder[];
+  extensions?: SettledExtension[];
 }
 
 export default function SettlementReceiptPage() {
@@ -146,6 +155,25 @@ export default function SettlementReceiptPage() {
             )}
           </div>
         ))}
+
+        {/* 체크아웃 연장 요금 */}
+        {data.extensions && data.extensions.length > 0 && (
+          <div className="border-t border-dashed border-gray-300 pt-3 mt-2">
+            <p className="text-xs text-gray-500 font-semibold mb-2">체크아웃 연장</p>
+            {data.extensions.map((ext) => (
+              <div key={ext.requestId} className="mb-2">
+                <div className="flex justify-between text-xs text-gray-400 mb-0.5">
+                  <span>#{ext.requestId}</span>
+                  <span>{formatDate(ext.createdAt)} {formatTime(ext.createdAt)}</span>
+                </div>
+                <div className="flex justify-between py-0.5">
+                  <span>{ext.categoryName} +{ext.extensionHours}시간</span>
+                  <span>{formatPrice(ext.extensionAmount)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* 합계 */}
         <div className="border-t-2 border-dashed border-gray-400 pt-3 mt-2">
