@@ -103,7 +103,7 @@ export default function CartPage({
     <div className="min-h-screen bg-gray-50 pb-32">
       {/* Header */}
       <div className="bg-white border-b sticky top-0 z-10">
-        <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
+        <div className="max-w-lg mx-auto px-5 py-3 flex items-center gap-3">
           <Button
             variant="ghost"
             size="sm"
@@ -115,10 +115,10 @@ export default function CartPage({
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto px-4 py-4 space-y-4">
+      <div className="max-w-lg mx-auto px-5 py-4 space-y-4">
         {/* Order Items */}
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-5">
             <h2 className="font-semibold mb-3">주문 내역</h2>
             <div className="space-y-2">
               {items.map((item) => (
@@ -146,7 +146,7 @@ export default function CartPage({
 
         {/* Note */}
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-5">
             <h2 className="font-semibold mb-2">요청사항</h2>
             <Input
               placeholder="요청사항이 있으시면 입력해주세요 (선택)"
@@ -158,7 +158,7 @@ export default function CartPage({
 
         {/* Payment Method */}
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-5">
             <h2 className="font-semibold mb-3">결제 방식</h2>
             <div className="grid grid-cols-2 gap-3">
               <button
@@ -202,7 +202,7 @@ export default function CartPage({
 
       {/* Order Button */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg">
-        <div className="max-w-lg mx-auto px-4 py-3">
+        <div className="max-w-lg mx-auto px-5 py-3">
           <Button
             className="w-full h-12 text-lg"
             onClick={handleOrder}
