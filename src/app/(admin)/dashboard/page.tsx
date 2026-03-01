@@ -132,6 +132,7 @@ export default function DashboardPage() {
         if (event === "new-order") {
           const order = data as unknown as OrderWithItems;
           setOrders((prev) => [order, ...prev]);
+          setActiveTab("orders");
 
           playNewOrderAlert(order.roomNumber, order.items || []);
 
@@ -163,6 +164,7 @@ export default function DashboardPage() {
         } else if (event === "new-service-request") {
           const req = data as unknown as ServiceRequest;
           setServiceRequests((prev) => [req, ...prev]);
+          setActiveTab("services");
           playServiceRequestAlert(req.roomNumber, req.categoryName);
           notify(`서비스 요청! ${req.roomNumber}호`, req.categoryName);
           toast.success(`서비스 요청! ${req.roomNumber}호 — ${req.categoryName}`);
