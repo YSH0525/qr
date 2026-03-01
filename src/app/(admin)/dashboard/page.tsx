@@ -219,8 +219,8 @@ export default function DashboardPage() {
     .slice(0, 20);
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-6 h-screen flex flex-col overflow-hidden">
+      <div className="flex items-center justify-between mb-4 shrink-0">
         <h1 className="text-2xl font-bold">주문 대시보드</h1>
         {!audioEnabled && (
           <Button
@@ -235,7 +235,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-4 gap-4 mb-4 shrink-0">
         <Card>
           <CardContent className="p-4 text-center">
             <p className="text-3xl font-bold text-orange-500">
@@ -271,14 +271,59 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* 3-Column Board */}
-      <div className="grid grid-cols-3 gap-4">
+      {/* 후불 미정산 현황 — Stats 바로 아래 */}
+      {deferredPayments.length > 0 && (
+        <div className="mb-4 shrink-0">
+          <button
+            onClick={() => setShowDeferred((v) => !v)}
+            className="flex items-center gap-2 text-sm font-semibold text-red-600 mb-2 hover:text-red-700 transition"
+          >
+            <Wallet className="w-4 h-4" />
+            후불 미정산 현황
+            <Badge variant="destructive" className="ml-1 text-xs">
+              {deferredPayments.length}개 객실
+            </Badge>
+            {showDeferred ? (
+              <ChevronUp className="w-3 h-3" />
+            ) : (
+              <ChevronDown className="w-3 h-3" />
+            )}
+          </button>
+
+          {showDeferred && (
+            <div className="flex gap-3 overflow-x-auto pb-1">
+              {deferredPayments.map((p) => (
+                <Card key={p.room.id} className="border-red-100 shrink-0 w-52">
+                  <CardContent className="p-3 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-bold">{p.room.roomNumber}호 <span className="text-xs font-normal text-gray-400">{p.orderCount}건</span></p>
+                      <p className="text-lg font-bold text-red-600">{p.totalDeferred.toLocaleString()}원</p>
+                    </div>
+                    <Button
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() =>
+                        handleSettle(p.room.roomId, p.room.roomNumber)
+                      }
+                    >
+                      정산
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 3-Column Kanban Board — 남은 공간 전부 사용, 각 컬럼 개별 스크롤 */}
+      <div className="grid grid-cols-3 gap-4 min-h-0 flex-1">
         {/* Pending */}
-        <div>
-          <h2 className="text-lg font-semibold mb-3 text-orange-600">
+        <div className="flex flex-col min-h-0">
+          <h2 className="text-lg font-semibold mb-3 text-orange-600 shrink-0">
             신규 주문
           </h2>
-          <div className="space-y-3">
+          <div className="space-y-3 overflow-y-auto flex-1 pr-1">
             {pendingOrders.map((order) => (
               <OrderCard
                 key={order.orderId}
@@ -315,9 +360,9 @@ export default function DashboardPage() {
         </div>
 
         {/* Preparing */}
-        <div>
-          <h2 className="text-lg font-semibold mb-3 text-blue-600">준비중</h2>
-          <div className="space-y-3">
+        <div className="flex flex-col min-h-0">
+          <h2 className="text-lg font-semibold mb-3 text-blue-600 shrink-0">준비중</h2>
+          <div className="space-y-3 overflow-y-auto flex-1 pr-1">
             {preparingOrders.map((order) => (
               <OrderCard
                 key={order.orderId}
@@ -344,9 +389,9 @@ export default function DashboardPage() {
         </div>
 
         {/* Completed */}
-        <div>
-          <h2 className="text-lg font-semibold mb-3 text-green-600">완료</h2>
-          <div className="space-y-3">
+        <div className="flex flex-col min-h-0">
+          <h2 className="text-lg font-semibold mb-3 text-green-600 shrink-0">완료</h2>
+          <div className="space-y-3 overflow-y-auto flex-1 pr-1">
             {completedOrders.map((order) => (
               <OrderCard key={order.orderId} order={order} />
             ))}
@@ -358,58 +403,6 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
-
-      {/* 후불 미정산 현황 */}
-      {deferredPayments.length > 0 && (
-        <div className="mt-6">
-          <button
-            onClick={() => setShowDeferred((v) => !v)}
-            className="flex items-center gap-2 text-lg font-semibold text-red-600 mb-3 hover:text-red-700 transition"
-          >
-            <Wallet className="w-5 h-5" />
-            후불 미정산 현황
-            <Badge variant="destructive" className="ml-1">
-              {deferredPayments.length}개 객실
-            </Badge>
-            {showDeferred ? (
-              <ChevronUp className="w-4 h-4" />
-            ) : (
-              <ChevronDown className="w-4 h-4" />
-            )}
-          </button>
-
-          {showDeferred && (
-            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              {deferredPayments.map((p) => (
-                <Card key={p.room.id} className="border-red-100">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-lg font-bold">
-                        {p.room.roomNumber}호
-                      </span>
-                      <Badge variant="outline" className="text-red-600 border-red-200">
-                        {p.orderCount}건
-                      </Badge>
-                    </div>
-                    <p className="text-xl font-bold text-red-600 mb-3">
-                      {p.totalDeferred.toLocaleString()}원
-                    </p>
-                    <Button
-                      size="sm"
-                      className="w-full"
-                      onClick={() =>
-                        handleSettle(p.room.roomId, p.room.roomNumber)
-                      }
-                    >
-                      정산 완료
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
