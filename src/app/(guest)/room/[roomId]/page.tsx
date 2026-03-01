@@ -142,8 +142,8 @@ export default function EasyTapHub({
 
         {/* Footer */}
         <div className="text-center mt-10">
-          <p className="text-xs text-gray-300">
-            Smart Stay, Easy Tap
+          <p className="text-xs text-black">
+            The Van Stay, Easy Tap
           </p>
         </div>
       </div>
