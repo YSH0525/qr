@@ -47,3 +47,41 @@ export const orderStatusSchema = z.object({
     "cancelled",
   ]),
 });
+
+export const serviceCategorySchema = z.object({
+  name: z.string().min(1, "서비스명을 입력하세요"),
+  type: z.enum(["cleaning", "checkout_extension", "amenity"]),
+  icon: z.string().min(1),
+  description: z.string().optional(),
+  isActive: z.boolean().optional(),
+  displayOrder: z.number().int().optional(),
+  hourlyRate: z.number().int().min(0).optional(),
+});
+
+export const serviceItemSchema = z.object({
+  name: z.string().min(1, "아이템명을 입력하세요"),
+  icon: z.string().min(1),
+  categoryId: z.string().min(1),
+  isAvailable: z.boolean().optional(),
+  displayOrder: z.number().int().optional(),
+});
+
+export const serviceRequestSchema = z.object({
+  roomId: z.string().min(1),
+  categoryId: z.string().min(1),
+  note: z.string().optional(),
+  items: z
+    .array(
+      z.object({
+        itemId: z.string().min(1),
+        name: z.string().min(1),
+        quantity: z.number().int().min(1),
+      })
+    )
+    .optional(),
+  extensionHours: z.number().int().min(1).max(6).optional(),
+});
+
+export const serviceRequestStatusSchema = z.object({
+  status: z.enum(["requested", "accepted", "completed"]),
+});

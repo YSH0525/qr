@@ -1,3 +1,5 @@
+export * from "./service";
+
 export type OrderStatus =
   | "pending"
   | "accepted"

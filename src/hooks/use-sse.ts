@@ -31,6 +31,14 @@ export function useOrderSSE(
       onEventRef.current("order-updated", JSON.parse(e.data));
     });
 
+    es.addEventListener("new-service-request", (e) => {
+      onEventRef.current("new-service-request", JSON.parse(e.data));
+    });
+
+    es.addEventListener("service-request-updated", (e) => {
+      onEventRef.current("service-request-updated", JSON.parse(e.data));
+    });
+
     es.onerror = () => {
       // EventSource auto-reconnects, 재연결 시 connected 이벤트로 감지
     };
