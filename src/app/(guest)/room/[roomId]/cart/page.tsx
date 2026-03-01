@@ -29,7 +29,7 @@ export default function CartPage({
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <p className="text-gray-400 mb-4">장바구니가 비어있습니다</p>
-        <Button variant="outline" onClick={() => router.push(`/room/${roomId}`)}>
+        <Button variant="outline" onClick={() => router.push(`/room/${roomId}/menu`)}>
           메뉴로 돌아가기
         </Button>
       </div>
@@ -107,7 +107,7 @@ export default function CartPage({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push(`/room/${roomId}`)}
+            onClick={() => router.push(`/room/${roomId}/menu`)}
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
