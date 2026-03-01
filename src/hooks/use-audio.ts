@@ -1,9 +1,26 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 export function useNotificationSound() {
   const audioContextRef = useRef<AudioContext | null>(null);
+  const voicesReadyRef = useRef(false);
+
+  // 음성 목록 미리 로드 (비동기)
+  useEffect(() => {
+    if (!("speechSynthesis" in window)) return;
+
+    const loadVoices = () => {
+      const voices = window.speechSynthesis.getVoices();
+      if (voices.length > 0) voicesReadyRef.current = true;
+    };
+
+    loadVoices();
+    window.speechSynthesis.addEventListener("voiceschanged", loadVoices);
+    return () => {
+      window.speechSynthesis.removeEventListener("voiceschanged", loadVoices);
+    };
+  }, []);
 
   const getContext = useCallback(() => {
     if (!audioContextRef.current) {
@@ -53,21 +70,28 @@ export function useNotificationSound() {
     try {
       if (!("speechSynthesis" in window)) return;
 
-      // 이전 음성 중단
+      // Chrome 버그 대응: 장시간 미사용 시 speechSynthesis가 멈추는 현상
       window.speechSynthesis.cancel();
 
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = "ko-KR";
-      utterance.rate = 1.1;
+      utterance.rate = 1.05;
       utterance.pitch = 1.0;
       utterance.volume = 1.0;
 
       // 한국어 음성 선택
       const voices = window.speechSynthesis.getVoices();
-      const koVoice = voices.find((v) => v.lang.startsWith("ko"));
+      const koVoice = voices.find(
+        (v) => v.lang === "ko-KR" || v.lang === "ko_KR"
+      );
       if (koVoice) {
         utterance.voice = koVoice;
       }
+
+      // Chrome에서 긴 텍스트가 중간에 끊기는 버그 대응
+      utterance.onpause = () => {
+        window.speechSynthesis.resume();
+      };
 
       window.speechSynthesis.speak(utterance);
     } catch {

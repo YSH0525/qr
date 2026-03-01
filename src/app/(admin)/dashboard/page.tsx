@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, Volume2 } from "lucide-react";
 import type { OrderWithItems } from "@/types";
 import {
   ORDER_STATUS_LABELS,
@@ -19,9 +19,24 @@ import {
 export default function DashboardPage() {
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [animatingCards, setAnimatingCards] = useState<Set<string>>(new Set());
+  const [audioEnabled, setAudioEnabled] = useState(false);
   const { playNewOrderAlert, playAcceptSound, playCompleteSound } =
     useNotificationSound();
   const { notify } = useBrowserNotification();
+
+  // 사용자 클릭으로 오디오 + TTS 활성화
+  const enableAudio = useCallback(() => {
+    // AudioContext 활성화
+    playAcceptSound();
+    // TTS 활성화 (빈 텍스트로 워밍업)
+    if ("speechSynthesis" in window) {
+      const warm = new SpeechSynthesisUtterance("");
+      warm.volume = 0;
+      window.speechSynthesis.speak(warm);
+    }
+    setAudioEnabled(true);
+    toast.success("알림 소리가 활성화되었습니다");
+  }, [playAcceptSound]);
 
   const fetchOrders = useCallback(async () => {
     const res = await fetch("/api/orders");
@@ -162,7 +177,19 @@ export default function DashboardPage() {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">주문 대시보드</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold">주문 대시보드</h1>
+        {!audioEnabled && (
+          <Button
+            variant="outline"
+            onClick={enableAudio}
+            className="animate-pulse border-orange-300 text-orange-600 hover:bg-orange-50"
+          >
+            <Volume2 className="w-4 h-4 mr-2" />
+            알림 소리 켜기
+          </Button>
+        )}
+      </div>
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-6">
