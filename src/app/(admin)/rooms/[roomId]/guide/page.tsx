@@ -58,6 +58,16 @@ export default function RoomGuidePage({
             <p className="text-gray-500 mt-1">객실 서비스 안내</p>
           </div>
 
+          {/* Tagline */}
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl py-3 px-5">
+            <p className="text-white font-bold text-lg leading-snug">
+              전화 대신 Easy Tap!
+            </p>
+            <p className="text-blue-100 text-sm mt-1">
+              클릭 한 번으로 시간연장, 서비스요청, 물품구매까지
+            </p>
+          </div>
+
           {/* Room Number */}
           <div className="bg-blue-50 rounded-xl py-4 px-6 inline-block">
             <p className="text-5xl font-bold text-blue-600">
