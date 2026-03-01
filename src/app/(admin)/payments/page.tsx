@@ -56,6 +56,10 @@ export default function PaymentsPage() {
         `${roomNumber}호 정산 완료: ${data.settled}건, ${data.totalAmount.toLocaleString()}원`
       );
       fetchPayments();
+
+      // 정산내역서 새 탭으로 열기
+      sessionStorage.setItem("settlementReceipt", JSON.stringify(data));
+      window.open("/settlement/receipt", "_blank");
     } else {
       toast.error("정산 처리 실패");
     }
