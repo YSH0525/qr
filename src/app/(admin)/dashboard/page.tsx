@@ -105,6 +105,13 @@ export default function DashboardPage() {
     fetchTodaySummary();
   }, [fetchOrders, fetchDeferred, fetchTodaySummary]);
 
+  // SSE 재연결 시 전체 데이터 동기화
+  const handleSSEReconnect = useCallback(() => {
+    fetchOrders();
+    fetchDeferred();
+    fetchTodaySummary();
+  }, [fetchOrders, fetchDeferred, fetchTodaySummary]);
+
   useOrderSSE(
     useCallback(
       (event: string, data: Record<string, unknown>) => {
@@ -142,7 +149,8 @@ export default function DashboardPage() {
         }
       },
       [playNewOrderAlert, notify, fetchDeferred, fetchTodaySummary]
-    )
+    ),
+    handleSSEReconnect
   );
 
   const handleAccept = async (order: OrderWithItems) => {

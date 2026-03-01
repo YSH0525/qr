@@ -31,10 +31,9 @@ class OrderEventEmitter {
   }
 }
 
-// Singleton
+// Singleton — production에서도 동일 인스턴스 유지
 const globalForSSE = globalThis as unknown as { orderEvents: OrderEventEmitter };
-export const orderEvents =
-  globalForSSE.orderEvents || new OrderEventEmitter();
-if (process.env.NODE_ENV !== "production") {
-  globalForSSE.orderEvents = orderEvents;
+if (!globalForSSE.orderEvents) {
+  globalForSSE.orderEvents = new OrderEventEmitter();
 }
+export const orderEvents = globalForSSE.orderEvents;

@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const clientId = crypto.randomUUID();
+  let heartbeat: ReturnType<typeof setInterval>;
 
   const stream = new ReadableStream({
     start(controller) {
@@ -16,7 +17,7 @@ export async function GET() {
       );
 
       // Heartbeat every 30 seconds
-      const heartbeat = setInterval(() => {
+      heartbeat = setInterval(() => {
         try {
           controller.enqueue(encoder.encode(": heartbeat\n\n"));
         } catch {
@@ -26,6 +27,7 @@ export async function GET() {
       }, 30000);
     },
     cancel() {
+      clearInterval(heartbeat);
       orderEvents.removeClient(clientId);
     },
   });
