@@ -55,6 +55,7 @@ export interface ServiceRequest {
   items: ServiceRequestItem[];
   extensionHours: number | null;
   extensionAmount: number | null;
+  freeExtension: boolean;
   createdAt: string;
   updatedAt: string;
 }

@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { roomId: roomUuid, categoryId, note, items, extensionHours } = body;
+    const { roomId: roomUuid, categoryId, note, items, extensionHours, freeExtension } = body;
 
     // Find room
     const roomSnap = await getDocs(
@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
     // Calculate extension amount
     let extensionAmount: number | null = null;
     if (catData.type === "checkout_extension" && extensionHours) {
-      extensionAmount = (catData.hourlyRate || 0) * extensionHours;
+      extensionAmount = freeExtension ? 0 : (catData.hourlyRate || 0) * extensionHours;
     }
 
     const requestId = generateRequestId();
@@ -96,7 +96,8 @@ export async function POST(req: NextRequest) {
       items: items || [],
       extensionHours: extensionHours || null,
       extensionAmount,
-      paymentStatus: extensionAmount ? "deferred" : null,
+      freeExtension: freeExtension || false,
+      paymentStatus: extensionAmount && !freeExtension ? "deferred" : null,
       createdAt: now,
       updatedAt: now,
     };

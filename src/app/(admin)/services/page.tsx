@@ -142,7 +142,7 @@ export default function ServicesPage() {
                   </TableCell>
                   <TableCell className="text-sm text-gray-500 max-w-48">
                     {req.type === "checkout_extension" && req.extensionHours && (
-                      <span className="block">{req.extensionHours}시간 연장{req.extensionAmount ? ` (${req.extensionAmount.toLocaleString()}원)` : ""}</span>
+                      <span className="block">{req.extensionHours}시간 연장{req.freeExtension ? " (무료 - 리뷰)" : req.extensionAmount ? ` (${req.extensionAmount.toLocaleString()}원)` : ""}</span>
                     )}
                     {req.items && req.items.length > 0 && (
                       <span className="block truncate">{req.items.map((i) => `${i.name} x${i.quantity}`).join(", ")}</span>

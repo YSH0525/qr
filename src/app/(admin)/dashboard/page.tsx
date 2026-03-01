@@ -870,15 +870,17 @@ function ServiceCard({
 
         {/* 체크아웃 연장 정보 */}
         {request.type === "checkout_extension" && request.extensionHours && (
-          <div className="text-sm bg-blue-50 p-2 rounded">
-            <span className="text-blue-700 font-medium">
+          <div className={`text-sm p-2 rounded ${request.freeExtension ? "bg-green-50" : "bg-blue-50"}`}>
+            <span className={`font-medium ${request.freeExtension ? "text-green-700" : "text-blue-700"}`}>
               +{request.extensionHours}시간 연장
             </span>
-            {request.extensionAmount && (
+            {request.freeExtension ? (
+              <span className="text-green-600 ml-2">(무료 - 리뷰)</span>
+            ) : request.extensionAmount ? (
               <span className="text-blue-500 ml-2">
                 ({request.extensionAmount.toLocaleString()}원 후불)
               </span>
-            )}
+            ) : null}
           </div>
         )}
 

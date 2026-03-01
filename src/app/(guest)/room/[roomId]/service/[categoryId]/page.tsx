@@ -36,6 +36,7 @@ export default function ServiceRequestPage({
 
   // checkout_extension
   const [extensionHours, setExtensionHours] = useState(1);
+  const [isFreeExtension, setIsFreeExtension] = useState(false);
 
   // amenity
   const [selectedItems, setSelectedItems] = useState<
@@ -88,6 +89,7 @@ export default function ServiceRequestPage({
 
       if (category.type === "checkout_extension") {
         body.extensionHours = extensionHours;
+        if (isFreeExtension) body.freeExtension = true;
       }
 
       const items = Object.entries(selectedItems).map(([itemId, data]) => ({
@@ -166,13 +168,30 @@ export default function ServiceRequestPage({
           <Card>
             <CardContent className="p-5">
               <h2 className="font-semibold mb-3">연장 시간 선택</h2>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-4 gap-2">
+                <button
+                  onClick={() => {
+                    setExtensionHours(1);
+                    setIsFreeExtension(true);
+                  }}
+                  className={`p-3 rounded-xl border-2 text-center transition ${
+                    isFreeExtension
+                      ? "border-green-400 bg-green-50"
+                      : "border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  <p className="text-lg font-bold">1시간</p>
+                  <p className="text-xs text-green-600 font-semibold mt-1">무료</p>
+                </button>
                 {[1, 2, 3].map((h) => (
                   <button
                     key={h}
-                    onClick={() => setExtensionHours(h)}
+                    onClick={() => {
+                      setExtensionHours(h);
+                      setIsFreeExtension(false);
+                    }}
                     className={`p-3 rounded-xl border-2 text-center transition ${
-                      extensionHours === h
+                      extensionHours === h && !isFreeExtension
                         ? "border-amber-400 bg-amber-50"
                         : "border-gray-200 hover:border-gray-300"
                     }`}
@@ -186,7 +205,13 @@ export default function ServiceRequestPage({
                   </button>
                 ))}
               </div>
-              {category.hourlyRate ? (
+              {isFreeExtension ? (
+                <div className="mt-3 bg-green-50 rounded-lg p-3 text-center">
+                  <p className="text-sm text-green-700 font-medium">
+                    리뷰작성 후 퇴실시 프런트에 확인
+                  </p>
+                </div>
+              ) : category.hourlyRate ? (
                 <div className="mt-3 bg-amber-50 rounded-lg p-3 text-center">
                   <p className="text-sm text-amber-700">
                     연장 요금{" "}
