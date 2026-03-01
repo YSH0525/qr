@@ -140,12 +140,17 @@ export default function ServicesPage() {
                       {SERVICE_TYPE_LABELS[req.type]}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-sm text-gray-500 max-w-48 truncate">
-                    {req.type === "amenity" && req.items.length > 0
-                      ? req.items.map((i) => `${i.name} x${i.quantity}`).join(", ")
-                      : req.type === "checkout_extension" && req.extensionHours
-                        ? `${req.extensionHours}시간 연장${req.extensionAmount ? ` (${req.extensionAmount.toLocaleString()}원)` : ""}`
-                        : req.note || "-"}
+                  <TableCell className="text-sm text-gray-500 max-w-48">
+                    {req.type === "checkout_extension" && req.extensionHours && (
+                      <span className="block">{req.extensionHours}시간 연장{req.extensionAmount ? ` (${req.extensionAmount.toLocaleString()}원)` : ""}</span>
+                    )}
+                    {req.items && req.items.length > 0 && (
+                      <span className="block truncate">{req.items.map((i) => `${i.name} x${i.quantity}`).join(", ")}</span>
+                    )}
+                    {req.note && (
+                      <span className="block text-orange-500 truncate">{req.note}</span>
+                    )}
+                    {!req.items?.length && !req.extensionHours && !req.note && "-"}
                   </TableCell>
                   <TableCell>
                     <span
