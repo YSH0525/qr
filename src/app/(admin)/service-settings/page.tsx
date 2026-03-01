@@ -146,6 +146,12 @@ export default function ServiceSettingsPage() {
 
   const selectedCat = categories.find((c) => c.id === selectedCatId);
 
+  const ITEM_LABELS: Record<string, { button: string; title: string; dialog: string; placeholder: string }> = {
+    amenity: { button: "비품 관리", title: "비품 아이템", dialog: "비품 아이템 추가", placeholder: "아이템명 (예: 수건)" },
+    cleaning: { button: "옵션 관리", title: "청소 옵션", dialog: "청소 옵션 추가", placeholder: "옵션명 (예: 화장실 청소)" },
+    checkout_extension: { button: "옵션 관리", title: "연장 옵션", dialog: "연장 옵션 추가", placeholder: "옵션명 (예: 1시간 연장)" },
+  };
+
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
@@ -266,19 +272,17 @@ export default function ServiceSettingsPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
-                      {cat.type === "amenity" && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedCatId(selectedCatId === cat.id ? null : cat.id);
-                          }}
-                        >
-                          <Settings2 className="w-4 h-4 mr-1" />
-                          비품 관리
-                        </Button>
-                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedCatId(selectedCatId === cat.id ? null : cat.id);
+                        }}
+                      >
+                        <Settings2 className="w-4 h-4 mr-1" />
+                        {ITEM_LABELS[cat.type]?.button || "관리"}
+                      </Button>
                       <Button
                         size="sm"
                         variant="ghost"
@@ -306,12 +310,12 @@ export default function ServiceSettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Items for selected amenity category */}
-      {selectedCat && selectedCat.type === "amenity" && (
+      {/* Items for selected category */}
+      {selectedCat && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>{selectedCat.name} — 비품 아이템</CardTitle>
+              <CardTitle>{selectedCat.name} — {ITEM_LABELS[selectedCat.type]?.title || "아이템"}</CardTitle>
               <Dialog open={itemOpen} onOpenChange={setItemOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm">
@@ -321,11 +325,11 @@ export default function ServiceSettingsPage() {
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>비품 아이템 추가</DialogTitle>
+                    <DialogTitle>{ITEM_LABELS[selectedCat.type]?.dialog || "아이템 추가"}</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4 mt-4">
                     <Input
-                      placeholder="아이템명 (예: 수건)"
+                      placeholder={ITEM_LABELS[selectedCat.type]?.placeholder || "아이템명"}
                       value={newItem.name}
                       onChange={(e) =>
                         setNewItem({ ...newItem, name: e.target.value })

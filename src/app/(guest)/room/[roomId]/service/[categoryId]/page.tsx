@@ -53,7 +53,7 @@ export default function ServiceRequestPage({
         const found = cats.find((c) => c.id === categoryId);
         setCategory(found || null);
 
-        if (found?.type === "amenity") {
+        if (found) {
           fetch(`/api/service-items?categoryId=${categoryId}`)
             .then((r) => r.json())
             .then((items: ServiceItem[]) =>
@@ -90,18 +90,17 @@ export default function ServiceRequestPage({
         body.extensionHours = extensionHours;
       }
 
-      if (category.type === "amenity") {
-        const items = Object.entries(selectedItems).map(([itemId, data]) => ({
-          itemId,
-          name: data.name,
-          quantity: data.quantity,
-        }));
-        if (items.length === 0) {
-          toast.error("요청할 비품을 선택해주세요");
-          setLoading(false);
-          return;
-        }
+      const items = Object.entries(selectedItems).map(([itemId, data]) => ({
+        itemId,
+        name: data.name,
+        quantity: data.quantity,
+      }));
+      if (items.length > 0) {
         body.items = items;
+      } else if (category.type === "amenity" && serviceItems.length > 0) {
+        toast.error("요청할 비품을 선택해주세요");
+        setLoading(false);
+        return;
       }
 
       const res = await fetch("/api/service-requests", {
@@ -202,10 +201,12 @@ export default function ServiceRequestPage({
           </Card>
         )}
 
-        {category.type === "amenity" && (
+        {serviceItems.length > 0 && (
           <Card>
             <CardContent className="p-5">
-              <h2 className="font-semibold mb-3">필요한 비품 선택</h2>
+              <h2 className="font-semibold mb-3">
+                {category.type === "amenity" ? "필요한 비품 선택" : category.type === "cleaning" ? "청소 옵션 선택" : "옵션 선택"}
+              </h2>
               <div className="space-y-3">
                 {serviceItems.map((item) => {
                   const qty = selectedItems[item.id]?.quantity || 0;
@@ -243,11 +244,6 @@ export default function ServiceRequestPage({
                     </div>
                   );
                 })}
-                {serviceItems.length === 0 && (
-                  <p className="text-gray-400 text-sm text-center py-4">
-                    등록된 비품이 없습니다
-                  </p>
-                )}
               </div>
             </CardContent>
           </Card>
