@@ -13,6 +13,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useOrderSSE } from "@/hooks/use-sse";
+import { useNotificationSound } from "@/hooks/use-audio";
+import { useBrowserNotification } from "@/hooks/use-notification";
 import { toast } from "sonner";
 import type { ServiceRequest } from "@/types/service";
 import { SERVICE_TYPE_LABELS, SERVICE_STATUS_LABELS } from "@/types/service";
@@ -26,6 +28,8 @@ const STATUS_COLORS: Record<string, string> = {
 export default function ServicesPage() {
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [filter, setFilter] = useState<string>("all");
+  const { playServiceRequestAlert, playAcceptSound, playCompleteSound } = useNotificationSound();
+  const { notify } = useBrowserNotification();
 
   const fetchRequests = useCallback(async () => {
     const res = await fetch("/api/service-requests");
@@ -40,7 +44,11 @@ export default function ServicesPage() {
     useCallback(
       (event: string, data: Record<string, unknown>) => {
         if (event === "new-service-request") {
-          setRequests((prev) => [data as unknown as ServiceRequest, ...prev]);
+          const req = data as unknown as ServiceRequest;
+          setRequests((prev) => [req, ...prev]);
+          playServiceRequestAlert(req.roomNumber, req.categoryName);
+          notify(`서비스 요청! ${req.roomNumber}호`, req.categoryName);
+          toast.success(`서비스 요청! ${req.roomNumber}호 — ${req.categoryName}`);
         } else if (event === "service-request-updated") {
           setRequests((prev) =>
             prev.map((r) =>
@@ -51,12 +59,15 @@ export default function ServicesPage() {
           );
         }
       },
-      []
+      [playServiceRequestAlert, notify]
     ),
     fetchRequests
   );
 
   const updateStatus = async (requestId: string, status: string) => {
+    if (status === "accepted") playAcceptSound();
+    if (status === "completed") playCompleteSound();
+
     const res = await fetch(`/api/service-requests/${requestId}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
