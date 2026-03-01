@@ -161,6 +161,8 @@ export default function DashboardPage() {
                 : o
             )
           );
+          fetchDeferred();
+          fetchTodaySummary();
         } else if (event === "new-service-request") {
           const req = data as unknown as ServiceRequest;
           setServiceRequests((prev) => [req, ...prev]);
@@ -168,6 +170,9 @@ export default function DashboardPage() {
           playServiceRequestAlert(req.roomNumber, req.categoryName);
           notify(`서비스 요청! ${req.roomNumber}호`, req.categoryName);
           toast.success(`서비스 요청! ${req.roomNumber}호 — ${req.categoryName}`);
+          if (req.freeExtension === false && req.extensionAmount) {
+            fetchDeferred();
+          }
         } else if (event === "service-request-updated") {
           setServiceRequests((prev) =>
             prev.map((r) =>
@@ -176,6 +181,7 @@ export default function DashboardPage() {
                 : r
             )
           );
+          fetchDeferred();
         }
       },
       [playNewOrderAlert, playServiceRequestAlert, notify, fetchDeferred, fetchTodaySummary]
