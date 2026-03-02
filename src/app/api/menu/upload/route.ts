@@ -15,7 +15,8 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(bytes);
 
     const ext = file.name.split(".").pop() || "jpg";
-    const fileName = `menu-images/${uuidv4()}.${ext}`;
+    const downloadToken = uuidv4();
+    const fileName = `menu-images/${downloadToken}.${ext}`;
 
     const bucket = adminStorage.bucket();
     const fileRef = bucket.file(fileName);
@@ -23,12 +24,13 @@ export async function POST(req: NextRequest) {
     await fileRef.save(buffer, {
       metadata: {
         contentType: file.type,
+        metadata: {
+          firebaseStorageDownloadTokens: downloadToken,
+        },
       },
     });
 
-    await fileRef.makePublic();
-
-    const url = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+    const url = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(fileName)}?alt=media&token=${downloadToken}`;
 
     return NextResponse.json({ url });
   } catch (e: unknown) {
