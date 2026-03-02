@@ -6,7 +6,6 @@ import { useCartStore } from "@/stores/cart-store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ShoppingCart, Plus, Minus, ImageIcon, ArrowLeft } from "lucide-react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 interface Category {
   id: string;
@@ -41,7 +40,7 @@ export default function RoomMenuPage({
   const [error, setError] = useState("");
   const router = useRouter();
 
-  const { items: cartItems, addItem, updateQuantity, removeItem, totalAmount, totalItems, setRoomId } =
+  const { items, addItem, updateQuantity, totalAmount, totalItems, setRoomId } =
     useCartStore();
 
   useEffect(() => {
@@ -64,7 +63,7 @@ export default function RoomMenuPage({
 
   const formatPrice = (price: number) => price.toLocaleString("ko-KR");
   const getCartQuantity = (menuItemId: string) =>
-    cartItems.find((i) => i.menuItemId === menuItemId)?.quantity || 0;
+    items.find((i) => i.menuItemId === menuItemId)?.quantity || 0;
 
   if (error) {
     return (
@@ -212,88 +211,20 @@ export default function RoomMenuPage({
       {totalItems() > 0 && (
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-20">
           <div className="max-w-lg mx-auto px-4 py-3">
-            <Sheet>
-              <SheetTrigger asChild>
-                <button className="w-full bg-blue-600 text-white rounded-xl py-3 px-4 flex items-center justify-between hover:bg-blue-700 transition">
-                  <div className="flex items-center gap-2">
-                    <ShoppingCart className="w-5 h-5" />
-                    <Badge variant="secondary" className="bg-white text-blue-600">
-                      {totalItems()}
-                    </Badge>
-                  </div>
-                  <span className="font-semibold">
-                    {formatPrice(totalAmount())}원 주문하기
-                  </span>
-                </button>
-              </SheetTrigger>
-              <SheetContent side="bottom" className="h-[80vh]">
-                <SheetHeader>
-                  <SheetTitle>장바구니</SheetTitle>
-                </SheetHeader>
-                <div className="mt-4 space-y-3 overflow-y-auto flex-1">
-                  {cartItems.map((item) => (
-                    <div
-                      key={item.menuItemId}
-                      className="flex items-center justify-between py-3 border-b"
-                    >
-                      <div className="flex-1">
-                        <p className="font-medium">{item.name}</p>
-                        <p className="text-sm text-gray-500">
-                          {formatPrice(item.price)}원
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 w-8 p-0"
-                          onClick={() =>
-                            updateQuantity(item.menuItemId, item.quantity - 1)
-                          }
-                        >
-                          <Minus className="w-3 h-3" />
-                        </Button>
-                        <span className="w-6 text-center font-semibold">
-                          {item.quantity}
-                        </span>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 w-8 p-0"
-                          onClick={() =>
-                            updateQuantity(item.menuItemId, item.quantity + 1)
-                          }
-                        >
-                          <Plus className="w-3 h-3" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-red-500"
-                          onClick={() => removeItem(item.menuItemId)}
-                        >
-                          삭제
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-4 pt-4 border-t">
-                  <div className="flex justify-between items-center mb-4">
-                    <span className="text-lg font-semibold">총 금액</span>
-                    <span className="text-xl font-bold text-blue-600">
-                      {formatPrice(totalAmount())}원
-                    </span>
-                  </div>
-                  <Button
-                    className="w-full h-12 text-lg"
-                    onClick={() => router.push(`/room/${roomId}/cart`)}
-                  >
-                    주문하기
-                  </Button>
-                </div>
-              </SheetContent>
-            </Sheet>
+            <button
+              className="w-full bg-blue-600 text-white rounded-xl py-3 px-4 flex items-center justify-between hover:bg-blue-700 transition"
+              onClick={() => router.push(`/room/${roomId}/cart`)}
+            >
+              <div className="flex items-center gap-2">
+                <ShoppingCart className="w-5 h-5" />
+                <Badge variant="secondary" className="bg-white text-blue-600">
+                  {totalItems()}
+                </Badge>
+              </div>
+              <span className="font-semibold">
+                {formatPrice(totalAmount())}원 주문하기
+              </span>
+            </button>
           </div>
         </div>
       )}
