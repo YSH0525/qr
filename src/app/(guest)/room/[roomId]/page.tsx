@@ -85,10 +85,10 @@ export default function EasyTapHub({
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <div className="max-w-lg mx-auto px-5 py-6">
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Easy Tap</h1>
-          <p className="text-sm text-gray-500 mt-1">간편하게 탭하세요</p>
-          <Badge variant="secondary" className="mt-3 text-sm px-4 py-1">
+        <div className="text-center mb-8 -mx-5 -mt-6 px-5 pt-10 pb-8 rounded-b-3xl bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950">
+          <h1 className="text-2xl font-bold text-white tracking-wide">Easy Tap</h1>
+          <p className="text-sm text-slate-300 mt-1">간편하게 탭하세요</p>
+          <Badge className="mt-3 text-sm px-4 py-1 bg-white/15 text-white border-white/20 hover:bg-white/20">
             {room.roomNumber}호
           </Badge>
         </div>
