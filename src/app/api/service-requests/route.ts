@@ -8,7 +8,6 @@ import {
   getDoc,
   query,
   where,
-  orderBy,
 } from "firebase/firestore";
 import { orderEvents } from "@/lib/sse";
 import { format } from "date-fns";
@@ -23,24 +22,36 @@ function generateRequestId(): string {
 }
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const status = searchParams.get("status");
-  const roomId = searchParams.get("roomId");
+  try {
+    const { searchParams } = new URL(req.url);
+    const status = searchParams.get("status");
+    const roomId = searchParams.get("roomId");
 
-  const constraints: ReturnType<typeof where>[] = [];
-  if (status) constraints.push(where("status", "==", status));
-  if (roomId) constraints.push(where("roomUuid", "==", roomId));
+    const constraints: ReturnType<typeof where>[] = [];
+    if (status) constraints.push(where("status", "==", status));
+    if (roomId) constraints.push(where("roomUuid", "==", roomId));
 
-  const snap = await getDocs(
-    query(
-      collection(firestore, "serviceRequests"),
-      ...constraints,
-      orderBy("createdAt", "desc")
-    )
-  );
+    const snap = await getDocs(
+      query(
+        collection(firestore, "serviceRequests"),
+        ...constraints
+      )
+    );
 
-  const result = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  return NextResponse.json(result);
+    const result = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+    // Sort by createdAt descending (newest first)
+    result.sort((a, b) => {
+      const aTime = (a as Record<string, unknown>).createdAt as string;
+      const bTime = (b as Record<string, unknown>).createdAt as string;
+      return bTime > aTime ? 1 : bTime < aTime ? -1 : 0;
+    });
+
+    return NextResponse.json(result);
+  } catch (e) {
+    console.error("Service requests fetch error:", e);
+    return NextResponse.json({ error: "서비스 요청 목록 조회 실패" }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {
