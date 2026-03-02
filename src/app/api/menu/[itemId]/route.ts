@@ -11,15 +11,16 @@ export async function PUT(
 
   try {
     const ref = doc(firestore, "menuItems", itemId);
-    await updateDoc(ref, {
-      name: body.name,
-      description: body.description,
-      price: body.price,
-      imageUrl: body.imageUrl,
-      isAvailable: body.isAvailable,
-      categoryId: body.categoryId,
-      displayOrder: body.displayOrder,
-    });
+    const updateData: Record<string, unknown> = {};
+    if (body.name !== undefined) updateData.name = body.name;
+    if (body.description !== undefined) updateData.description = body.description;
+    if (body.price !== undefined) updateData.price = body.price;
+    if (body.imageUrl !== undefined) updateData.imageUrl = body.imageUrl;
+    if (body.isAvailable !== undefined) updateData.isAvailable = body.isAvailable;
+    if (body.categoryId !== undefined) updateData.categoryId = body.categoryId;
+    if (body.displayOrder !== undefined) updateData.displayOrder = body.displayOrder;
+
+    await updateDoc(ref, updateData);
 
     const updated = await getDoc(ref);
     return NextResponse.json({ id: updated.id, ...updated.data() });
