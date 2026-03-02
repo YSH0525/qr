@@ -98,7 +98,10 @@ export async function POST(req: NextRequest) {
       extensionHours: extensionHours || null,
       extensionAmount,
       freeExtension: freeExtension || false,
-      paymentStatus: extensionAmount && !freeExtension ? "deferred" : null,
+      paymentStatus:
+        catData.type === "checkout_extension" && extensionHours && !freeExtension
+          ? "deferred"
+          : null,
       createdAt: now,
       updatedAt: now,
     };

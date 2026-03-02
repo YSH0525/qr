@@ -354,6 +354,8 @@ export default function DashboardPage() {
     if (res.ok) {
       toast.success(`${req.roomNumber}호 ${req.categoryName} 완료!`);
       fetchServiceRequests();
+      // 유료 연장 등 후불 항목이 있을 수 있으므로 미정산 현황 갱신
+      fetchDeferred();
     }
   };
 
