@@ -469,41 +469,34 @@ export default function DashboardPage() {
       {/* === 주문 탭 === */}
       {activeTab === "orders" && (
         <>
-          {/* 운영 현황 Stats */}
-          <div className="grid grid-cols-4 gap-4 mb-4 shrink-0">
-            <Card>
-              <CardContent className="p-4 text-center">
-                <p className="text-3xl font-bold text-orange-500">
-                  {pendingOrders.length}
-                </p>
-                <p className="text-sm text-gray-500">신규 주문</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 text-center">
-                <p className="text-3xl font-bold text-blue-500">
-                  {preparingOrders.length}
-                </p>
-                <p className="text-sm text-gray-500">준비중</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 text-center">
-                <p className="text-3xl font-bold text-green-500">
-                  {completedOrders.length}
-                </p>
-                <p className="text-sm text-gray-500">완료</p>
-              </CardContent>
-            </Card>
-            <Card className={deferredPayments.length > 0 ? "border-red-200 bg-red-50/30" : ""}>
-              <CardContent className="p-4 text-center">
-                <p className={`text-3xl font-bold ${deferredPayments.length > 0 ? "text-red-500" : "text-gray-400"}`}>
-                  {deferredPayments.reduce((sum, p) => sum + p.totalDeferred, 0).toLocaleString()}
-                  <span className="text-base">원</span>
-                </p>
-                <p className="text-sm text-gray-500">후불 미정산</p>
-              </CardContent>
-            </Card>
+          {/* 운영 현황 Stats - 컴팩트 바 */}
+          <div className="mb-4 shrink-0 bg-white border rounded-xl px-4 py-2.5 flex items-center gap-0">
+            <div className="flex items-center gap-2 pr-5">
+              <span className="w-2.5 h-2.5 rounded-full bg-orange-400" />
+              <span className="text-sm text-gray-500">신규</span>
+              <span className="text-lg font-bold text-orange-500">{pendingOrders.length}</span>
+            </div>
+            <div className="border-l h-5" />
+            <div className="flex items-center gap-2 px-5">
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-400" />
+              <span className="text-sm text-gray-500">준비중</span>
+              <span className="text-lg font-bold text-blue-500">{preparingOrders.length}</span>
+            </div>
+            <div className="border-l h-5" />
+            <div className="flex items-center gap-2 px-5">
+              <span className="w-2.5 h-2.5 rounded-full bg-green-400" />
+              <span className="text-sm text-gray-500">완료</span>
+              <span className="text-lg font-bold text-green-500">{completedOrders.length}</span>
+            </div>
+            <div className="border-l h-5" />
+            <div className={`flex items-center gap-2 pl-5 ${deferredPayments.length > 0 ? "" : "opacity-40"}`}>
+              <span className={`w-2.5 h-2.5 rounded-full ${deferredPayments.length > 0 ? "bg-red-400" : "bg-gray-300"}`} />
+              <span className="text-sm text-gray-500">후불 미정산</span>
+              <span className={`text-lg font-bold ${deferredPayments.length > 0 ? "text-red-500" : "text-gray-400"}`}>
+                {deferredPayments.reduce((sum, p) => sum + p.totalDeferred, 0).toLocaleString()}
+                <span className="text-xs font-normal ml-0.5">원</span>
+              </span>
+            </div>
           </div>
 
           {/* 후불 미정산 현황 */}
@@ -644,32 +637,25 @@ export default function DashboardPage() {
       {/* === 서비스 요청 탭 === */}
       {activeTab === "services" && (
         <>
-          {/* 서비스 현황 Stats */}
-          <div className="grid grid-cols-3 gap-4 mb-4 shrink-0">
-            <Card>
-              <CardContent className="p-4 text-center">
-                <p className="text-3xl font-bold text-orange-500">
-                  {pendingServices.length}
-                </p>
-                <p className="text-sm text-gray-500">요청됨</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 text-center">
-                <p className="text-3xl font-bold text-blue-500">
-                  {acceptedServices.length}
-                </p>
-                <p className="text-sm text-gray-500">접수됨</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 text-center">
-                <p className="text-3xl font-bold text-green-500">
-                  {completedServices.length}
-                </p>
-                <p className="text-sm text-gray-500">완료</p>
-              </CardContent>
-            </Card>
+          {/* 서비스 현황 Stats - 컴팩트 바 */}
+          <div className="mb-4 shrink-0 bg-white border rounded-xl px-4 py-2.5 flex items-center gap-0">
+            <div className="flex items-center gap-2 pr-5">
+              <span className="w-2.5 h-2.5 rounded-full bg-orange-400" />
+              <span className="text-sm text-gray-500">요청됨</span>
+              <span className="text-lg font-bold text-orange-500">{pendingServices.length}</span>
+            </div>
+            <div className="border-l h-5" />
+            <div className="flex items-center gap-2 px-5">
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-400" />
+              <span className="text-sm text-gray-500">접수됨</span>
+              <span className="text-lg font-bold text-blue-500">{acceptedServices.length}</span>
+            </div>
+            <div className="border-l h-5" />
+            <div className="flex items-center gap-2 pl-5">
+              <span className="w-2.5 h-2.5 rounded-full bg-green-400" />
+              <span className="text-sm text-gray-500">완료</span>
+              <span className="text-lg font-bold text-green-500">{completedServices.length}</span>
+            </div>
           </div>
 
           {/* 3-Column Service Kanban */}
