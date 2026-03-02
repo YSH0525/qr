@@ -200,9 +200,9 @@ export default function SalesPage() {
   );
 
   return (
-    <div className="p-6 print:p-2">
+    <div className="p-6 print:p-2 h-full flex flex-col overflow-hidden print:overflow-visible print:h-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6 print:mb-3">
+      <div className="flex items-center justify-between mb-6 print:mb-3 shrink-0">
         <h1 className="text-2xl font-bold">매출 분석</h1>
         <Button
           variant="outline"
@@ -216,7 +216,7 @@ export default function SalesPage() {
       </div>
 
       {/* Mode Toggle + Date Navigation */}
-      <div className="flex flex-wrap items-center gap-3 mb-6 print:mb-3">
+      <div className="flex flex-wrap items-center gap-3 mb-6 print:mb-3 shrink-0">
         <div className="flex bg-gray-100 rounded-lg p-1 print:hidden">
           <button
             onClick={() => setMode("daily")}
@@ -297,6 +297,7 @@ export default function SalesPage() {
         </div>
       </div>
 
+      <div className="flex-1 min-h-0 overflow-y-auto print:overflow-visible">
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6 print:gap-2 print:mb-3">
         <Card>
@@ -718,6 +719,7 @@ export default function SalesPage() {
           : `월별 정산서 · ${selectedYear}년 ${selectedMonth}월`}
         {" · "}
         출력일시: {format(new Date(), "yyyy-MM-dd HH:mm")}
+      </div>
       </div>
     </div>
   );

@@ -159,8 +159,8 @@ export default function ServiceSettingsPage() {
   };
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-6 h-full flex flex-col overflow-hidden">
+      <div className="flex items-center justify-between mb-6 shrink-0">
         <h1 className="text-2xl font-bold">서비스 설정</h1>
         <Dialog open={catOpen} onOpenChange={setCatOpen}>
           <DialogTrigger asChild>
@@ -228,6 +228,7 @@ export default function ServiceSettingsPage() {
         </Dialog>
       </div>
 
+      <div className="flex-1 min-h-0 overflow-y-auto">
       {/* Categories Table */}
       <Card className="mb-6">
         <CardHeader>
@@ -395,6 +396,7 @@ export default function ServiceSettingsPage() {
           </CardContent>
         </Card>
       )}
+      </div>
     </div>
   );
 }

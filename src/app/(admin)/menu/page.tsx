@@ -169,8 +169,8 @@ export default function MenuPage() {
   };
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-6 h-full flex flex-col overflow-hidden">
+      <div className="flex items-center justify-between mb-6 shrink-0">
         <h1 className="text-2xl font-bold">메뉴 관리</h1>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setCatManagerOpen(true)}>
@@ -205,6 +205,7 @@ export default function MenuPage() {
         </div>
       </div>
 
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-6">
       {categories.length === 0 && (
         <Card>
           <CardContent className="py-12 text-center text-gray-500">
@@ -288,6 +289,7 @@ export default function MenuPage() {
           </CardContent>
         </Card>
       ))}
+      </div>
 
       {/* Category Manager Dialog */}
       <Dialog open={catManagerOpen} onOpenChange={setCatManagerOpen}>

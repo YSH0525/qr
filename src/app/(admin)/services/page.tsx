@@ -94,10 +94,10 @@ export default function ServicesPage() {
     filter === "all" ? requests : requests.filter((r) => r.status === filter);
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">서비스 요청 내역</h1>
+    <div className="p-6 h-full flex flex-col overflow-hidden">
+      <h1 className="text-2xl font-bold mb-6 shrink-0">서비스 요청 내역</h1>
 
-      <div className="flex gap-2 mb-4">
+      <div className="flex gap-2 mb-4 shrink-0">
         {["all", "requested", "accepted", "completed"].map((s) => (
           <Button
             key={s}
@@ -115,11 +115,11 @@ export default function ServicesPage() {
         ))}
       </div>
 
-      <Card>
-        <CardHeader>
+      <Card className="flex-1 min-h-0 flex flex-col">
+        <CardHeader className="shrink-0">
           <CardTitle>요청 목록</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex-1 min-h-0 overflow-y-auto">
           <Table>
             <TableHeader>
               <TableRow>

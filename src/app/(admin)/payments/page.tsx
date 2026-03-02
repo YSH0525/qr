@@ -69,10 +69,10 @@ export default function PaymentsPage() {
   const totalAll = payments.reduce((sum, p) => sum + p.totalDeferred, 0);
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">후불결제 정산</h1>
+    <div className="p-6 h-full flex flex-col overflow-hidden">
+      <h1 className="text-2xl font-bold mb-6 shrink-0">후불결제 정산</h1>
 
-      <Card className="mb-6">
+      <Card className="mb-6 shrink-0">
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -89,11 +89,11 @@ export default function PaymentsPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
+      <Card className="flex-1 min-h-0 flex flex-col">
+        <CardHeader className="shrink-0">
           <CardTitle>객실별 미정산 내역</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex-1 min-h-0 overflow-y-auto">
           <Table>
             <TableHeader>
               <TableRow>

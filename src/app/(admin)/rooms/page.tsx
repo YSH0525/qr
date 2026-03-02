@@ -103,8 +103,8 @@ export default function RoomsPage() {
     typeof window !== "undefined" ? window.location.origin : "";
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-6 h-full flex flex-col overflow-hidden">
+      <div className="flex items-center justify-between mb-6 shrink-0">
         <h1 className="text-2xl font-bold">객실 관리</h1>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
@@ -147,11 +147,11 @@ export default function RoomsPage() {
         </Dialog>
       </div>
 
-      <Card>
-        <CardHeader>
+      <Card className="flex-1 min-h-0 flex flex-col">
+        <CardHeader className="shrink-0">
           <CardTitle>객실 목록</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex-1 min-h-0 overflow-y-auto">
           <Table>
             <TableHeader>
               <TableRow>

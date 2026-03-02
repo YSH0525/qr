@@ -97,13 +97,13 @@ export default function OrdersPage() {
   };
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">주문 내역</h1>
-      <Card>
-        <CardHeader>
+    <div className="p-6 h-full flex flex-col overflow-hidden">
+      <h1 className="text-2xl font-bold mb-6 shrink-0">주문 내역</h1>
+      <Card className="flex-1 min-h-0 flex flex-col">
+        <CardHeader className="shrink-0">
           <CardTitle>전체 주문 목록</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex-1 min-h-0 overflow-y-auto">
           <Table>
             <TableHeader>
               <TableRow>

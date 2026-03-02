@@ -29,7 +29,7 @@ export function AdminSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-64 bg-gray-900 text-white min-h-screen flex flex-col print:hidden">
+    <aside className="w-64 bg-gray-900 text-white h-full shrink-0 flex flex-col overflow-y-auto print:hidden">
       <div className="p-6 border-b border-gray-700">
         <h1 className="text-xl font-bold">Easy Tap</h1>
         <p className="text-sm text-gray-400 mt-1">관리자 시스템</p>
