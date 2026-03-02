@@ -8,7 +8,6 @@ import {
   getDoc,
   query,
   where,
-  orderBy,
 } from "firebase/firestore";
 import { orderEvents } from "@/lib/sse";
 import { format } from "date-fns";
@@ -22,43 +21,54 @@ function generateOrderId(): string {
 }
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const status = searchParams.get("status");
-  const roomId = searchParams.get("roomId");
+  try {
+    const { searchParams } = new URL(req.url);
+    const status = searchParams.get("status");
+    const roomId = searchParams.get("roomId");
 
-  // Build query constraints
-  const constraints: ReturnType<typeof where>[] = [];
-  if (status) {
-    constraints.push(where("status", "==", status));
+    // Build query constraints
+    const constraints: ReturnType<typeof where>[] = [];
+    if (status) {
+      constraints.push(where("status", "==", status));
+    }
+    if (roomId) {
+      constraints.push(where("roomUuid", "==", roomId));
+    }
+
+    const ordersSnap = await getDocs(
+      query(
+        collection(firestore, "orders"),
+        ...constraints
+      )
+    );
+
+    const result = await Promise.all(
+      ordersSnap.docs.map(async (d) => {
+        const order = { id: d.id, ...d.data() };
+        // Get order items subcollection
+        const itemsSnap = await getDocs(
+          collection(firestore, "orders", d.id, "items")
+        );
+        const items = itemsSnap.docs.map((item) => ({
+          id: item.id,
+          ...item.data(),
+        }));
+        return { ...order, items };
+      })
+    );
+
+    // Sort by createdAt descending (newest first)
+    result.sort((a, b) => {
+      const aTime = (a as Record<string, unknown>).createdAt as string;
+      const bTime = (b as Record<string, unknown>).createdAt as string;
+      return bTime > aTime ? 1 : bTime < aTime ? -1 : 0;
+    });
+
+    return NextResponse.json(result);
+  } catch (e) {
+    console.error("Orders fetch error:", e);
+    return NextResponse.json({ error: "주문 목록 조회 실패" }, { status: 500 });
   }
-  if (roomId) {
-    constraints.push(where("roomUuid", "==", roomId));
-  }
-
-  const ordersSnap = await getDocs(
-    query(
-      collection(firestore, "orders"),
-      ...constraints,
-      orderBy("createdAt", "desc")
-    )
-  );
-
-  const result = await Promise.all(
-    ordersSnap.docs.map(async (d) => {
-      const order = { id: d.id, ...d.data() };
-      // Get order items subcollection
-      const itemsSnap = await getDocs(
-        collection(firestore, "orders", d.id, "items")
-      );
-      const items = itemsSnap.docs.map((item) => ({
-        id: item.id,
-        ...item.data(),
-      }));
-      return { ...order, items };
-    })
-  );
-
-  return NextResponse.json(result);
 }
 
 export async function POST(req: NextRequest) {
