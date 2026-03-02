@@ -30,8 +30,13 @@ function ConfirmContent({ roomId }: { roomId: string }) {
             {requestId && (
               <p className="text-xs text-gray-400 font-mono">{requestId}</p>
             )}
+            <Link href={`/room/${roomId}/orders`}>
+              <Button className="w-full mt-4">주문현황 보기</Button>
+            </Link>
             <Link href={`/room/${roomId}`}>
-              <Button className="w-full mt-4">서비스 홈으로</Button>
+              <Button variant="outline" className="w-full mt-2">
+                서비스 홈으로
+              </Button>
             </Link>
           </CardContent>
         </Card>

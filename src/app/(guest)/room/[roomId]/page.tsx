@@ -8,6 +8,7 @@ import {
   Clock,
   Package,
   UtensilsCrossed,
+  ClipboardList,
 } from "lucide-react";
 import type { ServiceCategory } from "@/types/service";
 
@@ -139,6 +140,20 @@ export default function EasyTapHub({
             </div>
           </button>
         </div>
+
+        {/* 주문현황 */}
+        <button
+          onClick={() => router.push(`/room/${roomId}/orders`)}
+          className="w-full mt-6 bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-4 shadow-sm hover:shadow-md hover:scale-[1.01] active:scale-[0.98] transition-all duration-200"
+        >
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center shadow-sm">
+            <ClipboardList className="w-6 h-6 text-white" />
+          </div>
+          <div className="text-left">
+            <p className="font-semibold text-gray-900">주문현황</p>
+            <p className="text-xs text-gray-400">주문 및 서비스 요청 상태 확인</p>
+          </div>
+        </button>
 
         {/* Footer */}
         <div className="text-center mt-10">

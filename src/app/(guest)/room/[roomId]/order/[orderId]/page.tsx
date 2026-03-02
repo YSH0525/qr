@@ -89,10 +89,13 @@ export default function OrderConfirmPage({
           </CardContent>
         </Card>
 
-        <div className="mt-6">
+        <div className="mt-6 space-y-2">
+          <Link href={`/room/${roomId}/orders`}>
+            <Button className="w-full">주문현황 보기</Button>
+          </Link>
           <Link href={`/room/${roomId}`}>
             <Button variant="outline" className="w-full">
-              메뉴로 돌아가기
+              홈으로 돌아가기
             </Button>
           </Link>
         </div>
