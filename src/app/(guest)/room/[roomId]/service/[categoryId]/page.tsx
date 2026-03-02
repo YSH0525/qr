@@ -208,7 +208,7 @@ export default function ServiceRequestPage({
               {isFreeExtension ? (
                 <div className="mt-3 bg-green-50 rounded-lg p-3 text-center">
                   <p className="text-sm text-green-700 font-medium">
-                    리뷰작성 후 퇴실시 프런트에 확인
+                    리뷰작성 후 퇴실시 프런트에 확인 (일~목만 해당)
                   </p>
                 </div>
               ) : category.hourlyRate ? (
