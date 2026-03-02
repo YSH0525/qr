@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { storage } from "@/lib/firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -482,19 +484,14 @@ function MenuForm({
     if (!file) return;
 
     setUploading(true);
-    const formData = new FormData();
-    formData.append("file", file);
-
     try {
-      const res = await fetch("/api/menu/upload", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (data.url) {
-        setImageUrl(data.url);
-        toast.success("이미지 업로드 완료");
-      }
+      const ext = file.name.split(".").pop() || "jpg";
+      const fileName = `menu-images/${Date.now()}.${ext}`;
+      const storageRef = ref(storage, fileName);
+      await uploadBytes(storageRef, file, { contentType: file.type });
+      const url = await getDownloadURL(storageRef);
+      setImageUrl(url);
+      toast.success("이미지 업로드 완료");
     } catch {
       toast.error("이미지 업로드 실패");
     } finally {
