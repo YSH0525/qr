@@ -66,6 +66,15 @@ export const serviceItemSchema = z.object({
   displayOrder: z.number().int().optional(),
 });
 
+export const cleaningOptionsSchema = z.object({
+  serviceLevel: z.enum(["full", "light", "dnd"]),
+  preferredTime: z.enum(["morning", "afternoon", "anytime"]),
+  linenChange: z.boolean(),
+  contactlessSupplies: z.array(z.enum(["towel", "water", "amenity"])),
+  leaveAtDoor: z.boolean(),
+  trashRemovalOnly: z.boolean(),
+});
+
 export const serviceRequestSchema = z.object({
   roomId: z.string().min(1),
   categoryId: z.string().min(1),
@@ -80,6 +89,7 @@ export const serviceRequestSchema = z.object({
     )
     .optional(),
   extensionHours: z.number().int().min(1).max(6).optional(),
+  cleaningOptions: cleaningOptionsSchema.optional(),
 });
 
 export const serviceRequestStatusSchema = z.object({

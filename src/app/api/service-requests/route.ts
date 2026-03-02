@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { roomId: roomUuid, categoryId, note, items, extensionHours, freeExtension } = body;
+    const { roomId: roomUuid, categoryId, note, items, extensionHours, freeExtension, cleaningOptions } = body;
 
     // Find room
     const roomSnap = await getDocs(
@@ -94,6 +94,7 @@ export async function POST(req: NextRequest) {
       status: "requested",
       note: note || null,
       items: items || [],
+      cleaningOptions: catData.type === "cleaning" && cleaningOptions ? cleaningOptions : null,
       extensionHours: extensionHours || null,
       extensionAmount,
       freeExtension: freeExtension || false,

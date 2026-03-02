@@ -22,6 +22,11 @@ import {
 import type { OrderWithItems } from "@/types";
 import type { ServiceRequest } from "@/types/service";
 import {
+  CLEANING_LEVEL_LABELS,
+  PREFERRED_TIME_LABELS,
+  SUPPLY_ITEM_LABELS,
+} from "@/types/service";
+import {
   ORDER_STATUS_LABELS,
   PAYMENT_METHOD_LABELS,
   SERVICE_TYPE_LABELS,
@@ -889,6 +894,47 @@ function ServiceCard({
                 ({request.extensionAmount.toLocaleString()}원 후불)
               </span>
             ) : null}
+          </div>
+        )}
+
+        {/* 청소 옵션 상세 */}
+        {request.type === "cleaning" && request.cleaningOptions && (
+          <div className="space-y-1 text-sm">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge
+                variant={
+                  request.cleaningOptions.serviceLevel === "dnd"
+                    ? "destructive"
+                    : request.cleaningOptions.serviceLevel === "full"
+                    ? "default"
+                    : "secondary"
+                }
+              >
+                {CLEANING_LEVEL_LABELS[request.cleaningOptions.serviceLevel]}
+              </Badge>
+              {request.cleaningOptions.preferredTime &&
+                request.cleaningOptions.serviceLevel !== "dnd" && (
+                  <span className="text-xs text-gray-500">
+                    {PREFERRED_TIME_LABELS[request.cleaningOptions.preferredTime]}
+                  </span>
+                )}
+            </div>
+            {!request.cleaningOptions.linenChange &&
+              request.cleaningOptions.serviceLevel !== "dnd" && (
+                <p className="text-xs text-green-600">시트 교체 없이 정리 (Eco)</p>
+              )}
+            {request.cleaningOptions.contactlessSupplies.length > 0 && (
+              <p className="text-xs text-sky-600">
+                비대면 비품:{" "}
+                {request.cleaningOptions.contactlessSupplies
+                  .map((s) => SUPPLY_ITEM_LABELS[s])
+                  .join(", ")}
+                {request.cleaningOptions.leaveAtDoor && " (문 앞)"}
+              </p>
+            )}
+            {request.cleaningOptions.trashRemovalOnly && (
+              <p className="text-xs text-orange-600">쓰레기 수거만 요청</p>
+            )}
           </div>
         )}
 

@@ -17,7 +17,13 @@ import { useNotificationSound } from "@/hooks/use-audio";
 import { useBrowserNotification } from "@/hooks/use-notification";
 import { toast } from "sonner";
 import type { ServiceRequest } from "@/types/service";
-import { SERVICE_TYPE_LABELS, SERVICE_STATUS_LABELS } from "@/types/service";
+import {
+  SERVICE_TYPE_LABELS,
+  SERVICE_STATUS_LABELS,
+  CLEANING_LEVEL_LABELS,
+  PREFERRED_TIME_LABELS,
+  SUPPLY_ITEM_LABELS,
+} from "@/types/service";
 
 const STATUS_COLORS: Record<string, string> = {
   requested: "bg-orange-100 text-orange-700",
@@ -144,13 +150,45 @@ export default function ServicesPage() {
                     {req.type === "checkout_extension" && req.extensionHours && (
                       <span className="block">{req.extensionHours}시간 연장{req.freeExtension ? " (무료 - 리뷰)" : req.extensionAmount ? ` (${req.extensionAmount.toLocaleString()}원)` : ""}</span>
                     )}
+                    {req.type === "cleaning" && req.cleaningOptions && (
+                      <>
+                        <span className="block font-medium">
+                          {CLEANING_LEVEL_LABELS[req.cleaningOptions.serviceLevel]}
+                        </span>
+                        {req.cleaningOptions.preferredTime &&
+                          req.cleaningOptions.serviceLevel !== "dnd" && (
+                            <span className="block text-xs">
+                              {PREFERRED_TIME_LABELS[req.cleaningOptions.preferredTime]}
+                            </span>
+                          )}
+                        {!req.cleaningOptions.linenChange &&
+                          req.cleaningOptions.serviceLevel !== "dnd" && (
+                            <span className="block text-xs text-green-600">
+                              시트 교체 없음 (Eco)
+                            </span>
+                          )}
+                        {req.cleaningOptions.contactlessSupplies.length > 0 && (
+                          <span className="block text-xs truncate">
+                            비품: {req.cleaningOptions.contactlessSupplies
+                              .map((s) => SUPPLY_ITEM_LABELS[s])
+                              .join(", ")}
+                            {req.cleaningOptions.leaveAtDoor && " (문 앞)"}
+                          </span>
+                        )}
+                        {req.cleaningOptions.trashRemovalOnly && (
+                          <span className="block text-xs text-orange-500">
+                            쓰레기 수거만
+                          </span>
+                        )}
+                      </>
+                    )}
                     {req.items && req.items.length > 0 && (
                       <span className="block truncate">{req.items.map((i) => `${i.name} x${i.quantity}`).join(", ")}</span>
                     )}
                     {req.note && (
                       <span className="block text-orange-500 truncate">{req.note}</span>
                     )}
-                    {!req.items?.length && !req.extensionHours && !req.note && "-"}
+                    {!req.items?.length && !req.extensionHours && !req.cleaningOptions && !req.note && "-"}
                   </TableCell>
                   <TableCell>
                     <span
