@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { firestore } from "@/lib/firebase";
-import { doc, updateDoc, getDoc, deleteDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, deleteDoc } from "firebase/firestore";
 
 export async function PUT(
   req: NextRequest,
@@ -20,13 +20,16 @@ export async function PUT(
     if (body.categoryId !== undefined) updateData.categoryId = body.categoryId;
     if (body.displayOrder !== undefined) updateData.displayOrder = body.displayOrder;
 
-    await updateDoc(ref, updateData);
+    await setDoc(ref, updateData, { merge: true });
 
     const updated = await getDoc(ref);
     return NextResponse.json({ id: updated.id, ...updated.data() });
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : "메뉴 수정 실패";
-    return NextResponse.json({ error: message }, { status: 500 });
+    const message = e instanceof Error ? e.message : String(e);
+    return NextResponse.json(
+      { error: `메뉴 수정 실패: ${message}` },
+      { status: 500 }
+    );
   }
 }
 

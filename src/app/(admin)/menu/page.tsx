@@ -191,6 +191,7 @@ export default function MenuPage() {
                 </DialogTitle>
               </DialogHeader>
               <MenuForm
+                key={editItem?.id || "new"}
                 categories={categories}
                 item={editItem}
                 onSave={() => {
@@ -511,25 +512,29 @@ function MenuForm({
       name,
       price: parseInt(price),
       categoryId,
-      description: description || undefined,
-      imageUrl: imageUrl || undefined,
+      description: description || null,
+      imageUrl: imageUrl || null,
       isAvailable,
     };
 
     const url = item ? `/api/menu/${item.id}` : "/api/menu";
     const method = item ? "PUT" : "POST";
 
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
 
-    if (res.ok) {
-      onSave();
-    } else {
-      const data = await res.json();
-      toast.error(data.error || "저장에 실패했습니다");
+      if (res.ok) {
+        onSave();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "저장에 실패했습니다");
+      }
+    } catch (err) {
+      toast.error(`요청 실패: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
