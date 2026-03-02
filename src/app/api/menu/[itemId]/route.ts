@@ -6,10 +6,10 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ itemId: string }> }
 ) {
-  const { itemId } = await params;
-  const body = await req.json();
-
   try {
+    const { itemId } = await params;
+    const body = await req.json();
+
     const ref = doc(firestore, "menuItems", itemId);
     const updateData: Record<string, unknown> = {};
     if (body.name !== undefined) updateData.name = body.name;
@@ -24,8 +24,9 @@ export async function PUT(
 
     const updated = await getDoc(ref);
     return NextResponse.json({ id: updated.id, ...updated.data() });
-  } catch {
-    return NextResponse.json({ error: "메뉴 수정 실패" }, { status: 500 });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "메뉴 수정 실패";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 

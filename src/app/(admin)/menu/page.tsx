@@ -607,8 +607,8 @@ function MenuForm({
           판매 가능
         </label>
       </div>
-      <Button type="submit" className="w-full" disabled={categories.length === 0}>
-        {item ? "수정" : "추가"}
+      <Button type="submit" className="w-full" disabled={categories.length === 0 || uploading}>
+        {uploading ? "이미지 업로드 중..." : item ? "수정" : "추가"}
       </Button>
     </form>
   );
