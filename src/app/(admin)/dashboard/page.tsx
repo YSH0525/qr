@@ -361,15 +361,15 @@ export default function DashboardPage() {
 
   const pendingServices = serviceRequests.filter((r) => r.status === "requested");
   const acceptedServices = serviceRequests.filter((r) => r.status === "accepted");
-  const completedServices = serviceRequests.filter((r) => r.status === "completed").slice(0, 20);
+  const allCompletedServices = serviceRequests.filter((r) => r.status === "completed");
+  const completedServices = allCompletedServices.slice(0, 20);
 
   const pendingOrders = orders.filter((o) => o.status === "pending");
   const preparingOrders = orders.filter(
     (o) => o.status === "accepted" || o.status === "preparing"
   );
-  const completedOrders = orders
-    .filter((o) => o.status === "completed")
-    .slice(0, 20);
+  const allCompletedOrders = orders.filter((o) => o.status === "completed");
+  const completedOrders = allCompletedOrders.slice(0, 20);
 
   return (
     <div className="p-6 h-screen flex flex-col overflow-hidden">
@@ -516,7 +516,7 @@ export default function DashboardPage() {
             <div className="flex items-center gap-2 px-5">
               <span className="w-2.5 h-2.5 rounded-full bg-green-400" />
               <span className="text-sm text-gray-500">완료</span>
-              <span className="text-lg font-bold text-green-500">{completedOrders.length}</span>
+              <span className="text-lg font-bold text-green-500">{allCompletedOrders.length}</span>
             </div>
             <div className="border-l h-5" />
             <div className={`flex items-center gap-2 pl-5 ${deferredPayments.length > 0 ? "" : "opacity-40"}`}>
@@ -648,12 +648,17 @@ export default function DashboardPage() {
 
             {/* Completed */}
             <div className="flex flex-col min-h-0">
-              <h2 className="text-lg font-semibold mb-3 text-green-600 shrink-0">완료</h2>
+              <h2 className="text-lg font-semibold mb-3 text-green-600 shrink-0">
+                완료
+                {allCompletedOrders.length > 20 && (
+                  <span className="text-xs font-normal text-gray-400 ml-2">최근 20건</span>
+                )}
+              </h2>
               <div className="space-y-3 overflow-y-auto flex-1 pr-1">
                 {completedOrders.map((order) => (
                   <OrderCard key={order.orderId} order={order} />
                 ))}
-                {completedOrders.length === 0 && (
+                {allCompletedOrders.length === 0 && (
                   <p className="text-gray-400 text-sm text-center py-8">
                     완료된 주문이 없습니다
                   </p>
@@ -684,7 +689,7 @@ export default function DashboardPage() {
             <div className="flex items-center gap-2 pl-5">
               <span className="w-2.5 h-2.5 rounded-full bg-green-400" />
               <span className="text-sm text-gray-500">완료</span>
-              <span className="text-lg font-bold text-green-500">{completedServices.length}</span>
+              <span className="text-lg font-bold text-green-500">{allCompletedServices.length}</span>
             </div>
           </div>
 
@@ -748,12 +753,17 @@ export default function DashboardPage() {
 
             {/* 완료 */}
             <div className="flex flex-col min-h-0">
-              <h2 className="text-lg font-semibold mb-3 text-green-600 shrink-0">완료</h2>
+              <h2 className="text-lg font-semibold mb-3 text-green-600 shrink-0">
+                완료
+                {allCompletedServices.length > 20 && (
+                  <span className="text-xs font-normal text-gray-400 ml-2">최근 20건</span>
+                )}
+              </h2>
               <div className="space-y-3 overflow-y-auto flex-1 pr-1">
                 {completedServices.map((req) => (
                   <ServiceCard key={req.id} request={req} />
                 ))}
-                {completedServices.length === 0 && (
+                {allCompletedServices.length === 0 && (
                   <p className="text-gray-400 text-sm text-center py-8">
                     완료된 요청이 없습니다
                   </p>
