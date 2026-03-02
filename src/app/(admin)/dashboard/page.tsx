@@ -32,6 +32,10 @@ import {
   SERVICE_TYPE_LABELS,
   SERVICE_STATUS_LABELS,
 } from "@/types";
+import {
+  SettlementModal,
+  type SettlementPreviewData,
+} from "@/components/admin/settlement-modal";
 
 interface DeferredPayment {
   room: {
@@ -69,6 +73,8 @@ export default function DashboardPage() {
   const [todaySummary, setTodaySummary] = useState<TodaySummary | null>(null);
   const [activeTab, setActiveTab] = useState<"orders" | "services">("orders");
   const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>([]);
+  const [settlementPreview, setSettlementPreview] = useState<SettlementPreviewData | null>(null);
+  const [settlementModalOpen, setSettlementModalOpen] = useState(false);
   const { playNewOrderAlert, playAcceptSound, playCompleteSound, playServiceRequestAlert, speak } =
     useNotificationSound();
   const { notify } = useBrowserNotification();
@@ -268,24 +274,32 @@ export default function DashboardPage() {
     }
   };
 
-  const handleSettle = async (roomId: string, roomNumber: string) => {
-    if (!confirm(`${roomNumber}호의 후불결제를 모두 정산하시겠습니까?`)) return;
+  const handleSettle = async (roomId: string, _roomNumber: string) => {
+    const res = await fetch(`/api/payments/deferred/${roomId}/preview`);
+    if (res.ok) {
+      const data: SettlementPreviewData = await res.json();
+      setSettlementPreview(data);
+      setSettlementModalOpen(true);
+    } else {
+      toast.error("정산 내역 조회 실패");
+    }
+  };
 
-    const res = await fetch(`/api/payments/deferred/${roomId}/settle`, {
-      method: "POST",
-    });
+  const handleSettleConfirm = async () => {
+    if (!settlementPreview) return;
+
+    const res = await fetch(
+      `/api/payments/deferred/${settlementPreview.roomId}/settle`,
+      { method: "POST" }
+    );
 
     if (res.ok) {
       const data = await res.json();
       toast.success(
-        `${roomNumber}호 정산 완료: ${data.settled}건, ${data.totalAmount.toLocaleString()}원`
+        `${settlementPreview.roomNumber}호 정산 완료: ${data.settled}건, ${data.totalAmount.toLocaleString()}원`
       );
       fetchDeferred();
       fetchTodaySummary();
-
-      // 정산내역서 새 탭으로 열기
-      sessionStorage.setItem("settlementReceipt", JSON.stringify(data));
-      window.open("/settlement/receipt", "_blank");
     } else {
       toast.error("정산 처리 실패");
     }
@@ -733,6 +747,15 @@ export default function DashboardPage() {
           </div>
         </>
       )}
+      <SettlementModal
+        open={settlementModalOpen}
+        onClose={() => {
+          setSettlementModalOpen(false);
+          setSettlementPreview(null);
+        }}
+        preview={settlementPreview}
+        onConfirm={handleSettleConfirm}
+      />
     </div>
   );
 }
