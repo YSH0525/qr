@@ -127,6 +127,20 @@ export default function DashboardPage() {
     fetchDeferred();
     fetchTodaySummary();
     fetchServiceRequests();
+
+    // SSE가 동작하지 않을 경우를 대비한 폴링 백업 (5초)
+    const poll = setInterval(() => {
+      fetchOrders();
+      fetchDeferred();
+      fetchServiceRequests();
+    }, 5000);
+    // 매출 요약은 30초마다 (비용이 큰 쿼리)
+    const summaryPoll = setInterval(fetchTodaySummary, 30000);
+
+    return () => {
+      clearInterval(poll);
+      clearInterval(summaryPoll);
+    };
   }, [fetchOrders, fetchDeferred, fetchTodaySummary, fetchServiceRequests]);
 
   // SSE 재연결 시 전체 데이터 동기화
