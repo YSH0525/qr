@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useCartStore } from "@/stores/cart-store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, CreditCard, Clock, Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
@@ -20,7 +19,6 @@ export default function CartPage({
   const router = useRouter();
   const { items, totalAmount, clearCart, updateQuantity, removeItem } = useCartStore();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
-  const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
 
   const formatPrice = (price: number) => price.toLocaleString("ko-KR");
@@ -54,7 +52,6 @@ export default function CartPage({
             quantity: i.quantity,
           })),
           paymentMethod,
-          note: note || undefined,
         }),
       });
 
@@ -197,18 +194,6 @@ export default function CartPage({
             {formatPrice(totalAmount())}원
           </span>
         </div>
-
-        {/* Note */}
-        <Card>
-          <CardContent className="p-5">
-            <h2 className="font-semibold mb-2">요청사항</h2>
-            <Input
-              placeholder="요청사항이 있으시면 입력해주세요 (선택)"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-            />
-          </CardContent>
-        </Card>
 
         {/* Payment Method */}
         <Card>

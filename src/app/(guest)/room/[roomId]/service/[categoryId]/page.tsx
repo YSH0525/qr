@@ -4,7 +4,6 @@ import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft,
@@ -69,7 +68,6 @@ export default function ServiceRequestPage({
   const [room, setRoom] = useState<Room | null>(null);
   const [category, setCategory] = useState<ServiceCategory | null>(null);
   const [serviceItems, setServiceItems] = useState<ServiceItem[]>([]);
-  const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
 
   // checkout_extension
@@ -146,7 +144,6 @@ export default function ServiceRequestPage({
       const body: Record<string, unknown> = {
         roomId,
         categoryId,
-        note: note || undefined,
       };
 
       if (category.type === "checkout_extension") {
@@ -631,17 +628,6 @@ export default function ServiceRequestPage({
           </Card>
         )}
 
-        {/* 메모 */}
-        <Card>
-          <CardContent className="p-5">
-            <h2 className="font-semibold mb-2">요청사항</h2>
-            <Input
-              placeholder="추가 요청사항이 있으면 입력해주세요 (선택)"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-            />
-          </CardContent>
-        </Card>
       </div>
 
       {/* Submit Button */}
