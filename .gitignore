@@ -53,3 +53,8 @@ next-env.d.ts
 # uploaded images
 public/uploads/*
 !public/uploads/.gitkeep
+
+# PWA service worker (build output)
+public/sw.js
+public/sw.js.map
+public/swe-worker-*.js

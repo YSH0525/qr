@@ -122,5 +122,28 @@
   }
   body {
     @apply bg-background text-foreground;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right)
+             env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+}
+
+/* 태블릿 PWA 터치 최적화 */
+html {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* 스탠드얼론 모드 (홈 화면에서 실행 시) */
+@media (display-mode: standalone) {
+  body {
+    overscroll-behavior: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* 입력 필드에서는 텍스트 선택 허용 */
+  input, textarea, [contenteditable] {
+    -webkit-user-select: text;
+    user-select: text;
   }
 }
