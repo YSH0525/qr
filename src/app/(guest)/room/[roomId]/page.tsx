@@ -90,7 +90,7 @@ export default function EasyTapHub({
             <h1 className="text-2xl font-bold text-white tracking-wide">Easy Tap</h1>
             <p className="text-sm text-emerald-100 mt-1">간편하게 탭하세요</p>
           </div>
-          <Badge variant="secondary" className="mt-4 text-sm px-4 py-1">
+          <Badge className="mt-4 text-sm px-4 py-1 bg-gray-900 text-white hover:bg-gray-900">
             {room.roomNumber}호
           </Badge>
         </div>
