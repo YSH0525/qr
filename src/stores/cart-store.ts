@@ -60,7 +60,13 @@ export const useCartStore = create<CartStore>()(
 
       clearCart: () => set({ items: [] }),
 
-      setRoomId: (roomId) => set({ roomId }),
+      setRoomId: (roomId) =>
+        set((state) => {
+          if (state.roomId && state.roomId !== roomId) {
+            return { roomId, items: [] };
+          }
+          return { roomId };
+        }),
 
       totalAmount: () =>
         get().items.reduce((sum, item) => sum + item.price * item.quantity, 0),
