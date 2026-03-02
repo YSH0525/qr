@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { storage } from "@/lib/firebase";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { adminStorage } from "@/lib/firebase-admin";
 import { v4 as uuidv4 } from "uuid";
 
 export async function POST(req: NextRequest) {
@@ -13,21 +12,28 @@ export async function POST(req: NextRequest) {
     }
 
     const bytes = await file.arrayBuffer();
-    const buffer = new Uint8Array(bytes);
+    const buffer = Buffer.from(bytes);
 
     const ext = file.name.split(".").pop() || "jpg";
     const fileName = `menu-images/${uuidv4()}.${ext}`;
-    const storageRef = ref(storage, fileName);
 
-    await uploadBytes(storageRef, buffer, {
-      contentType: file.type,
+    const bucket = adminStorage.bucket();
+    const fileRef = bucket.file(fileName);
+
+    await fileRef.save(buffer, {
+      metadata: {
+        contentType: file.type,
+      },
     });
 
-    const url = await getDownloadURL(storageRef);
+    await fileRef.makePublic();
+
+    const url = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
 
     return NextResponse.json({ url });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "파일 업로드 실패";
+    console.error("Image upload error:", e);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
