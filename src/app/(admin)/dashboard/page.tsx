@@ -214,32 +214,42 @@ export default function DashboardPage() {
     handleSSEReconnect
   );
 
+  const clearAnim = (orderId: string) => {
+    setAnimatingCards((prev) => {
+      const next = new Set(prev);
+      next.delete(orderId);
+      return next;
+    });
+  };
+
   const handleAccept = async (order: OrderWithItems) => {
-    // 카드 애니메이션 시작
     setAnimatingCards((prev) => new Set(prev).add(order.orderId));
     playAcceptSound();
 
-    const res = await fetch(`/api/orders/${order.orderId}/status`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "accepted" }),
-    });
-
-    if (res.ok) {
-      toast(`${order.roomNumber}호 주문 접수!`, {
-        description: "처리를 시작합니다",
-        icon: <CheckCircle className="text-green-500" />,
+    try {
+      const res = await fetch(`/api/orders/${order.orderId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "accepted" }),
       });
 
-      // 애니메이션 후 데이터 갱신
-      setTimeout(() => {
-        fetchOrders();
-        setAnimatingCards((prev) => {
-          const next = new Set(prev);
-          next.delete(order.orderId);
-          return next;
+      if (res.ok) {
+        toast(`${order.roomNumber}호 주문 접수!`, {
+          description: "처리를 시작합니다",
+          icon: <CheckCircle className="text-green-500" />,
         });
-      }, 400);
+        setTimeout(() => {
+          fetchOrders();
+          clearAnim(order.orderId);
+        }, 400);
+      } else {
+        toast.error("주문 접수에 실패했습니다");
+        clearAnim(order.orderId);
+        fetchOrders();
+      }
+    } catch {
+      toast.error("네트워크 오류가 발생했습니다");
+      clearAnim(order.orderId);
     }
   };
 
@@ -265,26 +275,30 @@ export default function DashboardPage() {
       scalar: 0.9,
     });
 
-    const res = await fetch(`/api/orders/${order.orderId}/status`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "completed" }),
-    });
-
-    if (res.ok) {
-      toast(`${order.roomNumber}호 주문 완료!`, {
-        description: "고객에게 전달해주세요",
-        icon: <span className="text-xl">🎉</span>,
+    try {
+      const res = await fetch(`/api/orders/${order.orderId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "completed" }),
       });
 
-      setTimeout(() => {
-        fetchOrders();
-        setAnimatingCards((prev) => {
-          const next = new Set(prev);
-          next.delete(order.orderId);
-          return next;
+      if (res.ok) {
+        toast(`${order.roomNumber}호 주문 완료!`, {
+          description: "고객에게 전달해주세요",
+          icon: <span className="text-xl">🎉</span>,
         });
-      }, 500);
+        setTimeout(() => {
+          fetchOrders();
+          clearAnim(order.orderId);
+        }, 500);
+      } else {
+        toast.error("주문 완료 처리에 실패했습니다");
+        clearAnim(order.orderId);
+        fetchOrders();
+      }
+    } catch {
+      toast.error("네트워크 오류가 발생했습니다");
+      clearAnim(order.orderId);
     }
   };
 
@@ -320,14 +334,20 @@ export default function DashboardPage() {
   };
 
   const handleReject = async (orderId: string) => {
-    const res = await fetch(`/api/orders/${orderId}/status`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "rejected" }),
-    });
-    if (res.ok) {
-      fetchOrders();
-      toast.error("주문이 거절되었습니다");
+    try {
+      const res = await fetch(`/api/orders/${orderId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "rejected" }),
+      });
+      if (res.ok) {
+        fetchOrders();
+        toast.error("주문이 거절되었습니다");
+      } else {
+        toast.error("주문 거절에 실패했습니다");
+      }
+    } catch {
+      toast.error("네트워크 오류가 발생했습니다");
     }
   };
 
