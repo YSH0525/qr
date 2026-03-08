@@ -9,7 +9,10 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, Printer } from "lucide-react";
+import { Loader2, Printer, Bluetooth } from "lucide-react";
+import { useBluetoothPrinterContext } from "./bluetooth-printer-provider";
+import { buildSettlementReceipt } from "@/lib/escpos";
+import { toast } from "sonner";
 
 interface SettlementItem {
   menuItemName: string;
@@ -58,6 +61,7 @@ export function SettlementModal({
 }: SettlementModalProps) {
   const [settling, setSettling] = useState(false);
   const [settled, setSettled] = useState(false);
+  const printer = useBluetoothPrinterContext();
 
   const formatPrice = (n: number) => n.toLocaleString("ko-KR") + "원";
   const formatDate = (iso: string) => {
@@ -90,6 +94,32 @@ export function SettlementModal({
       extensions: preview.extensions,
     }));
     window.open("/settlement/receipt", "_blank");
+  };
+
+  const handleBluetoothPrint = async () => {
+    if (!preview) return;
+
+    // 프린터 미연결 시 연결 시도
+    if (!printer.isConnected) {
+      const connected = await printer.connect();
+      if (!connected) return;
+    }
+
+    const receiptData = buildSettlementReceipt({
+      settled: preview.orderCount,
+      totalAmount: preview.totalAmount,
+      roomNumber: preview.roomNumber,
+      settledAt: new Date().toISOString(),
+      orders: preview.orders,
+      extensions: preview.extensions,
+    });
+
+    const success = await printer.print(receiptData);
+    if (success) {
+      toast.success("영수증이 출력되었습니다.");
+    } else {
+      toast.error(printer.error || "영수증 출력에 실패했습니다.");
+    }
   };
 
   const handleClose = () => {
@@ -181,8 +211,26 @@ export function SettlementModal({
             <>
               <Button variant="outline" onClick={handlePrint}>
                 <Printer className="w-4 h-4 mr-2" />
-                영수증 인쇄
+                브라우저 인쇄
               </Button>
+              {printer.isSupported && (
+                <Button
+                  variant="outline"
+                  onClick={handleBluetoothPrint}
+                  disabled={printer.isPrinting}
+                >
+                  {printer.isPrinting ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Bluetooth className="w-4 h-4 mr-2" />
+                  )}
+                  {printer.isPrinting
+                    ? "인쇄 중..."
+                    : printer.isConnected
+                      ? "블루투스 인쇄"
+                      : "프린터 연결 후 인쇄"}
+                </Button>
+              )}
               <Button onClick={handleClose}>닫기</Button>
             </>
           ) : (
