@@ -1,8 +1,14 @@
 const KAKAOPAY_BASE_URL = "https://open-api.kakaopay.com/online/v1/payment";
 
 function getHeaders() {
+  const secretKey = process.env.KAKAOPAY_SECRET_KEY;
+  if (!secretKey) {
+    throw new Error(
+      "KAKAOPAY_SECRET_KEY 환경변수가 설정되지 않았습니다. .env.local 파일에 설정해주세요."
+    );
+  }
   return {
-    Authorization: `SECRET_KEY ${process.env.KAKAOPAY_SECRET_KEY}`,
+    Authorization: `SECRET_KEY ${secretKey}`,
     "Content-Type": "application/json",
   };
 }

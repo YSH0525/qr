@@ -84,7 +84,10 @@ export default function CartPage({
             : payData.redirectPcUrl;
           return;
         } else {
-          toast.error("카카오페이 결제 준비 중 오류가 발생했습니다");
+          const payError = await payRes.json().catch(() => null);
+          toast.error(
+            payError?.error || "카카오페이 결제 준비 중 오류가 발생했습니다"
+          );
           setLoading(false);
           return;
         }
