@@ -159,9 +159,9 @@ export default function ServiceSettingsPage() {
   };
 
   return (
-    <div className="p-6 h-full flex flex-col overflow-hidden">
-      <div className="flex items-center justify-between mb-6 shrink-0">
-        <h1 className="text-2xl font-bold">서비스 설정</h1>
+    <div className="p-3 md:p-6 h-full flex flex-col overflow-hidden">
+      <div className="flex items-center justify-between mb-4 md:mb-6 shrink-0 flex-wrap gap-2">
+        <h1 className="text-xl md:text-2xl font-bold">서비스 설정</h1>
         <Dialog open={catOpen} onOpenChange={setCatOpen}>
           <DialogTrigger asChild>
             <Button>

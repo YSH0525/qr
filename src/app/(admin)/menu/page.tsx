@@ -169,9 +169,9 @@ export default function MenuPage() {
   };
 
   return (
-    <div className="p-6 h-full flex flex-col overflow-hidden">
-      <div className="flex items-center justify-between mb-6 shrink-0">
-        <h1 className="text-2xl font-bold">메뉴 관리</h1>
+    <div className="p-3 md:p-6 h-full flex flex-col overflow-hidden">
+      <div className="flex items-center justify-between mb-4 md:mb-6 shrink-0 flex-wrap gap-2">
+        <h1 className="text-xl md:text-2xl font-bold">메뉴 관리</h1>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setCatManagerOpen(true)}>
             <Settings className="w-4 h-4 mr-2" />

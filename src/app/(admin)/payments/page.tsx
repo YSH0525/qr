@@ -83,21 +83,21 @@ export default function PaymentsPage() {
   const totalAll = payments.reduce((sum, p) => sum + p.totalDeferred, 0);
 
   return (
-    <div className="p-6 h-full flex flex-col overflow-hidden">
-      <h1 className="text-2xl font-bold mb-6 shrink-0">후불결제 정산</h1>
+    <div className="p-3 md:p-6 h-full flex flex-col overflow-hidden">
+      <h1 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 shrink-0">후불결제 정산</h1>
 
-      <Card className="mb-6 shrink-0">
-        <CardContent className="p-6">
+      <Card className="mb-4 md:mb-6 shrink-0">
+        <CardContent className="p-4 md:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500">총 미정산 금액</p>
-              <p className="text-3xl font-bold text-red-600">
+              <p className="text-xs md:text-sm text-gray-500">총 미정산 금액</p>
+              <p className="text-2xl md:text-3xl font-bold text-red-600">
                 {formatPrice(totalAll)}
               </p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">미정산 객실</p>
-              <p className="text-3xl font-bold">{payments.length}개</p>
+              <p className="text-xs md:text-sm text-gray-500">미정산 객실</p>
+              <p className="text-2xl md:text-3xl font-bold">{payments.length}개</p>
             </div>
           </div>
         </CardContent>

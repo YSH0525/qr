@@ -97,8 +97,8 @@ export default function OrdersPage() {
   };
 
   return (
-    <div className="p-6 h-full flex flex-col overflow-hidden">
-      <h1 className="text-2xl font-bold mb-6 shrink-0">주문 내역</h1>
+    <div className="p-3 md:p-6 h-full flex flex-col overflow-hidden">
+      <h1 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 shrink-0">주문 내역</h1>
       <Card className="flex-1 min-h-0 flex flex-col">
         <CardHeader className="shrink-0">
           <CardTitle>전체 주문 목록</CardTitle>
@@ -107,14 +107,14 @@ export default function OrdersPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>주문번호</TableHead>
+                <TableHead className="hidden md:table-cell">주문번호</TableHead>
                 <TableHead>객실</TableHead>
                 <TableHead>상품</TableHead>
                 <TableHead>금액</TableHead>
-                <TableHead>결제</TableHead>
+                <TableHead className="hidden md:table-cell">결제</TableHead>
                 <TableHead>상태</TableHead>
-                <TableHead>결제상태</TableHead>
-                <TableHead>주문일시</TableHead>
+                <TableHead className="hidden md:table-cell">결제상태</TableHead>
+                <TableHead className="hidden md:table-cell">주문일시</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -127,19 +127,19 @@ export default function OrdersPage() {
                       : undefined
                   }
                 >
-                  <TableCell className="font-mono text-xs">
+                  <TableCell className="font-mono text-xs hidden md:table-cell">
                     {order.orderId}
                   </TableCell>
                   <TableCell className="font-semibold">
                     {order.roomNumber}호
                   </TableCell>
-                  <TableCell className="text-sm">
+                  <TableCell className="text-sm max-w-[120px] md:max-w-none truncate md:whitespace-normal">
                     {order.items
                       .map((i) => `${i.menuItemName}x${i.quantity}`)
                       .join(", ")}
                   </TableCell>
                   <TableCell>{formatPrice(order.totalAmount)}</TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     {PAYMENT_METHOD_LABELS[order.paymentMethod]}
                   </TableCell>
                   <TableCell>
@@ -147,12 +147,12 @@ export default function OrdersPage() {
                       {ORDER_STATUS_LABELS[order.status]}
                     </Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     <Badge variant={paymentStatusColor(order.paymentStatus)}>
                       {PAYMENT_STATUS_LABELS[order.paymentStatus]}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-xs text-gray-500">
+                  <TableCell className="text-xs text-gray-500 hidden md:table-cell">
                     {format(new Date(order.createdAt), "MM/dd HH:mm", {
                       locale: ko,
                     })}
