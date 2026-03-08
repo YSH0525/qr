@@ -88,6 +88,9 @@ export default function EasyTapHub({
         {/* Header */}
         <div className="text-center mb-8 -mx-5 -mt-6">
           <div className="px-5 pt-10 pb-6 rounded-b-3xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-emerald-700">
+            <p className="text-lg font-light tracking-[0.3em] text-white">더반스테이</p>
+            <p className="text-[10px] tracking-[0.2em] text-emerald-200 uppercase mt-0.5">THE VAN STAY</p>
+            <div className="w-12 h-px bg-white/30 mx-auto my-3" />
             <h1 className="text-2xl font-bold text-white tracking-wide">Easy Tap</h1>
             <p className="text-sm text-emerald-100 mt-1">간편하게 탭하세요</p>
           </div>
@@ -163,7 +166,7 @@ export default function EasyTapHub({
         {/* Footer */}
         <div className="text-center mt-10">
           <p className="text-xs text-black">
-            The Van Stay, Easy Tap
+            더반스테이 · Easy Tap
           </p>
         </div>
       </div>
