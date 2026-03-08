@@ -86,16 +86,14 @@ export default function EasyTapHub({
       <div className="max-w-lg mx-auto px-5 py-6">
         {/* Header */}
         <div className="mb-6 -mx-5 -mt-6">
-          <div className="px-6 pt-8 pb-5 bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950">
-            <div className="flex items-end justify-between">
+          <div className="px-5 pt-8 pb-5 bg-gradient-to-br from-emerald-500 via-emerald-600 to-emerald-700">
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-base font-light tracking-[0.25em] text-white">더반스테이</p>
-                <p className="text-[9px] tracking-[0.15em] text-slate-400 uppercase mt-0.5">THE VAN STAY</p>
+                <p className="text-sm font-light tracking-[0.2em] text-white">더반스테이</p>
+                <p className="text-[8px] tracking-[0.12em] text-emerald-200 uppercase mt-0.5">THE VAN STAY</p>
               </div>
-              <div className="text-right">
-                <h1 className="text-xl font-bold text-amber-300 tracking-wide">Easy Tap</h1>
-                <p className="text-[10px] text-slate-400 mt-0.5">{room.roomNumber}호</p>
-              </div>
+              <h1 className="text-lg font-bold text-white tracking-wide">Easy Tap</h1>
+              <p className="text-sm font-medium text-white/90">{room.roomNumber}호</p>
             </div>
           </div>
         </div>
