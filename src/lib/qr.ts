@@ -1,7 +1,8 @@
 import QRCode from "qrcode";
+import { BASE_URL } from "@/lib/constants";
 
 export async function generateQRCodeDataURL(roomId: string): Promise<string> {
-  const url = `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/room/${roomId}`;
+  const url = `${BASE_URL}/room/${roomId}`;
   return QRCode.toDataURL(url, {
     width: 400,
     margin: 2,
@@ -11,7 +12,7 @@ export async function generateQRCodeDataURL(roomId: string): Promise<string> {
 }
 
 export async function generateQRCodeBuffer(roomId: string): Promise<Buffer> {
-  const url = `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/room/${roomId}`;
+  const url = `${BASE_URL}/room/${roomId}`;
   return QRCode.toBuffer(url, {
     width: 400,
     margin: 2,

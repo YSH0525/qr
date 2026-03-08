@@ -9,6 +9,7 @@ import {
 } from "firebase/firestore";
 import { kakaoPayApprove } from "@/lib/kakaopay";
 import { orderEvents } from "@/lib/sse";
+import { BASE_URL } from "@/lib/constants";
 
 export async function GET(req: NextRequest) {
   try {
@@ -69,10 +70,8 @@ export async function GET(req: NextRequest) {
         paymentStatus: "failed",
         updatedAt: new Date().toISOString(),
       });
-      const baseUrl =
-        process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
       return NextResponse.redirect(
-        `${baseUrl}/room/${order.roomUuid}/payment/fail?orderId=${orderId}`
+        `${BASE_URL}/room/${order.roomUuid}/payment/fail?orderId=${orderId}`
       );
     }
 
@@ -90,15 +89,11 @@ export async function GET(req: NextRequest) {
     });
 
     // Redirect to success page
-    const baseUrl =
-      process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
     return NextResponse.redirect(
-      `${baseUrl}/room/${order.roomUuid}/payment/success?orderId=${orderId}`
+      `${BASE_URL}/room/${order.roomUuid}/payment/success?orderId=${orderId}`
     );
   } catch (e) {
     console.error("KakaoPay approve error:", e);
-    const baseUrl =
-      process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
     const { searchParams } = new URL(req.url);
     const failOrderId = searchParams.get("orderId") || "";
 
@@ -117,13 +112,13 @@ export async function GET(req: NextRequest) {
           updatedAt: new Date().toISOString(),
         });
         return NextResponse.redirect(
-          `${baseUrl}/room/${failOrder.roomUuid}/payment/fail?orderId=${failOrderId}`
+          `${BASE_URL}/room/${failOrder.roomUuid}/payment/fail?orderId=${failOrderId}`
         );
       }
     } catch {
       // Fall through to generic redirect
     }
 
-    return NextResponse.redirect(`${baseUrl}`);
+    return NextResponse.redirect(BASE_URL);
   }
 }
