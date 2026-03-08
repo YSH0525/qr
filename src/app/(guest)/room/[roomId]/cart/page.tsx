@@ -6,7 +6,7 @@ import { useCartStore } from "@/stores/cart-store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, CreditCard, Clock, Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
+import { ArrowLeft, CreditCard, Clock } from "lucide-react";
 import { toast } from "sonner";
 import type { PaymentMethod } from "@/types";
 
@@ -17,7 +17,7 @@ export default function CartPage({
 }) {
   const { roomId } = use(params);
   const router = useRouter();
-  const { items, totalAmount, clearCart, updateQuantity, removeItem } = useCartStore();
+  const { items, totalAmount, clearCart } = useCartStore();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -96,6 +96,8 @@ export default function CartPage({
     }
   };
 
+  const totalQty = items.reduce((s, i) => s + i.quantity, 0);
+
   return (
     <div className="min-h-screen bg-gray-50 pb-32">
       {/* Header */}
@@ -108,91 +110,45 @@ export default function CartPage({
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <h1 className="text-lg font-bold">주문 확인</h1>
+          <h1 className="text-lg font-bold">주문내역서</h1>
         </div>
       </div>
 
       <div className="max-w-lg mx-auto px-5 py-4 space-y-4">
-        {/* Order Items — 개별 카드 */}
-        <div className="space-y-3">
-          {items.map((item) => (
-            <Card key={item.menuItemId}>
-              <CardContent className="p-4 flex gap-3">
-                {/* 이미지 */}
-                {item.imageUrl ? (
-                  <img
-                    src={item.imageUrl}
-                    alt={item.name}
-                    className="w-16 h-16 rounded-lg object-cover shrink-0"
-                  />
-                ) : (
-                  <div className="w-16 h-16 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
-                    <ShoppingBag className="w-6 h-6 text-gray-300" />
-                  </div>
-                )}
+        {/* 주문내역서 — 영수증 텍스트 스타일 */}
+        <div className="bg-white rounded-xl p-5 font-mono text-sm">
+          {/* 내역서 헤더 */}
+          <div className="text-center border-b-2 border-dashed border-gray-300 pb-3 mb-3">
+            <h2 className="text-base font-bold tracking-wide">주문내역서</h2>
+            <p className="text-xs text-gray-400 mt-1">ORDER RECEIPT</p>
+          </div>
 
-                {/* 상품 정보 */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="font-medium text-sm leading-tight">
-                      {item.name}
-                    </p>
-                    <button
-                      onClick={() => removeItem(item.menuItemId)}
-                      className="shrink-0 p-1 text-gray-300 hover:text-red-400 transition"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    {formatPrice(item.price)}원
-                  </p>
+          {/* 아이템 목록 */}
+          <div className="border-b border-dashed border-gray-300 pb-3 mb-3 space-y-1.5">
+            {items.map((item) => (
+              <div key={item.menuItemId} className="flex justify-between">
+                <span className="text-gray-700">
+                  {item.name} x{item.quantity}
+                </span>
+                <span className="text-gray-900">
+                  {formatPrice(item.price * item.quantity)}원
+                </span>
+              </div>
+            ))}
+          </div>
 
-                  {/* 수량 조절 + 소계 */}
-                  <div className="flex items-center justify-between mt-2">
-                    <div className="flex items-center gap-1.5">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 w-7 p-0"
-                        onClick={() =>
-                          updateQuantity(item.menuItemId, item.quantity - 1)
-                        }
-                      >
-                        <Minus className="w-3 h-3" />
-                      </Button>
-                      <span className="w-6 text-center text-sm font-semibold">
-                        {item.quantity}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 w-7 p-0"
-                        onClick={() =>
-                          updateQuantity(item.menuItemId, item.quantity + 1)
-                        }
-                      >
-                        <Plus className="w-3 h-3" />
-                      </Button>
-                    </div>
-                    <span className="font-semibold text-sm">
-                      {formatPrice(item.price * item.quantity)}원
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+          {/* 수량 합계 */}
+          <div className="flex justify-between text-xs text-gray-400 mb-1">
+            <span>총 {items.length}종류 {totalQty}개</span>
+          </div>
 
-        {/* 총 금액 요약 */}
-        <div className="flex items-center justify-between px-1">
-          <span className="text-sm text-gray-500">
-            총 {items.length}종류 {items.reduce((s, i) => s + i.quantity, 0)}개
-          </span>
-          <span className="text-lg font-bold text-blue-600">
-            {formatPrice(totalAmount())}원
-          </span>
+          {/* 합계 */}
+          <div className="border-t-2 border-dashed border-gray-300 pt-3 mt-1">
+            <div className="flex justify-between text-base font-bold">
+              <span>합계</span>
+              <span>{formatPrice(totalAmount())}원</span>
+            </div>
+          </div>
         </div>
 
         {/* Payment Method */}
