@@ -7,8 +7,9 @@ import {
   Sparkles,
   Clock,
   Package,
-  UtensilsCrossed,
+  ConciergeBell,
   ClipboardList,
+  SprayCan,
 } from "lucide-react";
 import type { ServiceCategory } from "@/types/service";
 
@@ -16,11 +17,11 @@ const ICON_MAP: Record<string, React.ElementType> = {
   Sparkles,
   Clock,
   Package,
-  UtensilsCrossed,
+  SprayCan,
   sparkles: Sparkles,
   clock: Clock,
   package: Package,
-  utensils: UtensilsCrossed,
+  sprayCan: SprayCan,
 };
 
 const TYPE_COLORS: Record<string, string> = {
@@ -132,30 +133,32 @@ export default function EasyTapHub({
             className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col items-center gap-3 shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-95 transition-all duration-200"
           >
             <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center shadow-sm">
-              <UtensilsCrossed className="w-7 h-7 text-white" />
+              <ConciergeBell className="w-7 h-7 text-white" />
             </div>
             <div className="text-center">
               <p className="font-semibold text-gray-900">룸 오더</p>
               <p className="text-xs text-gray-400 mt-0.5">
-                음식/음료 주문
+                물품구매 및 물품요청을 할 수 있습니다.
+              </p>
+            </div>
+          </button>
+
+          {/* 주문현황 */}
+          <button
+            onClick={() => router.push(`/room/${roomId}/orders`)}
+            className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col items-center gap-3 shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-95 transition-all duration-200"
+          >
+            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center shadow-sm">
+              <ClipboardList className="w-7 h-7 text-white" />
+            </div>
+            <div className="text-center">
+              <p className="font-semibold text-gray-900">주문현황</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                주문 및 서비스 요청 상태 확인
               </p>
             </div>
           </button>
         </div>
-
-        {/* 주문현황 */}
-        <button
-          onClick={() => router.push(`/room/${roomId}/orders`)}
-          className="w-full mt-6 bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-4 shadow-sm hover:shadow-md hover:scale-[1.01] active:scale-[0.98] transition-all duration-200"
-        >
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center shadow-sm">
-            <ClipboardList className="w-6 h-6 text-white" />
-          </div>
-          <div className="text-left">
-            <p className="font-semibold text-gray-900">주문현황</p>
-            <p className="text-xs text-gray-400">주문 및 서비스 요청 상태 확인</p>
-          </div>
-        </button>
 
         {/* Footer */}
         <div className="text-center mt-10">
