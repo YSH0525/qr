@@ -34,8 +34,12 @@ export default function CartPage({
     );
   }
 
+  const isFreeOrder = totalAmount() === 0;
+
   const handleOrder = async () => {
-    if (!paymentMethod) {
+    const effectivePaymentMethod = isFreeOrder ? "deferred" : paymentMethod;
+
+    if (!effectivePaymentMethod) {
       toast.error("결제 방식을 선택해주세요");
       return;
     }
@@ -51,7 +55,7 @@ export default function CartPage({
             menuItemId: i.menuItemId,
             quantity: i.quantity,
           })),
-          paymentMethod,
+          paymentMethod: effectivePaymentMethod,
         }),
       });
 
@@ -62,7 +66,7 @@ export default function CartPage({
 
       const order = await res.json();
 
-      if (paymentMethod === "kakaopay") {
+      if (effectivePaymentMethod === "kakaopay") {
         // Initiate KakaoPay
         const payRes = await fetch("/api/payments/kakaopay/ready", {
           method: "POST",
@@ -151,48 +155,50 @@ export default function CartPage({
           </div>
         </div>
 
-        {/* Payment Method */}
-        <Card>
-          <CardContent className="p-5">
-            <h2 className="font-semibold mb-3">결제 방식</h2>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                className={`p-4 rounded-xl border-2 text-center transition ${
-                  paymentMethod === "kakaopay"
-                    ? "border-yellow-400 bg-yellow-50"
-                    : "border-gray-200 hover:border-gray-300"
-                }`}
-                onClick={() => setPaymentMethod("kakaopay")}
-              >
-                <CreditCard className="w-8 h-8 mx-auto mb-2 text-yellow-600" />
-                <p className="font-semibold text-sm">카카오페이</p>
-                <p className="text-xs text-gray-500 mt-1">즉시 결제</p>
-              </button>
-              <button
-                className={`p-4 rounded-xl border-2 text-center transition ${
-                  paymentMethod === "deferred"
-                    ? "border-blue-400 bg-blue-50"
-                    : "border-gray-200 hover:border-gray-300"
-                }`}
-                onClick={() => setPaymentMethod("deferred")}
-              >
-                <Clock className="w-8 h-8 mx-auto mb-2 text-blue-600" />
-                <p className="font-semibold text-sm">후불결제</p>
-                <p className="text-xs text-gray-500 mt-1">퇴실시 정산</p>
-              </button>
-            </div>
-            {paymentMethod && (
-              <Badge
-                variant="outline"
-                className="mt-3"
-              >
-                {paymentMethod === "kakaopay"
-                  ? "카카오페이로 바로 결제합니다"
-                  : "퇴실 시 프런트에서 정산합니다"}
-              </Badge>
-            )}
-          </CardContent>
-        </Card>
+        {/* Payment Method - 0원이면 숨김 */}
+        {!isFreeOrder && (
+          <Card>
+            <CardContent className="p-5">
+              <h2 className="font-semibold mb-3">결제 방식</h2>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  className={`p-4 rounded-xl border-2 text-center transition ${
+                    paymentMethod === "kakaopay"
+                      ? "border-yellow-400 bg-yellow-50"
+                      : "border-gray-200 hover:border-gray-300"
+                  }`}
+                  onClick={() => setPaymentMethod("kakaopay")}
+                >
+                  <CreditCard className="w-8 h-8 mx-auto mb-2 text-yellow-600" />
+                  <p className="font-semibold text-sm">카카오페이</p>
+                  <p className="text-xs text-gray-500 mt-1">즉시 결제</p>
+                </button>
+                <button
+                  className={`p-4 rounded-xl border-2 text-center transition ${
+                    paymentMethod === "deferred"
+                      ? "border-blue-400 bg-blue-50"
+                      : "border-gray-200 hover:border-gray-300"
+                  }`}
+                  onClick={() => setPaymentMethod("deferred")}
+                >
+                  <Clock className="w-8 h-8 mx-auto mb-2 text-blue-600" />
+                  <p className="font-semibold text-sm">후불결제</p>
+                  <p className="text-xs text-gray-500 mt-1">퇴실시 정산</p>
+                </button>
+              </div>
+              {paymentMethod && (
+                <Badge
+                  variant="outline"
+                  className="mt-3"
+                >
+                  {paymentMethod === "kakaopay"
+                    ? "카카오페이로 바로 결제합니다"
+                    : "퇴실 시 프런트에서 정산합니다"}
+                </Badge>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Order Button */}
@@ -201,7 +207,7 @@ export default function CartPage({
           <Button
             className="w-full h-12 text-lg"
             onClick={handleOrder}
-            disabled={loading || !paymentMethod}
+            disabled={loading || (!isFreeOrder && !paymentMethod)}
           >
             {loading
               ? "주문 처리 중..."
