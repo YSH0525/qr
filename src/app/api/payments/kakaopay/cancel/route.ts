@@ -7,13 +7,14 @@ import {
   where,
   updateDoc,
 } from "firebase/firestore";
-import { BASE_URL } from "@/lib/constants";
+import { getBaseUrlFromRequest } from "@/lib/constants";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const orderId = searchParams.get("orderId");
+  const baseUrl = getBaseUrlFromRequest(req);
   if (!orderId) {
-    return NextResponse.redirect(BASE_URL);
+    return NextResponse.redirect(baseUrl);
   }
 
   const orderSnap = await getDocs(
@@ -24,7 +25,7 @@ export async function GET(req: NextRequest) {
   );
 
   if (orderSnap.empty) {
-    return NextResponse.redirect(BASE_URL);
+    return NextResponse.redirect(baseUrl);
   }
 
   const orderDoc = orderSnap.docs[0];
@@ -37,6 +38,6 @@ export async function GET(req: NextRequest) {
   });
 
   return NextResponse.redirect(
-    `${BASE_URL}/room/${order.roomUuid}/payment/cancel?orderId=${orderId}`
+    `${baseUrl}/room/${order.roomUuid}/payment/cancel?orderId=${orderId}`
   );
 }

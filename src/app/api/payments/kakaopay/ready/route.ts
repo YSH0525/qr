@@ -8,6 +8,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { kakaoPayReady } from "@/lib/kakaopay";
+import { getBaseUrlFromRequest } from "@/lib/constants";
 
 export async function POST(req: NextRequest) {
   try {
@@ -36,11 +37,14 @@ export async function POST(req: NextRequest) {
       totalAmount: number;
     };
 
+    const baseUrl = getBaseUrlFromRequest(req);
+
     const result = await kakaoPayReady({
       orderId: order.orderId,
       itemName: `${order.roomNumber}호 주문`,
       totalAmount: order.totalAmount,
       roomId: order.roomUuid,
+      baseUrl,
     });
 
     // Save TID for approval step

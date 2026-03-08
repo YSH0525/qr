@@ -9,9 +9,11 @@ import {
 } from "firebase/firestore";
 import { kakaoPayApprove } from "@/lib/kakaopay";
 import { orderEvents } from "@/lib/sse";
-import { BASE_URL } from "@/lib/constants";
+import { getBaseUrlFromRequest } from "@/lib/constants";
 
 export async function GET(req: NextRequest) {
+  const baseUrl = getBaseUrlFromRequest(req);
+
   try {
     const { searchParams } = new URL(req.url);
     const pgToken = searchParams.get("pg_token");
@@ -71,7 +73,7 @@ export async function GET(req: NextRequest) {
         updatedAt: new Date().toISOString(),
       });
       return NextResponse.redirect(
-        `${BASE_URL}/room/${order.roomUuid}/payment/fail?orderId=${orderId}`
+        `${baseUrl}/room/${order.roomUuid}/payment/fail?orderId=${orderId}`
       );
     }
 
@@ -90,7 +92,7 @@ export async function GET(req: NextRequest) {
 
     // Redirect to success page
     return NextResponse.redirect(
-      `${BASE_URL}/room/${order.roomUuid}/payment/success?orderId=${orderId}`
+      `${baseUrl}/room/${order.roomUuid}/payment/success?orderId=${orderId}`
     );
   } catch (e) {
     console.error("KakaoPay approve error:", e);
@@ -112,13 +114,13 @@ export async function GET(req: NextRequest) {
           updatedAt: new Date().toISOString(),
         });
         return NextResponse.redirect(
-          `${BASE_URL}/room/${failOrder.roomUuid}/payment/fail?orderId=${failOrderId}`
+          `${baseUrl}/room/${failOrder.roomUuid}/payment/fail?orderId=${failOrderId}`
         );
       }
     } catch {
       // Fall through to generic redirect
     }
 
-    return NextResponse.redirect(BASE_URL);
+    return NextResponse.redirect(baseUrl);
   }
 }

@@ -1,5 +1,3 @@
-import { BASE_URL } from "@/lib/constants";
-
 const KAKAOPAY_BASE_URL = "https://open-api.kakaopay.com/online/v1/payment";
 
 function getHeaders() {
@@ -20,8 +18,9 @@ export async function kakaoPayReady(params: {
   itemName: string;
   totalAmount: number;
   roomId: string;
+  baseUrl: string;
 }) {
-  const baseUrl = BASE_URL;
+  const baseUrl = params.baseUrl;
   const cid = process.env.KAKAOPAY_CID || "TC0ONETIME";
 
   const response = await fetch(`${KAKAOPAY_BASE_URL}/ready`, {
