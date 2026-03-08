@@ -574,96 +574,69 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* 3-Column Kanban Board */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 min-h-0 flex-1">
-            {/* Pending */}
-            <div className="flex flex-col min-h-0">
-              <h2 className="text-lg font-semibold mb-3 text-orange-600 shrink-0">
-                신규 주문
-              </h2>
-              <div className="space-y-3 overflow-y-auto flex-1 pr-1">
-                {pendingOrders.map((order) => (
-                  <OrderCard
-                    key={order.orderId}
-                    order={order}
-                    isAnimating={animatingCards.has(order.orderId)}
-                    animationType="accept"
-                    actions={
-                      <>
-                        <Button
-                          size="sm"
-                          className="transition-all duration-150 active:scale-90 hover:shadow-lg"
-                          onClick={() => handleAccept(order)}
-                        >
-                          접수
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          className="transition-all duration-150 active:scale-90"
-                          onClick={() => handleReject(order.orderId)}
-                        >
-                          거절
-                        </Button>
-                      </>
-                    }
-                  />
-                ))}
-                {pendingOrders.length === 0 && (
-                  <p className="text-gray-400 text-sm text-center py-8">
-                    대기중인 주문이 없습니다
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Preparing */}
-            <div className="flex flex-col min-h-0">
-              <h2 className="text-lg font-semibold mb-3 text-blue-600 shrink-0">준비중</h2>
-              <div className="space-y-3 overflow-y-auto flex-1 pr-1">
-                {preparingOrders.map((order) => (
-                  <OrderCard
-                    key={order.orderId}
-                    order={order}
-                    isAnimating={animatingCards.has(order.orderId)}
-                    animationType="complete"
-                    actions={
+          {/* 주문 리스트 */}
+          <div className="flex flex-col min-h-0 flex-1">
+            <div className="space-y-3 overflow-y-auto flex-1 pr-1">
+              {/* 신규 주문 */}
+              {pendingOrders.map((order) => (
+                <OrderCard
+                  key={order.orderId}
+                  order={order}
+                  isAnimating={animatingCards.has(order.orderId)}
+                  animationType="accept"
+                  actions={
+                    <>
                       <Button
                         size="sm"
-                        className="bg-green-600 hover:bg-green-700 transition-all duration-150 active:scale-90 hover:shadow-lg"
-                        onClick={(e) => handleComplete(order, e)}
+                        className="transition-all duration-150 active:scale-90 hover:shadow-lg"
+                        onClick={() => handleAccept(order)}
                       >
-                        완료
+                        접수
                       </Button>
-                    }
-                  />
-                ))}
-                {preparingOrders.length === 0 && (
-                  <p className="text-gray-400 text-sm text-center py-8">
-                    준비중인 주문이 없습니다
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Completed */}
-            <div className="flex flex-col min-h-0">
-              <h2 className="text-lg font-semibold mb-3 text-green-600 shrink-0">
-                완료
-                {allCompletedOrders.length > 20 && (
-                  <span className="text-xs font-normal text-gray-400 ml-2">최근 20건</span>
-                )}
-              </h2>
-              <div className="space-y-3 overflow-y-auto flex-1 pr-1">
-                {completedOrders.map((order) => (
-                  <OrderCard key={order.orderId} order={order} />
-                ))}
-                {allCompletedOrders.length === 0 && (
-                  <p className="text-gray-400 text-sm text-center py-8">
-                    완료된 주문이 없습니다
-                  </p>
-                )}
-              </div>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="transition-all duration-150 active:scale-90"
+                        onClick={() => handleReject(order.orderId)}
+                      >
+                        거절
+                      </Button>
+                    </>
+                  }
+                />
+              ))}
+              {/* 준비중 */}
+              {preparingOrders.map((order) => (
+                <OrderCard
+                  key={order.orderId}
+                  order={order}
+                  isAnimating={animatingCards.has(order.orderId)}
+                  animationType="complete"
+                  actions={
+                    <Button
+                      size="sm"
+                      className="bg-green-600 hover:bg-green-700 transition-all duration-150 active:scale-90 hover:shadow-lg"
+                      onClick={(e) => handleComplete(order, e)}
+                    >
+                      완료
+                    </Button>
+                  }
+                />
+              ))}
+              {/* 완료 */}
+              {completedOrders.map((order) => (
+                <OrderCard key={order.orderId} order={order} />
+              ))}
+              {pendingOrders.length === 0 && preparingOrders.length === 0 && allCompletedOrders.length === 0 && (
+                <p className="text-gray-400 text-sm text-center py-8">
+                  주문이 없습니다
+                </p>
+              )}
+              {allCompletedOrders.length > 20 && (
+                <p className="text-xs text-center text-gray-400 py-2">
+                  완료된 주문 최근 20건만 표시
+                </p>
+              )}
             </div>
           </div>
         </>
@@ -816,10 +789,18 @@ function OrderCard({
       : "scale-90 opacity-0 translate-y-4"
     : "scale-100 opacity-100 translate-y-0";
 
+  const isCompleted = order.status === "completed";
+  const isPreparing = order.status === "accepted" || order.status === "preparing";
+
+  // 스텝 계산: 0 = pending, 1 = accepted/preparing, 2 = completed
+  const step = isCompleted ? 2 : isPreparing ? 1 : 0;
+
+  const stepLabels = ["접수", "처리", "완료"];
+
   return (
     <Card
       ref={cardRef}
-      className={`transition-all duration-400 ease-in-out ${animClass}`}
+      className={`transition-all duration-400 ease-in-out ${animClass} ${isCompleted ? "opacity-60" : ""}`}
     >
       {/* 접수 시 체크 오버레이 */}
       {isAnimating && animationType === "accept" && (
@@ -831,17 +812,62 @@ function OrderCard({
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">{order.roomNumber}호</CardTitle>
-          <Badge
-            variant={
-              order.paymentMethod === "kakaopay" ? "default" : "secondary"
-            }
-          >
-            {PAYMENT_METHOD_LABELS[order.paymentMethod]}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge
+              variant={
+                order.paymentMethod === "kakaopay" ? "default" : "secondary"
+              }
+            >
+              {PAYMENT_METHOD_LABELS[order.paymentMethod]}
+            </Badge>
+          </div>
         </div>
         <p className="text-xs text-gray-400">{timeAgo(order.createdAt)}</p>
       </CardHeader>
-      <CardContent className="space-y-2">
+      <CardContent className="space-y-3">
+        {/* 스텝 인디케이터 */}
+        <div className="flex items-center gap-0 px-2">
+          {stepLabels.map((label, i) => (
+            <div key={label} className="flex items-center flex-1 last:flex-none">
+              <div className="flex flex-col items-center">
+                <div
+                  className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${
+                    i <= step
+                      ? isCompleted
+                        ? "bg-green-500"
+                        : "bg-blue-500"
+                      : "bg-gray-200"
+                  }`}
+                >
+                  {i <= step ? "✓" : i + 1}
+                </div>
+                <span
+                  className={`text-[10px] mt-1 ${
+                    i <= step
+                      ? isCompleted
+                        ? "text-green-600 font-semibold"
+                        : "text-blue-600 font-semibold"
+                      : "text-gray-400"
+                  }`}
+                >
+                  {label}
+                </span>
+              </div>
+              {i < stepLabels.length - 1 && (
+                <div
+                  className={`flex-1 h-0.5 mx-1 mt-[-12px] ${
+                    i < step
+                      ? isCompleted
+                        ? "bg-green-500"
+                        : "bg-blue-500"
+                      : "bg-gray-200"
+                  }`}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+
         <div className="space-y-1">
           {order.items.map((item, idx) => (
             <div key={idx} className="flex justify-between text-sm">
@@ -863,9 +889,8 @@ function OrderCard({
           <span className="font-semibold">
             {formatPrice(order.totalAmount)}
           </span>
-          <Badge variant="outline">{ORDER_STATUS_LABELS[order.status]}</Badge>
         </div>
-        {actions && <div className="flex gap-2 pt-2">{actions}</div>}
+        {actions && <div className="flex gap-2 pt-1">{actions}</div>}
       </CardContent>
     </Card>
   );
