@@ -2,7 +2,6 @@
 
 import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
-import { Badge } from "@/components/ui/badge";
 import {
   Sparkles,
   Clock,
@@ -86,17 +85,19 @@ export default function EasyTapHub({
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <div className="max-w-lg mx-auto px-5 py-6">
         {/* Header */}
-        <div className="text-center mb-8 -mx-5 -mt-6">
-          <div className="px-5 pt-10 pb-6 rounded-b-3xl bg-gradient-to-br from-emerald-500 via-emerald-600 to-emerald-700">
-            <p className="text-lg font-light tracking-[0.3em] text-white">더반스테이</p>
-            <p className="text-[10px] tracking-[0.2em] text-emerald-200 uppercase mt-0.5">THE VAN STAY</p>
-            <div className="w-12 h-px bg-white/30 mx-auto my-3" />
-            <h1 className="text-2xl font-bold text-white tracking-wide">Easy Tap</h1>
-            <p className="text-sm text-emerald-100 mt-1">간편하게 탭하세요</p>
+        <div className="mb-6 -mx-5 -mt-6">
+          <div className="px-6 pt-8 pb-5 bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950">
+            <div className="flex items-end justify-between">
+              <div>
+                <p className="text-base font-light tracking-[0.25em] text-white">더반스테이</p>
+                <p className="text-[9px] tracking-[0.15em] text-slate-400 uppercase mt-0.5">THE VAN STAY</p>
+              </div>
+              <div className="text-right">
+                <h1 className="text-xl font-bold text-amber-300 tracking-wide">Easy Tap</h1>
+                <p className="text-[10px] text-slate-400 mt-0.5">{room.roomNumber}호</p>
+              </div>
+            </div>
           </div>
-          <Badge className="mt-4 text-sm px-4 py-1 bg-gray-900 text-white hover:bg-gray-900">
-            {room.roomNumber}호
-          </Badge>
         </div>
 
         {/* Service Grid */}
