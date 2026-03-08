@@ -254,6 +254,9 @@ export default function MenuPage() {
                     </div>
                     <p className="text-sm text-gray-500">
                       {formatPrice(item.price)}
+                      <span className="text-xs text-gray-400 ml-2">
+                        순서: {item.displayOrder}
+                      </span>
                     </p>
                     <div className="flex gap-1 mt-1">
                       <Button
@@ -480,6 +483,7 @@ function MenuForm({
   const [description, setDescription] = useState(item?.description || "");
   const [imageUrl, setImageUrl] = useState(item?.imageUrl || "");
   const [isAvailable, setIsAvailable] = useState(item?.isAvailable ?? true);
+  const [displayOrder, setDisplayOrder] = useState(item?.displayOrder?.toString() || "0");
   const [uploading, setUploading] = useState(false);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -517,6 +521,7 @@ function MenuForm({
       description: description || null,
       imageUrl: imageUrl || null,
       isAvailable,
+      displayOrder: parseInt(displayOrder) || 0,
     };
 
     const url = item ? `/api/menu/${item.id}` : "/api/menu";
@@ -602,6 +607,18 @@ function MenuForm({
         {uploading && (
           <p className="text-xs text-gray-400 mt-1">업로드 중...</p>
         )}
+      </div>
+      <div>
+        <label className="text-sm font-medium">표시 순서</label>
+        <Input
+          type="number"
+          value={displayOrder}
+          onChange={(e) => setDisplayOrder(e.target.value)}
+          placeholder="0"
+        />
+        <p className="text-xs text-gray-400 mt-1">
+          숫자가 작을수록 먼저 표시됩니다.
+        </p>
       </div>
       <div className="flex items-center gap-2">
         <input
