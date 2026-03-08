@@ -9,9 +9,10 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, Printer, Bluetooth } from "lucide-react";
+import { Loader2, Bluetooth } from "lucide-react";
 import { useBluetoothPrinterContext } from "./bluetooth-printer-provider";
 import { buildSettlementReceiptRaster } from "@/lib/escpos-raster";
+import { buildSettlementReceipt } from "@/lib/escpos";
 import { toast } from "sonner";
 
 interface SettlementItem {
@@ -61,6 +62,7 @@ export function SettlementModal({
 }: SettlementModalProps) {
   const [settling, setSettling] = useState(false);
   const [settled, setSettled] = useState(false);
+  const [printMode, setPrintMode] = useState<"image" | "text">("image");
   const printer = useBluetoothPrinterContext();
 
   const formatPrice = (n: number) => n.toLocaleString("ko-KR") + "원";
@@ -83,19 +85,6 @@ export function SettlementModal({
     }
   };
 
-  const handlePrint = () => {
-    if (!preview) return;
-    sessionStorage.setItem("settlementReceipt", JSON.stringify({
-      settled: preview.orderCount,
-      totalAmount: preview.totalAmount,
-      roomNumber: preview.roomNumber,
-      settledAt: new Date().toISOString(),
-      orders: preview.orders,
-      extensions: preview.extensions,
-    }));
-    window.open("/settlement/receipt", "_blank");
-  };
-
   const handleBluetoothPrint = async () => {
     if (!preview) return;
 
@@ -105,14 +94,18 @@ export function SettlementModal({
       if (!connected) return;
     }
 
-    const receiptData = buildSettlementReceiptRaster({
+    const receiptPayload = {
       settled: preview.orderCount,
       totalAmount: preview.totalAmount,
       roomNumber: preview.roomNumber,
       settledAt: new Date().toISOString(),
       orders: preview.orders,
       extensions: preview.extensions,
-    });
+    };
+
+    const receiptData = printMode === "image"
+      ? buildSettlementReceiptRaster(receiptPayload)
+      : buildSettlementReceipt(receiptPayload);
 
     const success = await printer.print(receiptData);
     if (success) {
@@ -208,31 +201,56 @@ export function SettlementModal({
 
         <DialogFooter className="gap-2 sm:gap-0">
           {settled ? (
-            <>
-              <Button variant="outline" onClick={handlePrint}>
-                <Printer className="w-4 h-4 mr-2" />
-                브라우저 인쇄
-              </Button>
+            <div className="flex flex-col gap-3 w-full">
+              {/* 인쇄 모드 토글 */}
               {printer.isSupported && (
-                <Button
-                  variant="outline"
-                  onClick={handleBluetoothPrint}
-                  disabled={printer.isPrinting}
-                >
-                  {printer.isPrinting ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Bluetooth className="w-4 h-4 mr-2" />
-                  )}
-                  {printer.isPrinting
-                    ? "인쇄 중..."
-                    : printer.isConnected
-                      ? "블루투스 인쇄"
-                      : "프린터 연결 후 인쇄"}
-                </Button>
+                <div className="flex items-center justify-center gap-1 bg-gray-100 rounded-lg p-1">
+                  <button
+                    onClick={() => setPrintMode("image")}
+                    className={`flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition ${
+                      printMode === "image"
+                        ? "bg-white shadow text-gray-900"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
+                  >
+                    이미지 인쇄
+                    <span className="block text-[10px] text-gray-400 font-normal">한글 미지원 프린터</span>
+                  </button>
+                  <button
+                    onClick={() => setPrintMode("text")}
+                    className={`flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition ${
+                      printMode === "text"
+                        ? "bg-white shadow text-gray-900"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
+                  >
+                    일반 인쇄
+                    <span className="block text-[10px] text-gray-400 font-normal">한글 지원 프린터</span>
+                  </button>
+                </div>
               )}
-              <Button onClick={handleClose}>닫기</Button>
-            </>
+              <div className="flex gap-2 justify-end">
+                {printer.isSupported && (
+                  <Button
+                    variant="outline"
+                    onClick={handleBluetoothPrint}
+                    disabled={printer.isPrinting}
+                  >
+                    {printer.isPrinting ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Bluetooth className="w-4 h-4 mr-2" />
+                    )}
+                    {printer.isPrinting
+                      ? "인쇄 중..."
+                      : printer.isConnected
+                        ? "블루투스 인쇄"
+                        : "프린터 연결 후 인쇄"}
+                  </Button>
+                )}
+                <Button onClick={handleClose}>닫기</Button>
+              </div>
+            </div>
           ) : (
             <>
               <Button variant="outline" onClick={handleClose}>
