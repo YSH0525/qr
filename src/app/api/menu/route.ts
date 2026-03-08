@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    if (!body.name || !body.price || !body.categoryId) {
+    if (!body.name || body.price == null || !body.categoryId) {
       return NextResponse.json(
         { error: "메뉴명, 가격, 카테고리는 필수입니다" },
         { status: 400 }
