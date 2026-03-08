@@ -94,10 +94,10 @@ export default function ServicesPage() {
     filter === "all" ? requests : requests.filter((r) => r.status === filter);
 
   return (
-    <div className="p-6 h-full flex flex-col overflow-hidden">
-      <h1 className="text-2xl font-bold mb-6 shrink-0">서비스 요청 내역</h1>
+    <div className="p-3 md:p-6 h-full flex flex-col overflow-hidden">
+      <h1 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 shrink-0">서비스 요청 내역</h1>
 
-      <div className="flex gap-2 mb-4 shrink-0">
+      <div className="flex gap-2 mb-4 shrink-0 flex-wrap">
         {["all", "requested", "accepted", "completed"].map((s) => (
           <Button
             key={s}
@@ -123,19 +123,19 @@ export default function ServicesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>요청 ID</TableHead>
+                <TableHead className="hidden md:table-cell">요청 ID</TableHead>
                 <TableHead>객실</TableHead>
                 <TableHead>서비스</TableHead>
-                <TableHead>상세</TableHead>
+                <TableHead className="hidden md:table-cell">상세</TableHead>
                 <TableHead>상태</TableHead>
-                <TableHead>요청 시간</TableHead>
+                <TableHead className="hidden md:table-cell">요청 시간</TableHead>
                 <TableHead>처리</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.map((req) => (
                 <TableRow key={req.id}>
-                  <TableCell className="font-mono text-xs">
+                  <TableCell className="font-mono text-xs hidden md:table-cell">
                     {req.requestId}
                   </TableCell>
                   <TableCell className="font-semibold">
@@ -146,7 +146,7 @@ export default function ServicesPage() {
                       {SERVICE_TYPE_LABELS[req.type]}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-sm text-gray-500 max-w-48">
+                  <TableCell className="text-sm text-gray-500 max-w-48 hidden md:table-cell">
                     {req.type === "checkout_extension" && req.extensionHours && (
                       <span className="block">{req.extensionHours}시간 연장{req.freeExtension ? " (무료 - 리뷰)" : req.extensionAmount ? ` (${req.extensionAmount.toLocaleString()}원)` : ""}</span>
                     )}
@@ -197,7 +197,7 @@ export default function ServicesPage() {
                       {SERVICE_STATUS_LABELS[req.status]}
                     </span>
                   </TableCell>
-                  <TableCell className="text-sm">
+                  <TableCell className="text-sm hidden md:table-cell">
                     {formatTime(req.createdAt)}
                   </TableCell>
                   <TableCell>

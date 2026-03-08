@@ -372,12 +372,12 @@ export default function DashboardPage() {
   const completedOrders = allCompletedOrders.slice(0, 20);
 
   return (
-    <div className="p-6 h-screen flex flex-col overflow-hidden">
-      <div className="flex items-center justify-between mb-4 shrink-0">
+    <div className="p-3 md:p-6 h-full min-h-0 flex flex-col overflow-auto md:overflow-hidden">
+      <div className="flex items-center justify-between mb-4 shrink-0 flex-wrap gap-2">
         <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
           <button
             onClick={() => setActiveTab("orders")}
-            className={`px-4 py-2 rounded-md text-sm font-semibold transition ${
+            className={`px-3 md:px-4 py-2 rounded-md text-sm font-semibold transition ${
               activeTab === "orders"
                 ? "bg-white shadow text-gray-900"
                 : "text-gray-500 hover:text-gray-700"
@@ -392,7 +392,7 @@ export default function DashboardPage() {
           </button>
           <button
             onClick={() => setActiveTab("services")}
-            className={`px-4 py-2 rounded-md text-sm font-semibold transition ${
+            className={`px-3 md:px-4 py-2 rounded-md text-sm font-semibold transition ${
               activeTab === "services"
                 ? "bg-white shadow text-gray-900"
                 : "text-gray-500 hover:text-gray-700"
@@ -421,10 +421,10 @@ export default function DashboardPage() {
       {/* 오늘 매출 요약 바 */}
       {todaySummary && (
         <div className="mb-4 shrink-0 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl px-5 py-3">
-          <div className="flex items-center justify-between flex-wrap gap-x-6 gap-y-1">
+          <div className="flex items-center justify-between flex-wrap gap-x-4 md:gap-x-6 gap-y-1">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">오늘 매출</span>
-              <span className="text-xl font-bold text-blue-700">
+              <span className="text-xs md:text-sm text-gray-500">오늘 매출</span>
+              <span className="text-lg md:text-xl font-bold text-blue-700">
                 {todaySummary.totalRevenue.toLocaleString()}원
               </span>
               {todaySummary.comparison.revenueDiff !== 0 && (
@@ -445,7 +445,7 @@ export default function DashboardPage() {
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-5 text-sm text-gray-600">
+            <div className="flex items-center gap-3 md:gap-5 text-xs md:text-sm text-gray-600 flex-wrap">
               <span>
                 주문 <strong className="text-gray-900">{todaySummary.orderCount}건</strong>
                 {todaySummary.comparison.orderCountDiff !== 0 && (
@@ -500,29 +500,29 @@ export default function DashboardPage() {
       {activeTab === "orders" && (
         <>
           {/* 운영 현황 Stats - 컴팩트 바 */}
-          <div className="mb-4 shrink-0 bg-white border rounded-xl px-4 py-2.5 flex items-center gap-0">
-            <div className="flex items-center gap-2 pr-5">
-              <span className="w-2.5 h-2.5 rounded-full bg-orange-400" />
-              <span className="text-sm text-gray-500">신규</span>
-              <span className="text-lg font-bold text-orange-500">{pendingOrders.length}</span>
+          <div className="mb-4 shrink-0 bg-white border rounded-xl px-3 md:px-4 py-2.5 flex items-center gap-0 flex-wrap">
+            <div className="flex items-center gap-1.5 md:gap-2 pr-3 md:pr-5">
+              <span className="w-2 md:w-2.5 h-2 md:h-2.5 rounded-full bg-orange-400" />
+              <span className="text-xs md:text-sm text-gray-500">신규</span>
+              <span className="text-base md:text-lg font-bold text-orange-500">{pendingOrders.length}</span>
             </div>
             <div className="border-l h-5" />
-            <div className="flex items-center gap-2 px-5">
-              <span className="w-2.5 h-2.5 rounded-full bg-blue-400" />
-              <span className="text-sm text-gray-500">준비중</span>
-              <span className="text-lg font-bold text-blue-500">{preparingOrders.length}</span>
+            <div className="flex items-center gap-1.5 md:gap-2 px-3 md:px-5">
+              <span className="w-2 md:w-2.5 h-2 md:h-2.5 rounded-full bg-blue-400" />
+              <span className="text-xs md:text-sm text-gray-500">준비중</span>
+              <span className="text-base md:text-lg font-bold text-blue-500">{preparingOrders.length}</span>
             </div>
             <div className="border-l h-5" />
-            <div className="flex items-center gap-2 px-5">
-              <span className="w-2.5 h-2.5 rounded-full bg-green-400" />
-              <span className="text-sm text-gray-500">완료</span>
-              <span className="text-lg font-bold text-green-500">{allCompletedOrders.length}</span>
+            <div className="flex items-center gap-1.5 md:gap-2 px-3 md:px-5">
+              <span className="w-2 md:w-2.5 h-2 md:h-2.5 rounded-full bg-green-400" />
+              <span className="text-xs md:text-sm text-gray-500">완료</span>
+              <span className="text-base md:text-lg font-bold text-green-500">{allCompletedOrders.length}</span>
             </div>
-            <div className="border-l h-5" />
-            <div className={`flex items-center gap-2 pl-5 ${deferredPayments.length > 0 ? "" : "opacity-40"}`}>
-              <span className={`w-2.5 h-2.5 rounded-full ${deferredPayments.length > 0 ? "bg-red-400" : "bg-gray-300"}`} />
-              <span className="text-sm text-gray-500">후불 미정산</span>
-              <span className={`text-lg font-bold ${deferredPayments.length > 0 ? "text-red-500" : "text-gray-400"}`}>
+            <div className="border-l h-5 hidden md:block" />
+            <div className={`flex items-center gap-1.5 md:gap-2 pl-3 md:pl-5 ${deferredPayments.length > 0 ? "" : "opacity-40"}`}>
+              <span className={`w-2 md:w-2.5 h-2 md:h-2.5 rounded-full ${deferredPayments.length > 0 ? "bg-red-400" : "bg-gray-300"}`} />
+              <span className="text-xs md:text-sm text-gray-500">미정산</span>
+              <span className={`text-base md:text-lg font-bold ${deferredPayments.length > 0 ? "text-red-500" : "text-gray-400"}`}>
                 {deferredPayments.reduce((sum, p) => sum + p.totalDeferred, 0).toLocaleString()}
                 <span className="text-xs font-normal ml-0.5">원</span>
               </span>
@@ -551,7 +551,7 @@ export default function DashboardPage() {
               {showDeferred && (
                 <div className="flex gap-3 overflow-x-auto pb-1">
                   {deferredPayments.map((p) => (
-                    <Card key={p.room.id} className="border-red-100 shrink-0 w-52">
+                    <Card key={p.room.id} className="border-red-100 shrink-0 w-44 md:w-52">
                       <CardContent className="p-3 flex items-center justify-between gap-3">
                         <div className="min-w-0">
                           <p className="font-bold">{p.room.roomNumber}호 <span className="text-xs font-normal text-gray-400">{p.orderCount}건</span></p>
@@ -575,7 +575,7 @@ export default function DashboardPage() {
           )}
 
           {/* 3-Column Kanban Board */}
-          <div className="grid grid-cols-3 gap-4 min-h-0 flex-1">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 min-h-0 flex-1">
             {/* Pending */}
             <div className="flex flex-col min-h-0">
               <h2 className="text-lg font-semibold mb-3 text-orange-600 shrink-0">
@@ -673,28 +673,28 @@ export default function DashboardPage() {
       {activeTab === "services" && (
         <>
           {/* 서비스 현황 Stats - 컴팩트 바 */}
-          <div className="mb-4 shrink-0 bg-white border rounded-xl px-4 py-2.5 flex items-center gap-0">
-            <div className="flex items-center gap-2 pr-5">
-              <span className="w-2.5 h-2.5 rounded-full bg-orange-400" />
-              <span className="text-sm text-gray-500">요청됨</span>
-              <span className="text-lg font-bold text-orange-500">{pendingServices.length}</span>
+          <div className="mb-4 shrink-0 bg-white border rounded-xl px-3 md:px-4 py-2.5 flex items-center gap-0 flex-wrap">
+            <div className="flex items-center gap-1.5 md:gap-2 pr-3 md:pr-5">
+              <span className="w-2 md:w-2.5 h-2 md:h-2.5 rounded-full bg-orange-400" />
+              <span className="text-xs md:text-sm text-gray-500">요청됨</span>
+              <span className="text-base md:text-lg font-bold text-orange-500">{pendingServices.length}</span>
             </div>
             <div className="border-l h-5" />
-            <div className="flex items-center gap-2 px-5">
-              <span className="w-2.5 h-2.5 rounded-full bg-blue-400" />
-              <span className="text-sm text-gray-500">접수됨</span>
-              <span className="text-lg font-bold text-blue-500">{acceptedServices.length}</span>
+            <div className="flex items-center gap-1.5 md:gap-2 px-3 md:px-5">
+              <span className="w-2 md:w-2.5 h-2 md:h-2.5 rounded-full bg-blue-400" />
+              <span className="text-xs md:text-sm text-gray-500">접수됨</span>
+              <span className="text-base md:text-lg font-bold text-blue-500">{acceptedServices.length}</span>
             </div>
             <div className="border-l h-5" />
-            <div className="flex items-center gap-2 pl-5">
-              <span className="w-2.5 h-2.5 rounded-full bg-green-400" />
-              <span className="text-sm text-gray-500">완료</span>
-              <span className="text-lg font-bold text-green-500">{allCompletedServices.length}</span>
+            <div className="flex items-center gap-1.5 md:gap-2 pl-3 md:pl-5">
+              <span className="w-2 md:w-2.5 h-2 md:h-2.5 rounded-full bg-green-400" />
+              <span className="text-xs md:text-sm text-gray-500">완료</span>
+              <span className="text-base md:text-lg font-bold text-green-500">{allCompletedServices.length}</span>
             </div>
           </div>
 
           {/* 3-Column Service Kanban */}
-          <div className="grid grid-cols-3 gap-4 min-h-0 flex-1">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 min-h-0 flex-1">
             {/* 요청됨 */}
             <div className="flex flex-col min-h-0">
               <h2 className="text-lg font-semibold mb-3 text-orange-600 shrink-0">

@@ -30,7 +30,7 @@ const navItems = [
   { href: "/sales", label: "매출 분석", icon: BarChart3 },
 ];
 
-export function AdminSidebar() {
+export function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const printer = useBluetoothPrinterContext();
 
@@ -45,6 +45,7 @@ export function AdminSidebar() {
           <Link
             key={item.href}
             href={item.href}
+            onClick={onNavigate}
             className={cn(
               "flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition",
               pathname === item.href

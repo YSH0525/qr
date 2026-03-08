@@ -103,9 +103,9 @@ export default function RoomsPage() {
     typeof window !== "undefined" ? window.location.origin : "";
 
   return (
-    <div className="p-6 h-full flex flex-col overflow-hidden">
-      <div className="flex items-center justify-between mb-6 shrink-0">
-        <h1 className="text-2xl font-bold">객실 관리</h1>
+    <div className="p-3 md:p-6 h-full flex flex-col overflow-hidden">
+      <div className="flex items-center justify-between mb-4 md:mb-6 shrink-0">
+        <h1 className="text-xl md:text-2xl font-bold">객실 관리</h1>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button>
@@ -156,10 +156,10 @@ export default function RoomsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>객실번호</TableHead>
-                <TableHead>층</TableHead>
+                <TableHead className="hidden md:table-cell">층</TableHead>
                 <TableHead>상태</TableHead>
-                <TableHead>QR 코드</TableHead>
-                <TableHead>안내문</TableHead>
+                <TableHead className="hidden md:table-cell">QR 코드</TableHead>
+                <TableHead className="hidden md:table-cell">안내문</TableHead>
                 <TableHead>관리</TableHead>
               </TableRow>
             </TableHeader>
@@ -169,7 +169,7 @@ export default function RoomsPage() {
                   <TableCell className="font-semibold">
                     {room.roomNumber}호
                   </TableCell>
-                  <TableCell>{room.floor || "-"}</TableCell>
+                  <TableCell className="hidden md:table-cell">{room.floor || "-"}</TableCell>
                   <TableCell>
                     <Badge
                       variant={room.isActive ? "default" : "secondary"}
@@ -177,7 +177,7 @@ export default function RoomsPage() {
                       {room.isActive ? "활성" : "비활성"}
                     </Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     <Button
                       size="sm"
                       variant="outline"
@@ -187,7 +187,7 @@ export default function RoomsPage() {
                       QR 보기
                     </Button>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     <Link href={`/rooms/${room.roomId}/guide`}>
                       <Button size="sm" variant="outline">
                         <Printer className="w-4 h-4 mr-1" />

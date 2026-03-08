@@ -184,8 +184,8 @@ export default function SalesPage() {
 
   if (loading || !data) {
     return (
-      <div className="p-6">
-        <h1 className="text-2xl font-bold mb-6">매출 분석</h1>
+      <div className="p-3 md:p-6">
+        <h1 className="text-xl md:text-2xl font-bold mb-4 md:mb-6">매출 분석</h1>
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
         </div>
@@ -200,10 +200,10 @@ export default function SalesPage() {
   );
 
   return (
-    <div className="p-6 print:p-2 h-full flex flex-col overflow-hidden print:overflow-visible print:h-auto">
+    <div className="p-3 md:p-6 print:p-2 h-full flex flex-col overflow-hidden print:overflow-visible print:h-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6 print:mb-3 shrink-0">
-        <h1 className="text-2xl font-bold">매출 분석</h1>
+      <div className="flex items-center justify-between mb-4 md:mb-6 print:mb-3 shrink-0">
+        <h1 className="text-xl md:text-2xl font-bold">매출 분석</h1>
         <Button
           variant="outline"
           size="sm"
@@ -216,7 +216,7 @@ export default function SalesPage() {
       </div>
 
       {/* Mode Toggle + Date Navigation */}
-      <div className="flex flex-wrap items-center gap-3 mb-6 print:mb-3 shrink-0">
+      <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-4 md:mb-6 print:mb-3 shrink-0">
         <div className="flex bg-gray-100 rounded-lg p-1 print:hidden">
           <button
             onClick={() => setMode("daily")}
@@ -299,7 +299,7 @@ export default function SalesPage() {
 
       <div className="flex-1 min-h-0 overflow-y-auto print:overflow-visible">
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6 print:gap-2 print:mb-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-6 print:gap-2 print:mb-3">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
@@ -360,7 +360,7 @@ export default function SalesPage() {
       </div>
 
       {/* Order Status Summary */}
-      <div className="grid grid-cols-4 gap-3 mb-6 print:mb-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4 md:mb-6 print:mb-3">
         <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
           <p className="text-2xl font-bold text-green-600">
             {data.completedOrders}
