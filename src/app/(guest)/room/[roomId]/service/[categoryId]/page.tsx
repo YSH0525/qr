@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft,
   Sparkles,
-  Clock,
   Package,
   Plus,
   Minus,
@@ -34,11 +33,6 @@ import {
   PREFERRED_TIME_LABELS,
   SUPPLY_ITEM_LABELS,
 } from "@/types/service";
-
-const ICON_MAP: Record<string, React.ElementType> = {
-  Sparkles, Clock, Package,
-  sparkles: Sparkles, clock: Clock, package: Package,
-};
 
 interface Room {
   id: string;
@@ -195,7 +189,6 @@ export default function ServiceRequestPage({
     );
   }
 
-  const IconComponent = ICON_MAP[category.icon] || Package;
   const formatPrice = (n: number) => n.toLocaleString("ko-KR");
   const isCleaning = category.type === "cleaning";
   const showFullLightOptions =
@@ -222,14 +215,6 @@ export default function ServiceRequestPage({
       </div>
 
       <div className="max-w-lg mx-auto px-5 py-6 space-y-4">
-        {/* 서비스 설명 */}
-        <Card>
-          <CardContent className="p-6 text-center">
-            <IconComponent className="w-12 h-12 mx-auto text-blue-500 mb-3" />
-            <p className="text-gray-600">{category.description}</p>
-          </CardContent>
-        </Card>
-
         {/* === 청소 타입 전용 UI === */}
         {isCleaning && (
           <>
