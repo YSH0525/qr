@@ -70,6 +70,7 @@ export default function DashboardPage() {
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [deferredPayments, setDeferredPayments] = useState<DeferredPayment[]>([]);
   const [showDeferred, setShowDeferred] = useState(true);
+  const [showSummary, setShowSummary] = useState(true);
   const [todaySummary, setTodaySummary] = useState<TodaySummary | null>(null);
   const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>([]);
   const [settlementPreview, setSettlementPreview] = useState<SettlementPreviewData | null>(null);
@@ -476,7 +477,10 @@ export default function DashboardPage() {
       {/* 오늘 매출 요약 바 */}
       {todaySummary && (
         <div className="mb-4 shrink-0 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl px-5 py-3">
-          <div className="flex items-center justify-between flex-wrap gap-x-4 md:gap-x-6 gap-y-1">
+          <button
+            onClick={() => setShowSummary((v) => !v)}
+            className="w-full flex items-center justify-between"
+          >
             <div className="flex items-center gap-2">
               <span className="text-xs md:text-sm text-gray-500">오늘 매출</span>
               <span className="text-lg md:text-xl font-bold text-blue-700">
@@ -500,7 +504,14 @@ export default function DashboardPage() {
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-3 md:gap-5 text-xs md:text-sm text-gray-600 flex-wrap">
+            {showSummary ? (
+              <ChevronUp className="w-4 h-4 text-gray-400 shrink-0" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
+            )}
+          </button>
+          {showSummary && (
+            <div className="flex items-center gap-3 md:gap-5 text-xs md:text-sm text-gray-600 flex-wrap mt-2">
               <span>
                 주문 <strong className="text-gray-900">{todaySummary.orderCount}건</strong>
                 {todaySummary.comparison.orderCountDiff !== 0 && (
@@ -547,7 +558,7 @@ export default function DashboardPage() {
                 </strong>
               </span>
             </div>
-          </div>
+          )}
         </div>
       )}
 
