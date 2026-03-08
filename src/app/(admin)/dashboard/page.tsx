@@ -649,13 +649,13 @@ export default function DashboardPage() {
           <div className="mb-4 shrink-0 bg-white border rounded-xl px-3 md:px-4 py-2.5 flex items-center gap-0 flex-wrap">
             <div className="flex items-center gap-1.5 md:gap-2 pr-3 md:pr-5">
               <span className="w-2 md:w-2.5 h-2 md:h-2.5 rounded-full bg-orange-400" />
-              <span className="text-xs md:text-sm text-gray-500">요청됨</span>
+              <span className="text-xs md:text-sm text-gray-500">신규</span>
               <span className="text-base md:text-lg font-bold text-orange-500">{pendingServices.length}</span>
             </div>
             <div className="border-l h-5" />
             <div className="flex items-center gap-1.5 md:gap-2 px-3 md:px-5">
               <span className="w-2 md:w-2.5 h-2 md:h-2.5 rounded-full bg-blue-400" />
-              <span className="text-xs md:text-sm text-gray-500">접수됨</span>
+              <span className="text-xs md:text-sm text-gray-500">처리중</span>
               <span className="text-base md:text-lg font-bold text-blue-500">{acceptedServices.length}</span>
             </div>
             <div className="border-l h-5" />
@@ -666,82 +666,55 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* 3-Column Service Kanban */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 min-h-0 flex-1">
-            {/* 요청됨 */}
-            <div className="flex flex-col min-h-0">
-              <h2 className="text-lg font-semibold mb-3 text-orange-600 shrink-0">
-                요청됨
-              </h2>
-              <div className="space-y-3 overflow-y-auto flex-1 pr-1">
-                {pendingServices.map((req) => (
-                  <ServiceCard
-                    key={req.id}
-                    request={req}
-                    actions={
-                      <Button
-                        size="sm"
-                        className="transition-all duration-150 active:scale-90 hover:shadow-lg"
-                        onClick={() => handleServiceAccept(req)}
-                      >
-                        접수
-                      </Button>
-                    }
-                  />
-                ))}
-                {pendingServices.length === 0 && (
-                  <p className="text-gray-400 text-sm text-center py-8">
-                    대기중인 요청이 없습니다
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* 접수됨 */}
-            <div className="flex flex-col min-h-0">
-              <h2 className="text-lg font-semibold mb-3 text-blue-600 shrink-0">접수됨</h2>
-              <div className="space-y-3 overflow-y-auto flex-1 pr-1">
-                {acceptedServices.map((req) => (
-                  <ServiceCard
-                    key={req.id}
-                    request={req}
-                    actions={
-                      <Button
-                        size="sm"
-                        className="bg-green-600 hover:bg-green-700 transition-all duration-150 active:scale-90 hover:shadow-lg"
-                        onClick={() => handleServiceComplete(req)}
-                      >
-                        완료
-                      </Button>
-                    }
-                  />
-                ))}
-                {acceptedServices.length === 0 && (
-                  <p className="text-gray-400 text-sm text-center py-8">
-                    접수된 요청이 없습니다
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* 완료 */}
-            <div className="flex flex-col min-h-0">
-              <h2 className="text-lg font-semibold mb-3 text-green-600 shrink-0">
-                완료
-                {allCompletedServices.length > 20 && (
-                  <span className="text-xs font-normal text-gray-400 ml-2">최근 20건</span>
-                )}
-              </h2>
-              <div className="space-y-3 overflow-y-auto flex-1 pr-1">
-                {completedServices.map((req) => (
-                  <ServiceCard key={req.id} request={req} />
-                ))}
-                {allCompletedServices.length === 0 && (
-                  <p className="text-gray-400 text-sm text-center py-8">
-                    완료된 요청이 없습니다
-                  </p>
-                )}
-              </div>
+          {/* 서비스 리스트 (주문 탭과 동일한 단일 리스트) */}
+          <div className="flex flex-col min-h-0 flex-1">
+            <div className="space-y-3 overflow-y-auto flex-1 pr-1">
+              {/* 신규 요청 */}
+              {pendingServices.map((req) => (
+                <ServiceCard
+                  key={req.id}
+                  request={req}
+                  actions={
+                    <Button
+                      size="sm"
+                      className="transition-all duration-150 active:scale-90 hover:shadow-lg"
+                      onClick={() => handleServiceAccept(req)}
+                    >
+                      접수
+                    </Button>
+                  }
+                />
+              ))}
+              {/* 처리중 */}
+              {acceptedServices.map((req) => (
+                <ServiceCard
+                  key={req.id}
+                  request={req}
+                  actions={
+                    <Button
+                      size="sm"
+                      className="bg-green-600 hover:bg-green-700 transition-all duration-150 active:scale-90 hover:shadow-lg"
+                      onClick={() => handleServiceComplete(req)}
+                    >
+                      완료
+                    </Button>
+                  }
+                />
+              ))}
+              {/* 완료 */}
+              {completedServices.map((req) => (
+                <ServiceCard key={req.id} request={req} />
+              ))}
+              {pendingServices.length === 0 && acceptedServices.length === 0 && allCompletedServices.length === 0 && (
+                <p className="text-gray-400 text-sm text-center py-8">
+                  서비스 요청이 없습니다
+                </p>
+              )}
+              {allCompletedServices.length > 20 && (
+                <p className="text-xs text-center text-gray-400 py-2">
+                  완료된 요청 최근 20건만 표시
+                </p>
+              )}
             </div>
           </div>
         </>
@@ -912,8 +885,13 @@ function ServiceCard({
     return `${hours}시간 전`;
   };
 
+  const isCompleted = request.status === "completed";
+  const isAccepted = request.status === "accepted";
+  const step = isCompleted ? 2 : isAccepted ? 1 : 0;
+  const stepLabels = ["접수", "처리", "완료"];
+
   return (
-    <Card>
+    <Card className={`transition-all duration-400 ${isCompleted ? "opacity-60" : ""}`}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-2">
@@ -927,6 +905,49 @@ function ServiceCard({
         <p className="text-xs text-gray-400">{timeAgo(request.createdAt)}</p>
       </CardHeader>
       <CardContent className="space-y-2">
+        {/* 스텝 인디케이터 */}
+        <div className="flex items-center gap-0 px-2">
+          {stepLabels.map((label, i) => (
+            <div key={label} className="flex items-center flex-1 last:flex-none">
+              <div className="flex flex-col items-center">
+                <div
+                  className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${
+                    i <= step
+                      ? isCompleted
+                        ? "bg-green-500"
+                        : "bg-blue-500"
+                      : "bg-gray-200"
+                  }`}
+                >
+                  {i <= step ? "✓" : i + 1}
+                </div>
+                <span
+                  className={`text-[10px] mt-1 ${
+                    i <= step
+                      ? isCompleted
+                        ? "text-green-600 font-semibold"
+                        : "text-blue-600 font-semibold"
+                      : "text-gray-400"
+                  }`}
+                >
+                  {label}
+                </span>
+              </div>
+              {i < stepLabels.length - 1 && (
+                <div
+                  className={`flex-1 h-0.5 mx-1 mt-[-12px] ${
+                    i < step
+                      ? isCompleted
+                        ? "bg-green-500"
+                        : "bg-blue-500"
+                      : "bg-gray-200"
+                  }`}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+
         <p className="text-sm font-medium">{request.categoryName}</p>
 
         {/* 비품 요청 아이템 목록 */}
@@ -1007,11 +1028,8 @@ function ServiceCard({
 
         <div className="flex justify-between items-center pt-2 border-t">
           <span className="text-xs text-gray-400">{request.requestId}</span>
-          <Badge variant="outline">
-            {SERVICE_STATUS_LABELS[request.status]}
-          </Badge>
         </div>
-        {actions && <div className="flex gap-2 pt-2">{actions}</div>}
+        {actions && <div className="flex gap-2 pt-1">{actions}</div>}
       </CardContent>
     </Card>
   );
