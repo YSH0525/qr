@@ -17,6 +17,14 @@ import {
   type SettlementPreviewData,
 } from "@/components/admin/settlement-modal";
 
+interface Settlement {
+  id: string;
+  roomNumber: string;
+  totalAmount: number;
+  orderCount: number;
+  settledAt: string;
+}
+
 interface DeferredPayment {
   room: {
     id: string;
@@ -36,6 +44,7 @@ interface DeferredPayment {
 
 export default function PaymentsPage() {
   const [payments, setPayments] = useState<DeferredPayment[]>([]);
+  const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [settlementPreview, setSettlementPreview] = useState<SettlementPreviewData | null>(null);
   const [settlementModalOpen, setSettlementModalOpen] = useState(false);
 
@@ -45,8 +54,15 @@ export default function PaymentsPage() {
       .then(setPayments);
   };
 
+  const fetchSettlements = () => {
+    fetch("/api/payments/deferred/history")
+      .then((r) => r.json())
+      .then(setSettlements);
+  };
+
   useEffect(() => {
     fetchPayments();
+    fetchSettlements();
   }, []);
 
   const settleRoom = async (roomId: string) => {
@@ -74,6 +90,7 @@ export default function PaymentsPage() {
         `${settlementPreview.roomNumber}호 정산 완료: ${data.settled}건, ${data.totalAmount.toLocaleString()}원`
       );
       fetchPayments();
+      fetchSettlements();
     } else {
       toast.error("정산 처리 실패");
     }
@@ -144,6 +161,51 @@ export default function PaymentsPage() {
                     className="text-center text-gray-400 py-8"
                   >
                     미정산 내역이 없습니다
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* 정산 완료 내역 */}
+      <Card className="mt-4 md:mt-6 shrink-0">
+        <CardHeader className="shrink-0">
+          <CardTitle>정산 완료 내역</CardTitle>
+        </CardHeader>
+        <CardContent className="overflow-y-auto max-h-64">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>객실</TableHead>
+                <TableHead>주문 건수</TableHead>
+                <TableHead>정산 금액</TableHead>
+                <TableHead>정산 일시</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {settlements.map((s) => (
+                <TableRow key={s.id}>
+                  <TableCell className="font-semibold">
+                    {s.roomNumber}호
+                  </TableCell>
+                  <TableCell>{s.orderCount}건</TableCell>
+                  <TableCell className="font-semibold">
+                    {formatPrice(s.totalAmount)}
+                  </TableCell>
+                  <TableCell className="text-gray-500 text-sm">
+                    {new Date(s.settledAt).toLocaleString("ko-KR")}
+                  </TableCell>
+                </TableRow>
+              ))}
+              {settlements.length === 0 && (
+                <TableRow>
+                  <TableCell
+                    colSpan={4}
+                    className="text-center text-gray-400 py-8"
+                  >
+                    정산 완료 내역이 없습니다
                   </TableCell>
                 </TableRow>
               )}
