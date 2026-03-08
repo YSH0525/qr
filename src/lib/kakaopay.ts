@@ -72,5 +72,15 @@ export async function kakaoPayApprove(params: {
     throw new Error(`카카오페이 결제 승인 실패: ${error}`);
   }
 
-  return response.json();
+  return response.json() as Promise<{
+    aid: string;
+    tid: string;
+    payment_method_type: string;
+    amount: {
+      total: number;
+      tax_free: number;
+      vat: number;
+    };
+    approved_at: string;
+  }>;
 }

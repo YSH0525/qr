@@ -18,9 +18,14 @@ export default function PaymentCancelPage({
         <XCircle className="w-20 h-20 text-gray-400 mx-auto mb-4" />
         <h1 className="text-2xl font-bold mb-2">결제 취소</h1>
         <p className="text-gray-500 mb-6">결제가 취소되었습니다</p>
-        <Link href={`/room/${roomId}`}>
-          <Button className="w-full">메뉴로 돌아가기</Button>
-        </Link>
+        <div className="space-y-3">
+          <Link href={`/room/${roomId}/menu`}>
+            <Button className="w-full">메뉴에서 다시 주문하기</Button>
+          </Link>
+          <Link href={`/room/${roomId}`}>
+            <Button variant="outline" className="w-full">홈으로 돌아가기</Button>
+          </Link>
+        </div>
       </div>
     </div>
   );
