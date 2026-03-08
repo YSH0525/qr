@@ -92,7 +92,7 @@ export default function EasyTapHub({
                 <p className="text-sm font-light tracking-[0.2em] text-white">더반스테이</p>
                 <p className="text-[8px] tracking-[0.12em] text-emerald-200 uppercase mt-0.5">THE VAN STAY</p>
               </div>
-              <h1 className="text-lg font-bold text-white tracking-wide">Easy Tap</h1>
+              <h1 className="text-2xl font-bold text-white tracking-wide">Easy Tap</h1>
               <p className="text-sm font-medium text-white/90">{room.roomNumber}호</p>
             </div>
           </div>
