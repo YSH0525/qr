@@ -9,8 +9,11 @@ import {
 } from "firebase/firestore";
 import { kakaoPayApprove } from "@/lib/kakaopay";
 import { orderEvents } from "@/lib/sse";
+import { getBaseUrlFromRequest } from "@/lib/constants";
 
 export async function GET(req: NextRequest) {
+  const baseUrl = getBaseUrlFromRequest(req);
+
   try {
     const { searchParams } = new URL(req.url);
     const pgToken = searchParams.get("pg_token");
@@ -43,6 +46,7 @@ export async function GET(req: NextRequest) {
       roomUuid: string;
       roomNumber: string;
       kakaoTid: string | null;
+      totalAmount: number;
     };
 
     if (!order.kakaoTid) {
@@ -52,12 +56,26 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    await kakaoPayApprove({
+    const approveResult = await kakaoPayApprove({
       tid: order.kakaoTid,
       orderId: order.orderId,
       roomId: order.roomUuid,
       pgToken,
     });
+
+    // Verify approved amount matches order amount
+    if (approveResult.amount?.total !== order.totalAmount) {
+      console.error(
+        `Payment amount mismatch: expected ${order.totalAmount}, got ${approveResult.amount?.total}`
+      );
+      await updateDoc(orderDoc.ref, {
+        paymentStatus: "failed",
+        updatedAt: new Date().toISOString(),
+      });
+      return NextResponse.redirect(
+        `${baseUrl}/room/${order.roomUuid}/payment/fail?orderId=${orderId}`
+      );
+    }
 
     // Update payment status
     const updatedAt = new Date().toISOString();
@@ -73,16 +91,36 @@ export async function GET(req: NextRequest) {
     });
 
     // Redirect to success page
-    const baseUrl =
-      process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
     return NextResponse.redirect(
       `${baseUrl}/room/${order.roomUuid}/payment/success?orderId=${orderId}`
     );
   } catch (e) {
     console.error("KakaoPay approve error:", e);
-    return NextResponse.json(
-      { error: "카카오페이 결제 승인 중 오류가 발생했습니다" },
-      { status: 500 }
-    );
+    const { searchParams } = new URL(req.url);
+    const failOrderId = searchParams.get("orderId") || "";
+
+    // Try to get roomUuid from the order for redirect
+    try {
+      const failSnap = await getDocs(
+        query(
+          collection(firestore, "orders"),
+          where("orderId", "==", failOrderId)
+        )
+      );
+      if (!failSnap.empty) {
+        const failOrder = failSnap.docs[0].data() as { roomUuid: string };
+        await updateDoc(failSnap.docs[0].ref, {
+          paymentStatus: "failed",
+          updatedAt: new Date().toISOString(),
+        });
+        return NextResponse.redirect(
+          `${baseUrl}/room/${failOrder.roomUuid}/payment/fail?orderId=${failOrderId}`
+        );
+      }
+    } catch {
+      // Fall through to generic redirect
+    }
+
+    return NextResponse.redirect(baseUrl);
   }
 }

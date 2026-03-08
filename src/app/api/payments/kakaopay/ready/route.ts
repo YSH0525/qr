@@ -8,6 +8,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { kakaoPayReady } from "@/lib/kakaopay";
+import { getBaseUrlFromRequest } from "@/lib/constants";
 
 export async function POST(req: NextRequest) {
   try {
@@ -36,11 +37,14 @@ export async function POST(req: NextRequest) {
       totalAmount: number;
     };
 
+    const baseUrl = getBaseUrlFromRequest(req);
+
     const result = await kakaoPayReady({
       orderId: order.orderId,
       itemName: `${order.roomNumber}호 주문`,
       totalAmount: order.totalAmount,
       roomId: order.roomUuid,
+      baseUrl,
     });
 
     // Save TID for approval step
@@ -53,9 +57,8 @@ export async function POST(req: NextRequest) {
     });
   } catch (e) {
     console.error("KakaoPay ready error:", e);
-    return NextResponse.json(
-      { error: "카카오페이 결제 준비 중 오류가 발생했습니다" },
-      { status: 500 }
-    );
+    const message =
+      e instanceof Error ? e.message : "카카오페이 결제 준비 중 오류가 발생했습니다";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

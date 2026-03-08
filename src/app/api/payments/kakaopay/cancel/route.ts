@@ -7,12 +7,12 @@ import {
   where,
   updateDoc,
 } from "firebase/firestore";
+import { getBaseUrlFromRequest } from "@/lib/constants";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const orderId = searchParams.get("orderId");
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-
+  const baseUrl = getBaseUrlFromRequest(req);
   if (!orderId) {
     return NextResponse.redirect(baseUrl);
   }
