@@ -11,7 +11,6 @@ import {
   PAYMENT_METHOD_LABELS,
 } from "@/types";
 import type { OrderStatus, OrderWithItems } from "@/types";
-import { SERVICE_STATUS_LABELS } from "@/types/service";
 import type { ServiceRequest, ServiceRequestStatus } from "@/types/service";
 
 const SERVICE_ICON_MAP: Record<string, React.ElementType> = {
@@ -158,21 +157,9 @@ export default function GuestOrdersPage({
   const activeOrders = orders.filter(
     (o) => !["completed", "rejected", "cancelled"].includes(o.status)
   );
-  const completedOrders = orders.filter((o) =>
-    ["completed", "rejected", "cancelled"].includes(o.status)
-  );
   const activeServices = services.filter((s) => s.status !== "completed");
-  const completedServices = services.filter((s) => s.status === "completed");
-
-  // Merge completed orders & services, sort newest first
-  const completedItems = [
-    ...completedOrders.map((o) => ({ kind: "order" as const, data: o, time: o.createdAt })),
-    ...completedServices.map((s) => ({ kind: "service" as const, data: s, time: s.createdAt })),
-  ].sort((a, b) => (b.time > a.time ? 1 : b.time < a.time ? -1 : 0));
 
   const hasActive = activeOrders.length + activeServices.length > 0;
-  const hasCompleted = completedItems.length > 0;
-  const isEmpty = orders.length + services.length === 0;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-8">
@@ -191,9 +178,9 @@ export default function GuestOrdersPage({
       </div>
 
       <div className="max-w-lg mx-auto px-5 py-4 space-y-6">
-        {isEmpty && (
+        {!hasActive && (
           <div className="text-center py-16">
-            <p className="text-gray-400">주문 내역이 없습니다</p>
+            <p className="text-gray-400">진행중인 주문이 없습니다</p>
           </div>
         )}
 
@@ -286,82 +273,6 @@ export default function GuestOrdersPage({
           </div>
         )}
 
-        {/* 완료 */}
-        {hasCompleted && (
-          <div>
-            <h2 className="text-sm font-semibold text-gray-500 mb-3">완료</h2>
-            <div className="space-y-3 opacity-60">
-              {completedItems.map((item) => {
-                if (item.kind === "order") {
-                  const order = item.data;
-                  return (
-                    <Card key={order.id}>
-                      <CardContent className="p-4 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <UtensilsCrossed className="w-4 h-4 text-gray-400" />
-                            <span className="text-xs font-mono text-gray-400">
-                              {order.orderId}
-                            </span>
-                          </div>
-                          <Badge
-                            variant={
-                              order.status === "completed"
-                                ? "secondary"
-                                : "destructive"
-                            }
-                            className="text-xs"
-                          >
-                            {ORDER_STATUS_LABELS[order.status]}
-                          </Badge>
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {order.items.map((oi, i) => (
-                            <span key={i}>
-                              {i > 0 && ", "}
-                              {oi.menuItemName} x{oi.quantity}
-                            </span>
-                          ))}
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-gray-400">
-                            {timeAgo(order.createdAt)}
-                          </span>
-                          <span className="font-semibold text-sm text-gray-500">
-                            {formatPrice(order.totalAmount)}원
-                          </span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                }
-                const svc = item.data;
-                return (
-                  <Card key={svc.id}>
-                    <CardContent className="p-4 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-500">
-                          {svc.categoryName}
-                        </span>
-                        <Badge variant="secondary" className="text-xs">
-                          {SERVICE_STATUS_LABELS[svc.status]}
-                        </Badge>
-                      </div>
-                      {svc.extensionHours && (
-                        <p className="text-sm text-gray-500">
-                          {svc.extensionHours}시간 연장
-                        </p>
-                      )}
-                      <span className="text-xs text-gray-400">
-                        {timeAgo(svc.createdAt)}
-                      </span>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

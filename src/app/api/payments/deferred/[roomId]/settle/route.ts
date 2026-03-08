@@ -6,6 +6,7 @@ import {
   query,
   where,
   updateDoc,
+  addDoc,
 } from "firebase/firestore";
 
 export async function POST(
@@ -117,6 +118,15 @@ export async function POST(
       };
     })
   );
+
+  // 정산 내역을 settlements 컬렉션에 저장
+  await addDoc(collection(firestore, "settlements"), {
+    roomNumber: roomData.roomNumber,
+    roomId: roomUuid,
+    totalAmount,
+    orderCount: deferredSnap.size + extensionSnap.size,
+    settledAt,
+  });
 
   return NextResponse.json({
     settled: deferredSnap.size + extensionSnap.size,
