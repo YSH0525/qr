@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Loader2, Printer, Bluetooth } from "lucide-react";
 import { useBluetoothPrinterContext } from "./bluetooth-printer-provider";
-import { buildSettlementReceipt } from "@/lib/escpos";
+import { buildSettlementReceiptRaster } from "@/lib/escpos-raster";
 import { toast } from "sonner";
 
 interface SettlementItem {
@@ -105,7 +105,7 @@ export function SettlementModal({
       if (!connected) return;
     }
 
-    const receiptData = buildSettlementReceipt({
+    const receiptData = buildSettlementReceiptRaster({
       settled: preview.orderCount,
       totalAmount: preview.totalAmount,
       roomNumber: preview.roomNumber,
