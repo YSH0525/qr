@@ -79,8 +79,8 @@ export default function DashboardPage() {
     useNotificationSound();
   const { notify } = useBrowserNotification();
 
-  // 낙관적 업데이트 후 폴링이 구 데이터로 덮어쓰는 것을 방지
-  const optimisticUntilRef = useRef(0);
+  // 낙관적 업데이트 시 진행 중인 폴링 응답을 무효화하는 버전 카운터
+  const ordersVersionRef = useRef(0);
 
   // 사용자 클릭으로 오디오 + TTS 활성화
   const enableAudio = useCallback(() => {
@@ -97,11 +97,12 @@ export default function DashboardPage() {
   }, [playAcceptSound]);
 
   const fetchOrders = useCallback(async () => {
+    const version = ordersVersionRef.current;
     const res = await fetch("/api/orders");
     if (res.ok) {
       const data = await res.json();
-      // 낙관적 업데이트 보호 기간이면 폴링 결과 무시
-      if (Date.now() < optimisticUntilRef.current) return;
+      // 이 fetch 도중 낙관적 업데이트가 발생했으면 결과 무시
+      if (version !== ordersVersionRef.current) return;
       setOrders(data);
     }
   }, []);
@@ -227,8 +228,8 @@ export default function DashboardPage() {
   };
 
   const updateOrderStatus = (orderId: string, status: string) => {
-    // 폴링이 구 데이터로 덮어쓰지 못하도록 보호 (3초)
-    optimisticUntilRef.current = Date.now() + 3000;
+    // 진행 중인 fetchOrders 응답을 무효화
+    ordersVersionRef.current++;
     setOrders((prev) =>
       prev.map((o) =>
         o.orderId === orderId
