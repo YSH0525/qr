@@ -2,96 +2,162 @@ import { NextRequest, NextResponse } from "next/server";
 import { firestore } from "@/lib/firebase";
 import {
   collection,
+  addDoc,
+  deleteDoc,
+  doc,
+  getDoc,
   getDocs,
   query,
   where,
-  updateDoc,
 } from "firebase/firestore";
 import { kakaoPayReady } from "@/lib/kakaopay";
 import { getBaseUrlFromRequest } from "@/lib/constants";
+import { format } from "date-fns";
+
+function generateOrderId(): string {
+  const date = format(new Date(), "yyyyMMdd");
+  const rand = Math.floor(Math.random() * 1000)
+    .toString()
+    .padStart(3, "0");
+  return `ORD-${date}-${rand}`;
+}
+
+const THIRTY_MINUTES_MS = 30 * 60 * 1000;
 
 export async function POST(req: NextRequest) {
   try {
-    const { orderId } = await req.json();
+    const body = await req.json();
+    const { roomId: roomUuid, items, note } = body;
 
-    const orderSnap = await getDocs(
+    // Input validation
+    if (!roomUuid || typeof roomUuid !== "string") {
+      return NextResponse.json({ error: "객실 ID가 필요합니다" }, { status: 400 });
+    }
+    if (!Array.isArray(items) || items.length === 0) {
+      return NextResponse.json(
+        { error: "최소 1개 이상의 상품을 주문해야 합니다" },
+        { status: 400 }
+      );
+    }
+
+    // Validate each item
+    for (const item of items) {
+      if (!item.menuItemId || typeof item.menuItemId !== "string") {
+        return NextResponse.json({ error: "메뉴 ID가 올바르지 않습니다" }, { status: 400 });
+      }
+      if (
+        typeof item.quantity !== "number" ||
+        !Number.isInteger(item.quantity) ||
+        item.quantity < 1 ||
+        item.quantity > 99
+      ) {
+        return NextResponse.json(
+          { error: "수량은 1~99 사이의 정수여야 합니다" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Find room
+    const roomSnap = await getDocs(
       query(
-        collection(firestore, "orders"),
-        where("orderId", "==", orderId)
+        collection(firestore, "rooms"),
+        where("roomId", "==", roomUuid)
       )
     );
+    if (roomSnap.empty) {
+      return NextResponse.json({ error: "객실을 찾을 수 없습니다" }, { status: 404 });
+    }
+    const roomDoc = roomSnap.docs[0];
+    const roomData = roomDoc.data() as { roomNumber: string; roomId: string };
 
-    if (orderSnap.empty) {
-      return NextResponse.json(
-        { error: "주문을 찾을 수 없습니다" },
-        { status: 404 }
+    // Get menu items and calculate total
+    let totalAmount = 0;
+    const itemDetails = [];
+    for (const item of items) {
+      const menuItemDoc = await getDoc(
+        doc(firestore, "menuItems", item.menuItemId)
       );
+      if (!menuItemDoc.exists()) {
+        return NextResponse.json(
+          { error: `메뉴를 찾을 수 없습니다 (ID: ${item.menuItemId})` },
+          { status: 404 }
+        );
+      }
+      const menuItem = menuItemDoc.data() as { name: string; price: number };
+      const subtotal = menuItem.price * item.quantity;
+      totalAmount += subtotal;
+      itemDetails.push({
+        menuItemId: menuItemDoc.id,
+        menuItemName: menuItem.name,
+        menuItemPrice: menuItem.price,
+        quantity: item.quantity,
+        subtotal,
+      });
     }
 
-    const orderDoc = orderSnap.docs[0];
-    const order = orderDoc.data() as {
-      orderId: string;
-      roomId: string;
-      roomNumber: string;
-      roomUuid: string;
-      totalAmount: number;
-      paymentMethod: string;
-      paymentStatus: string;
-      status: string;
-      kakaoTid: string | null;
+    if (totalAmount <= 0) {
+      return NextResponse.json({ error: "결제 금액이 없습니다" }, { status: 400 });
+    }
+
+    // Clean up stale or duplicate pending payments for same room
+    const existingPending = await getDocs(
+      query(
+        collection(firestore, "pendingOrderPayments"),
+        where("roomUuid", "==", roomData.roomId)
+      )
+    );
+    const now = new Date();
+    for (const pendingDoc of existingPending.docs) {
+      const pendingCreatedAt = pendingDoc.data().createdAt as string;
+      const elapsed = now.getTime() - new Date(pendingCreatedAt).getTime();
+      if (elapsed > THIRTY_MINUTES_MS || existingPending.size > 0) {
+        await deleteDoc(pendingDoc.ref);
+      }
+    }
+
+    const orderId = generateOrderId();
+    const nowIso = now.toISOString();
+
+    // Save pending payment data (NOT in orders yet)
+    const pendingData = {
+      orderId,
+      roomId: roomDoc.id,
+      roomUuid: roomData.roomId,
+      roomNumber: roomData.roomNumber,
+      items: itemDetails,
+      totalAmount,
+      note: note || null,
+      paymentMethod: "kakaopay",
+      createdAt: nowIso,
     };
 
-    // Validate order is eligible for KakaoPay payment
-    if (order.paymentMethod !== "kakaopay") {
-      return NextResponse.json(
-        { error: "카카오페이 결제 대상 주문이 아닙니다" },
-        { status: 400 }
-      );
-    }
-
-    if (order.paymentStatus !== "pending") {
-      return NextResponse.json(
-        { error: "결제 대기 상태의 주문만 결제할 수 있습니다" },
-        { status: 400 }
-      );
-    }
-
-    if (order.status === "cancelled" || order.status === "rejected") {
-      return NextResponse.json(
-        { error: "취소되거나 거부된 주문은 결제할 수 없습니다" },
-        { status: 400 }
-      );
-    }
-
-    if (!order.totalAmount || order.totalAmount <= 0) {
-      return NextResponse.json(
-        { error: "결제 금액이 올바르지 않습니다" },
-        { status: 400 }
-      );
-    }
-
-    // Prevent duplicate payment preparation
-    if (order.kakaoTid) {
-      return NextResponse.json(
-        { error: "이미 결제가 진행 중입니다" },
-        { status: 409 }
-      );
-    }
+    const pendingRef = await addDoc(
+      collection(firestore, "pendingOrderPayments"),
+      pendingData
+    );
 
     const baseUrl = getBaseUrlFromRequest(req);
 
     const result = await kakaoPayReady({
-      orderId: order.orderId,
-      itemName: `${order.roomNumber}호 주문`,
-      totalAmount: order.totalAmount,
-      roomId: order.roomUuid,
+      orderId,
+      itemName: `${roomData.roomNumber}호 주문`,
+      totalAmount,
+      roomId: roomData.roomId,
       baseUrl,
+      callbackUrls: {
+        approval: `${baseUrl}/api/payments/kakaopay/approve?orderId=${orderId}`,
+        cancel: `${baseUrl}/api/payments/kakaopay/cancel?orderId=${orderId}`,
+        fail: `${baseUrl}/api/payments/kakaopay/fail?orderId=${orderId}`,
+      },
     });
 
-    // Save TID for approval step
-    await updateDoc(orderDoc.ref, { kakaoTid: result.tid });
+    // Save TID to pending document
+    const { updateDoc } = await import("firebase/firestore");
+    await updateDoc(pendingRef, { kakaoTid: result.tid });
 
     return NextResponse.json({
+      orderId,
       tid: result.tid,
       redirectUrl: result.next_redirect_mobile_url,
       redirectPcUrl: result.next_redirect_pc_url,

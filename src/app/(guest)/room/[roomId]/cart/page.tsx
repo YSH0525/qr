@@ -46,6 +46,39 @@ export default function CartPage({
 
     setLoading(true);
     try {
+      if (effectivePaymentMethod === "kakaopay") {
+        // KakaoPay: send order data directly to ready (no order created yet)
+        const payRes = await fetch("/api/payments/kakaopay/ready", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            roomId,
+            items: items.map((i) => ({
+              menuItemId: i.menuItemId,
+              quantity: i.quantity,
+            })),
+          }),
+        });
+
+        if (payRes.ok) {
+          const payData = await payRes.json();
+          clearCart();
+          const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+          window.location.href = isMobile
+            ? payData.redirectUrl
+            : payData.redirectPcUrl;
+          return;
+        } else {
+          const payError = await payRes.json().catch(() => null);
+          toast.error(
+            payError?.error || "카카오페이 결제 준비 중 오류가 발생했습니다"
+          );
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Deferred payment: create order directly
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -65,35 +98,6 @@ export default function CartPage({
       }
 
       const order = await res.json();
-
-      if (effectivePaymentMethod === "kakaopay") {
-        // Initiate KakaoPay
-        const payRes = await fetch("/api/payments/kakaopay/ready", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ orderId: order.orderId }),
-        });
-
-        if (payRes.ok) {
-          const payData = await payRes.json();
-          clearCart();
-          // Redirect to KakaoPay
-          const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-          window.location.href = isMobile
-            ? payData.redirectUrl
-            : payData.redirectPcUrl;
-          return;
-        } else {
-          const payError = await payRes.json().catch(() => null);
-          toast.error(
-            payError?.error || "카카오페이 결제 준비 중 오류가 발생했습니다"
-          );
-          setLoading(false);
-          return;
-        }
-      }
-
-      // Deferred payment - go to confirmation
       clearCart();
       router.push(`/room/${roomId}/order/${order.orderId}`);
     } catch (e) {

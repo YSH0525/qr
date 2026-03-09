@@ -3,13 +3,34 @@ import { firestore } from "@/lib/firebase";
 import {
   collection,
   getDocs,
+  addDoc,
+  deleteDoc,
   query,
   where,
-  updateDoc,
 } from "firebase/firestore";
 import { kakaoPayApprove, kakaoPayCancel } from "@/lib/kakaopay";
 import { orderEvents } from "@/lib/sse";
+import { getNextDailySeq } from "@/lib/daily-seq";
 import { getBaseUrlFromRequest } from "@/lib/constants";
+
+interface PendingOrderData {
+  orderId: string;
+  roomId: string;
+  roomUuid: string;
+  roomNumber: string;
+  items: {
+    menuItemId: string;
+    menuItemName: string;
+    menuItemPrice: number;
+    quantity: number;
+    subtotal: number;
+  }[];
+  totalAmount: number;
+  note: string | null;
+  paymentMethod: string;
+  kakaoTid: string | null;
+  createdAt: string;
+}
 
 export async function GET(req: NextRequest) {
   const baseUrl = getBaseUrlFromRequest(req);
@@ -26,104 +47,123 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const orderSnap = await getDocs(
+    // Look up pending payment data
+    const snap = await getDocs(
       query(
-        collection(firestore, "orders"),
+        collection(firestore, "pendingOrderPayments"),
         where("orderId", "==", orderId)
       )
     );
 
-    if (orderSnap.empty) {
+    if (snap.empty) {
       return NextResponse.json(
-        { error: "주문을 찾을 수 없습니다" },
+        { error: "결제 정보를 찾을 수 없습니다" },
         { status: 404 }
       );
     }
 
-    const orderDoc = orderSnap.docs[0];
-    const order = orderDoc.data() as {
-      orderId: string;
-      roomUuid: string;
-      roomNumber: string;
-      kakaoTid: string | null;
-      totalAmount: number;
-    };
+    const pendingDoc = snap.docs[0];
+    const data = pendingDoc.data() as PendingOrderData;
 
-    if (!order.kakaoTid) {
+    if (!data.kakaoTid) {
       return NextResponse.json(
-        { error: "주문을 찾을 수 없습니다" },
+        { error: "결제 정보를 찾을 수 없습니다" },
         { status: 404 }
       );
     }
 
     const approveResult = await kakaoPayApprove({
-      tid: order.kakaoTid,
-      orderId: order.orderId,
-      roomId: order.roomUuid,
+      tid: data.kakaoTid,
+      orderId: data.orderId,
+      roomId: data.roomUuid,
       pgToken,
     });
 
     // Verify approved amount matches order amount
-    if (approveResult.amount?.total !== order.totalAmount) {
+    if (approveResult.amount?.total !== data.totalAmount) {
       console.error(
-        `Payment amount mismatch: expected ${order.totalAmount}, got ${approveResult.amount?.total}`
+        `Payment amount mismatch: expected ${data.totalAmount}, got ${approveResult.amount?.total}`
       );
-      // Cancel the already-approved payment on KakaoPay side
       try {
         await kakaoPayCancel({
-          tid: order.kakaoTid!,
-          cancelAmount: approveResult.amount?.total ?? order.totalAmount,
+          tid: data.kakaoTid,
+          cancelAmount: approveResult.amount?.total ?? data.totalAmount,
         });
       } catch (cancelErr) {
         console.error("Failed to cancel mismatched payment:", cancelErr);
       }
-      await updateDoc(orderDoc.ref, {
-        paymentStatus: "failed",
-        updatedAt: new Date().toISOString(),
-      });
+      await deleteDoc(pendingDoc.ref);
       return NextResponse.redirect(
-        `${baseUrl}/room/${order.roomUuid}/payment/fail?orderId=${orderId}`
+        `${baseUrl}/room/${data.roomUuid}/payment/fail?orderId=${orderId}`
       );
     }
 
-    // Update payment status
-    const updatedAt = new Date().toISOString();
-    await updateDoc(orderDoc.ref, {
-      paymentStatus: "paid",
-      updatedAt,
-    });
+    // Payment approved — now create the actual order
+    const now = new Date().toISOString();
+    const dailySeq = await getNextDailySeq();
 
-    orderEvents.broadcast("order-updated", {
-      id: orderDoc.id,
-      ...order,
+    const orderData = {
+      orderId: data.orderId,
+      dailySeq,
+      roomId: data.roomId,
+      roomUuid: data.roomUuid,
+      roomNumber: data.roomNumber,
+      status: "pending",
+      paymentMethod: "kakaopay",
       paymentStatus: "paid",
-    });
+      totalAmount: data.totalAmount,
+      note: data.note,
+      kakaoTid: data.kakaoTid,
+      createdAt: data.createdAt,
+      updatedAt: now,
+    };
+
+    const orderRef = await addDoc(
+      collection(firestore, "orders"),
+      orderData
+    );
+
+    // Create order items in subcollection
+    for (const item of data.items) {
+      await addDoc(
+        collection(firestore, "orders", orderRef.id, "items"),
+        item
+      );
+    }
+
+    const fullOrder = {
+      id: orderRef.id,
+      ...orderData,
+      items: data.items,
+    };
+
+    // Broadcast to dashboard
+    orderEvents.broadcast("new-order", fullOrder);
+
+    // Clean up pending data
+    await deleteDoc(pendingDoc.ref);
 
     // Redirect to success page
     return NextResponse.redirect(
-      `${baseUrl}/room/${order.roomUuid}/payment/success?orderId=${orderId}`
+      `${baseUrl}/room/${data.roomUuid}/payment/success?orderId=${orderId}`
     );
   } catch (e) {
     console.error("KakaoPay approve error:", e);
     const { searchParams } = new URL(req.url);
     const failOrderId = searchParams.get("orderId") || "";
 
-    // Try to get roomUuid from the order for redirect
     try {
       const failSnap = await getDocs(
         query(
-          collection(firestore, "orders"),
+          collection(firestore, "pendingOrderPayments"),
           where("orderId", "==", failOrderId)
         )
       );
       if (!failSnap.empty) {
-        const failOrder = failSnap.docs[0].data() as { roomUuid: string };
-        await updateDoc(failSnap.docs[0].ref, {
-          paymentStatus: "failed",
-          updatedAt: new Date().toISOString(),
-        });
+        const failData = failSnap.docs[0].data() as { roomUuid: string };
+        await deleteDoc(failSnap.docs[0].ref);
         return NextResponse.redirect(
-          `${baseUrl}/room/${failOrder.roomUuid}/payment/fail?orderId=${failOrderId}`
+          `${baseUrl}/room/${failData.roomUuid}/payment/fail?orderId=${failOrderId}`
         );
       }
     } catch {
