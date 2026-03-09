@@ -8,7 +8,7 @@ import {
   query,
   where,
 } from "firebase/firestore";
-import { kakaoPayApprove } from "@/lib/kakaopay";
+import { kakaoPayApprove, kakaoPayCancel } from "@/lib/kakaopay";
 import { orderEvents } from "@/lib/sse";
 import { getBaseUrlFromRequest } from "@/lib/constants";
 
@@ -81,6 +81,15 @@ export async function GET(req: NextRequest) {
       console.error(
         `Service payment amount mismatch: expected ${data.extensionAmount}, got ${approveResult.amount?.total}`
       );
+      // Cancel the already-approved payment on KakaoPay side
+      try {
+        await kakaoPayCancel({
+          tid: data.kakaoTid,
+          cancelAmount: approveResult.amount?.total ?? data.extensionAmount,
+        });
+      } catch (cancelErr) {
+        console.error("Failed to cancel mismatched payment:", cancelErr);
+      }
       // Clean up pending data
       await deleteDoc(pendingDoc.ref);
       return NextResponse.redirect(
@@ -108,6 +117,7 @@ export async function GET(req: NextRequest) {
       freeExtension: false,
       paymentMethod: "kakaopay",
       paymentStatus: "paid",
+      kakaoTid: data.kakaoTid,
       createdAt: data.createdAt,
       updatedAt: now,
     };

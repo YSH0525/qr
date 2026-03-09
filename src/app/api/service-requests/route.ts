@@ -84,6 +84,14 @@ export async function POST(req: NextRequest) {
       hourlyRate?: number;
     };
 
+    // Block direct kakaopay service requests — must use service-ready flow
+    if (catData.type === "checkout_extension" && paymentMethod === "kakaopay" && !freeExtension) {
+      return NextResponse.json(
+        { error: "카카오페이 결제는 결제 준비 API를 통해 진행해야 합니다" },
+        { status: 400 }
+      );
+    }
+
     // Calculate extension amount
     let extensionAmount: number | null = null;
     if (catData.type === "checkout_extension" && extensionHours) {
