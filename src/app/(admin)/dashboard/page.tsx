@@ -258,7 +258,7 @@ export default function DashboardPage() {
     }
   };
 
-  /* ── 통합 행 (대기 우선 → 시간순) ── */
+  /* ── 통합 행 (최신순 정렬) ── */
   const activeOrders = orders.filter((o) => o.status !== "rejected" && o.status !== "cancelled");
   const activeServices = serviceRequests.filter((r) => r.status !== "completed");
   const completedOrders = orders.filter((o) => o.status === "completed");
@@ -273,21 +273,18 @@ export default function DashboardPage() {
         kind: "order" as const,
         data: o,
         key: o.orderId,
-        priority: o.status === "pending" ? 0 : 1,
+        priority: 0,
         time: o.createdAt,
       })),
       ...srvs.map((s) => ({
         kind: "service" as const,
         data: s,
         key: s.requestId,
-        priority: s.status === "requested" ? 0 : 1,
+        priority: 0,
         time: s.createdAt,
       })),
     ];
-    rows.sort((a, b) => {
-      if (a.priority !== b.priority) return a.priority - b.priority;
-      return new Date(b.time).getTime() - new Date(a.time).getTime();
-    });
+    rows.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
     return rows;
   };
 
