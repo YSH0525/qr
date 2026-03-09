@@ -34,8 +34,6 @@ interface PendingOrderData {
 export async function GET(req: NextRequest) {
   const baseUrl = getCallbackBaseUrl(req);
 
-  console.log("[KakaoPay approve] URL:", req.url, "baseUrl:", baseUrl);
-
   try {
     const { searchParams } = new URL(req.url);
     const pgToken = searchParams.get("pg_token");
@@ -69,16 +67,13 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Run Kakao approve + dailySeq in parallel to reduce latency
-    const [approveResult, dailySeq] = await Promise.all([
-      kakaoPayApprove({
-        tid: data.kakaoTid,
-        orderId: data.orderId,
-        roomId: data.roomUuid,
-        pgToken,
-      }),
-      getNextDailySeq(),
-    ]);
+    // Approve payment with Kakao (minimum work before redirect)
+    const approveResult = await kakaoPayApprove({
+      tid: data.kakaoTid,
+      orderId: data.orderId,
+      roomId: data.roomUuid,
+      pgToken,
+    });
 
     // Verify approved amount matches order amount
     if (approveResult.amount?.total !== data.totalAmount) {
@@ -101,43 +96,40 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Payment approved — now create the actual order
-    const now = new Date().toISOString();
-
-    const orderData = {
-      orderId: data.orderId,
-      dailySeq,
-      roomId: data.roomId,
-      roomUuid: data.roomUuid,
-      roomNumber: data.roomNumber,
-      status: "pending",
-      paymentMethod: "kakaopay",
-      paymentStatus: "paid",
-      totalAmount: data.totalAmount,
-      note: data.note,
-      kakaoTid: data.kakaoTid,
-      createdAt: data.createdAt,
-      updatedAt: now,
-    };
-
-    const orderRef = await addDoc(
-      collection(firestore, "orders"),
-      orderData
-    );
-
-    // Create order items in parallel
-    await Promise.all(
-      data.items.map((item) =>
-        addDoc(collection(firestore, "orders", orderRef.id, "items"), item)
-      )
-    );
-
-    // Defer cleanup to after the response is sent
+    // Redirect immediately — defer Firestore writes to after()
     after(async () => {
-      await deleteDoc(pendingDoc.ref);
+      try {
+        const dailySeq = await getNextDailySeq();
+        const now = new Date().toISOString();
+
+        const orderRef = await addDoc(collection(firestore, "orders"), {
+          orderId: data.orderId,
+          dailySeq,
+          roomId: data.roomId,
+          roomUuid: data.roomUuid,
+          roomNumber: data.roomNumber,
+          status: "pending",
+          paymentMethod: "kakaopay",
+          paymentStatus: "paid",
+          totalAmount: data.totalAmount,
+          note: data.note,
+          kakaoTid: data.kakaoTid,
+          createdAt: data.createdAt,
+          updatedAt: now,
+        });
+
+        await Promise.all(
+          data.items.map((item) =>
+            addDoc(collection(firestore, "orders", orderRef.id, "items"), item)
+          )
+        );
+
+        await deleteDoc(pendingDoc.ref);
+      } catch (err) {
+        console.error("Failed to create order after approve:", err);
+      }
     });
 
-    // Redirect to success page immediately
     return NextResponse.redirect(
       `${baseUrl}/room/${data.roomUuid}/payment/success?orderId=${orderId}`
     );

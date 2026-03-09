@@ -15,8 +15,6 @@ import { getCallbackBaseUrl } from "@/lib/constants";
 export async function GET(req: NextRequest) {
   const baseUrl = getCallbackBaseUrl(req);
 
-  console.log("[KakaoPay service-approve] URL:", req.url, "baseUrl:", baseUrl);
-
   try {
     const { searchParams } = new URL(req.url);
     const pgToken = searchParams.get("pg_token");
@@ -71,16 +69,13 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Run Kakao approve + dailySeq in parallel to reduce latency
-    const [approveResult, dailySeq] = await Promise.all([
-      kakaoPayApprove({
-        tid: data.kakaoTid,
-        orderId: data.requestId,
-        roomId: data.roomUuid,
-        pgToken,
-      }),
-      getNextDailySeq(),
-    ]);
+    // Approve payment with Kakao (minimum work before redirect)
+    const approveResult = await kakaoPayApprove({
+      tid: data.kakaoTid,
+      orderId: data.requestId,
+      roomId: data.roomUuid,
+      pgToken,
+    });
 
     // Verify approved amount matches extension amount
     if (approveResult.amount?.total !== data.extensionAmount) {
@@ -103,43 +98,40 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Payment approved — now create the actual service request
-    const now = new Date().toISOString();
-    const requestData = {
-      requestId: data.requestId,
-      dailySeq,
-      categoryId: data.categoryId,
-      categoryName: data.categoryName,
-      categoryIcon: data.categoryIcon,
-      type: data.type,
-      roomId: data.roomId,
-      roomUuid: data.roomUuid,
-      roomNumber: data.roomNumber,
-      status: "accepted",
-      note: data.note,
-      items: data.items,
-      cleaningOptions: null,
-      extensionHours: data.extensionHours,
-      extensionAmount: data.extensionAmount,
-      freeExtension: false,
-      paymentMethod: "kakaopay",
-      paymentStatus: "paid",
-      kakaoTid: data.kakaoTid,
-      createdAt: data.createdAt,
-      updatedAt: now,
-    };
-
-    const docRef = await addDoc(
-      collection(firestore, "serviceRequests"),
-      requestData
-    );
-
-    // Defer cleanup to after the response is sent
+    // Redirect immediately — defer Firestore writes to after()
     after(async () => {
-      await deleteDoc(pendingDoc.ref);
+      try {
+        const dailySeq = await getNextDailySeq();
+        const now = new Date().toISOString();
+        await addDoc(collection(firestore, "serviceRequests"), {
+          requestId: data.requestId,
+          dailySeq,
+          categoryId: data.categoryId,
+          categoryName: data.categoryName,
+          categoryIcon: data.categoryIcon,
+          type: data.type,
+          roomId: data.roomId,
+          roomUuid: data.roomUuid,
+          roomNumber: data.roomNumber,
+          status: "accepted",
+          note: data.note,
+          items: data.items,
+          cleaningOptions: null,
+          extensionHours: data.extensionHours,
+          extensionAmount: data.extensionAmount,
+          freeExtension: false,
+          paymentMethod: "kakaopay",
+          paymentStatus: "paid",
+          kakaoTid: data.kakaoTid,
+          createdAt: data.createdAt,
+          updatedAt: now,
+        });
+        await deleteDoc(pendingDoc.ref);
+      } catch (err) {
+        console.error("Failed to create service request after approve:", err);
+      }
     });
 
-    // Redirect to confirmation page immediately
     return NextResponse.redirect(
       `${baseUrl}/room/${data.roomUuid}/service/confirm?requestId=${requestId}&paid=true&name=${encodeURIComponent(data.categoryName)}&type=${data.type}`
     );
@@ -149,7 +141,6 @@ export async function GET(req: NextRequest) {
     const failRequestId = searchParams.get("requestId") || "";
 
     try {
-      // Try to clean up and redirect with error
       const failSnap = await getDocs(
         query(
           collection(firestore, "pendingServicePayments"),
