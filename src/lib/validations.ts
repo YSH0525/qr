@@ -29,7 +29,7 @@ export const orderSchema = z.object({
     .array(
       z.object({
         menuItemId: z.string().min(1),
-        quantity: z.number().int().min(1),
+        quantity: z.number().int().min(1).max(99),
       })
     )
     .min(1, "최소 1개 이상의 상품을 주문해야 합니다"),

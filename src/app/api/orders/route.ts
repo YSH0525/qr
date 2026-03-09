@@ -10,6 +10,7 @@ import {
   where,
 } from "firebase/firestore";
 import { orderEvents } from "@/lib/sse";
+import { orderSchema } from "@/lib/validations";
 import { format } from "date-fns";
 
 function generateOrderId(): string {
@@ -74,7 +75,15 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { roomId: roomUuid, items, paymentMethod, note } = body;
+
+    // Validate input with Zod schema
+    const parseResult = orderSchema.safeParse(body);
+    if (!parseResult.success) {
+      const firstError = parseResult.error.issues[0]?.message || "입력값이 올바르지 않습니다";
+      return NextResponse.json({ error: firstError }, { status: 400 });
+    }
+
+    const { roomId: roomUuid, items, paymentMethod, note } = parseResult.data;
 
     // Find room by UUID
     const roomSnap = await getDocs(
