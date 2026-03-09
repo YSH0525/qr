@@ -41,10 +41,7 @@ export async function GET(req: NextRequest) {
     const orderId = searchParams.get("orderId");
 
     if (!pgToken || !orderId) {
-      return NextResponse.json(
-        { error: "필수 파라미터가 누락되었습니다" },
-        { status: 400 }
-      );
+      return NextResponse.redirect(baseUrl);
     }
 
     // Look up pending payment data
@@ -56,19 +53,17 @@ export async function GET(req: NextRequest) {
     );
 
     if (snap.empty) {
-      return NextResponse.json(
-        { error: "결제 정보를 찾을 수 없습니다" },
-        { status: 404 }
-      );
+      console.error(`Pending order not found for orderId: ${orderId}`);
+      return NextResponse.redirect(baseUrl);
     }
 
     const pendingDoc = snap.docs[0];
     const data = pendingDoc.data() as PendingOrderData;
 
     if (!data.kakaoTid) {
-      return NextResponse.json(
-        { error: "결제 정보를 찾을 수 없습니다" },
-        { status: 404 }
+      console.error(`No kakaoTid in pending order: ${orderId}`);
+      return NextResponse.redirect(
+        `${baseUrl}/room/${data.roomUuid}/payment/fail?orderId=${orderId}`
       );
     }
 

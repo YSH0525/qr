@@ -3,6 +3,7 @@ import { firestore } from "@/lib/firebase";
 import {
   collection,
   addDoc,
+  updateDoc,
   deleteDoc,
   doc,
   getDoc,
@@ -100,7 +101,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "결제 금액이 없습니다" }, { status: 400 });
     }
 
-    // Clean up stale or duplicate pending payments for same room
+    // Clean up stale pending payments (older than 30 minutes)
     const existingPending = await getDocs(
       query(
         collection(firestore, "pendingOrderPayments"),
@@ -111,7 +112,7 @@ export async function POST(req: NextRequest) {
     for (const pendingDoc of existingPending.docs) {
       const pendingCreatedAt = pendingDoc.data().createdAt as string;
       const elapsed = now.getTime() - new Date(pendingCreatedAt).getTime();
-      if (elapsed > THIRTY_MINUTES_MS || existingPending.size > 0) {
+      if (elapsed > THIRTY_MINUTES_MS) {
         await deleteDoc(pendingDoc.ref);
       }
     }
@@ -129,6 +130,7 @@ export async function POST(req: NextRequest) {
       totalAmount,
       note: note || null,
       paymentMethod: "kakaopay",
+      kakaoTid: null,
       createdAt: nowIso,
     };
 
@@ -153,7 +155,6 @@ export async function POST(req: NextRequest) {
     });
 
     // Save TID to pending document
-    const { updateDoc } = await import("firebase/firestore");
     await updateDoc(pendingRef, { kakaoTid: result.tid });
 
     return NextResponse.json({
