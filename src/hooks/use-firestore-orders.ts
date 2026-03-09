@@ -126,11 +126,11 @@ export function useFirestoreOrders(
             const retryItems = retrySnap.docs.map((item) => ({
               id: item.id,
               ...item.data(),
-            }));
+            })) as unknown as OrderWithItems["items"];
             setOrders((prev) =>
               prev.map((o) =>
                 o.orderId === order.orderId && o.items.length === 0
-                  ? { ...o, items: retryItems as OrderWithItems["items"] }
+                  ? { ...o, items: retryItems }
                   : o
               )
             );
