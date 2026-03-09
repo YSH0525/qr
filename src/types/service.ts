@@ -97,6 +97,7 @@ export interface ServiceRequest {
   paymentStatus?: string | null;
   paymentMethod?: string | null;
   kakaoTid?: string | null;
+  dailySeq?: number;
   createdAt: string;
   updatedAt: string;
 }

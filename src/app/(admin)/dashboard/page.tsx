@@ -539,7 +539,7 @@ export default function DashboardPage() {
                 card.type === "order" ? (
                   <OrderCard
                     key={card.key}
-                    seq={index + 1}
+                    seq={card.data.dailySeq ?? (index + 1)}
                     order={card.data}
                     animatingCards={animatingCards}
                     onAccept={handleAccept}
@@ -550,7 +550,7 @@ export default function DashboardPage() {
                 ) : (
                   <ServiceCard
                     key={card.key}
-                    seq={index + 1}
+                    seq={card.data.dailySeq ?? (index + 1)}
                     request={card.data}
                     onAccept={handleServiceAccept}
                     onComplete={handleServiceComplete}
@@ -638,6 +638,9 @@ function CompletedRow({ card }: {
       : `${o.items[0].menuItemName} x${o.items[0].quantity} 외 ${o.items.length - 1}건`;
     return (
       <div className="flex items-center gap-3 px-3 py-2 bg-white rounded-lg text-sm">
+        {o.dailySeq && (
+          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-gray-300 text-white text-[10px] font-bold shrink-0">{o.dailySeq}</span>
+        )}
         <span className="font-semibold text-gray-700 shrink-0">{o.roomNumber}호</span>
         <Badge variant="outline" className="text-[10px] shrink-0">
           {PAYMENT_METHOD_LABELS[o.paymentMethod]}
@@ -657,6 +660,9 @@ function CompletedRow({ card }: {
     : s.categoryName;
   return (
     <div className="flex items-center gap-3 px-3 py-2 bg-white rounded-lg text-sm">
+      {s.dailySeq && (
+        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-gray-300 text-white text-[10px] font-bold shrink-0">{s.dailySeq}</span>
+      )}
       <span className="font-semibold text-gray-700 shrink-0">{s.roomNumber}호</span>
       <Badge variant="outline" className="text-[10px] shrink-0">
         {SERVICE_TYPE_LABELS[s.type]}

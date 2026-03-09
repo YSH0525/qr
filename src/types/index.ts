@@ -57,6 +57,7 @@ export interface OrderWithItems {
   paymentStatus: PaymentStatus;
   totalAmount: number;
   note: string | null;
+  dailySeq?: number;
   createdAt: string;
   updatedAt: string;
   items: {

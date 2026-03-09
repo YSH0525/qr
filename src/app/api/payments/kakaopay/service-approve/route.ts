@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 import { kakaoPayApprove, kakaoPayCancel } from "@/lib/kakaopay";
 import { orderEvents } from "@/lib/sse";
+import { getNextDailySeq } from "@/lib/daily-seq";
 import { getBaseUrlFromRequest } from "@/lib/constants";
 
 export async function GET(req: NextRequest) {
@@ -99,8 +100,10 @@ export async function GET(req: NextRequest) {
 
     // Payment approved — now create the actual service request
     const now = new Date().toISOString();
+    const dailySeq = await getNextDailySeq();
     const requestData = {
       requestId: data.requestId,
+      dailySeq,
       categoryId: data.categoryId,
       categoryName: data.categoryName,
       categoryIcon: data.categoryIcon,
