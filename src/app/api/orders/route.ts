@@ -86,6 +86,14 @@ export async function POST(req: NextRequest) {
 
     const { roomId: roomUuid, items, paymentMethod, note } = parseResult.data;
 
+    // Block direct kakaopay order creation — must use payment ready flow
+    if (paymentMethod === "kakaopay") {
+      return NextResponse.json(
+        { error: "카카오페이 결제는 결제 준비 API를 통해 진행해야 합니다" },
+        { status: 400 }
+      );
+    }
+
     // Find room by UUID
     const roomSnap = await getDocs(
       query(

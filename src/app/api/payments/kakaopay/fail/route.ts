@@ -3,9 +3,9 @@ import { firestore } from "@/lib/firebase";
 import {
   collection,
   getDocs,
+  deleteDoc,
   query,
   where,
-  updateDoc,
 } from "firebase/firestore";
 import { getBaseUrlFromRequest } from "@/lib/constants";
 
@@ -17,26 +17,24 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(baseUrl);
   }
 
-  const orderSnap = await getDocs(
+  // Clean up pending payment data
+  const snap = await getDocs(
     query(
-      collection(firestore, "orders"),
+      collection(firestore, "pendingOrderPayments"),
       where("orderId", "==", orderId)
     )
   );
 
-  if (orderSnap.empty) {
+  if (snap.empty) {
     return NextResponse.redirect(baseUrl);
   }
 
-  const orderDoc = orderSnap.docs[0];
-  const order = orderDoc.data() as { roomUuid: string };
+  const docRef = snap.docs[0];
+  const data = docRef.data() as { roomUuid: string };
 
-  await updateDoc(orderDoc.ref, {
-    paymentStatus: "failed",
-    updatedAt: new Date().toISOString(),
-  });
+  await deleteDoc(docRef.ref);
 
   return NextResponse.redirect(
-    `${baseUrl}/room/${order.roomUuid}/payment/fail?orderId=${orderId}`
+    `${baseUrl}/room/${data.roomUuid}/payment/fail?orderId=${orderId}`
   );
 }
