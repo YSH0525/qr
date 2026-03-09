@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useOrderSSE } from "@/hooks/use-sse";
 import { useNotificationSound } from "@/hooks/use-audio";
 import { useBrowserNotification } from "@/hooks/use-notification";
@@ -81,12 +81,11 @@ export default function DashboardPage() {
 
   // 낙관적 업데이트 시 진행 중인 폴링 응답을 무효화하는 버전 카운터
   const ordersVersionRef = useRef(0);
+  const servicesVersionRef = useRef(0);
 
   // 사용자 클릭으로 오디오 + TTS 활성화
   const enableAudio = useCallback(() => {
-    // AudioContext 활성화
     playAcceptSound();
-    // TTS 활성화 (빈 텍스트로 워밍업)
     if ("speechSynthesis" in window) {
       const warm = new SpeechSynthesisUtterance("");
       warm.volume = 0;
@@ -101,7 +100,6 @@ export default function DashboardPage() {
     const res = await fetch("/api/orders");
     if (res.ok) {
       const data = await res.json();
-      // 이 fetch 도중 낙관적 업데이트가 발생했으면 결과 무시
       if (version !== ordersVersionRef.current) return;
       setOrders(data);
     }
@@ -123,9 +121,12 @@ export default function DashboardPage() {
   }, []);
 
   const fetchServiceRequests = useCallback(async () => {
+    const version = servicesVersionRef.current;
     const res = await fetch("/api/service-requests");
     if (res.ok) {
-      setServiceRequests(await res.json());
+      const data = await res.json();
+      if (version !== servicesVersionRef.current) return;
+      setServiceRequests(data);
     }
   }, []);
 
@@ -135,13 +136,11 @@ export default function DashboardPage() {
     fetchTodaySummary();
     fetchServiceRequests();
 
-    // SSE가 동작하지 않을 경우를 대비한 폴링 백업 (5초)
     const poll = setInterval(() => {
       fetchOrders();
       fetchDeferred();
       fetchServiceRequests();
     }, 5000);
-    // 매출 요약은 30초마다 (비용이 큰 쿼리)
     const summaryPoll = setInterval(fetchTodaySummary, 30000);
 
     return () => {
@@ -150,7 +149,6 @@ export default function DashboardPage() {
     };
   }, [fetchOrders, fetchDeferred, fetchTodaySummary, fetchServiceRequests]);
 
-  // SSE 재연결 시 전체 데이터 동기화
   const handleSSEReconnect = useCallback(() => {
     fetchOrders();
     fetchDeferred();
@@ -175,12 +173,12 @@ export default function DashboardPage() {
             itemText || "새로운 주문이 들어왔습니다"
           );
 
-          toast.success(`새 주문! ${order.roomNumber}호`);
+          toast.success(`새 주문! ${order.roomNumber}호`, {
+            description: itemText || undefined,
+          });
 
-          // 매출 요약 갱신
           fetchTodaySummary();
 
-          // 후불 주문이면 미정산 현황 갱신
           if (order.paymentMethod === "deferred") {
             fetchDeferred();
           }
@@ -219,16 +217,15 @@ export default function DashboardPage() {
     handleSSEReconnect
   );
 
-  const clearAnim = (orderId: string) => {
+  const clearAnim = (id: string) => {
     setAnimatingCards((prev) => {
       const next = new Map(prev);
-      next.delete(orderId);
+      next.delete(id);
       return next;
     });
   };
 
   const updateOrderStatus = (orderId: string, status: string) => {
-    // 진행 중인 fetchOrders 응답을 무효화
     ordersVersionRef.current++;
     setOrders((prev) =>
       prev.map((o) =>
@@ -239,11 +236,20 @@ export default function DashboardPage() {
     );
   };
 
+  const updateServiceStatus = (requestId: string, status: string) => {
+    servicesVersionRef.current++;
+    setServiceRequests((prev) =>
+      prev.map((r) =>
+        r.requestId === requestId
+          ? { ...r, status: status as ServiceRequest["status"], updatedAt: new Date().toISOString() }
+          : r
+      )
+    );
+  };
+
   const handleAccept = async (order: OrderWithItems) => {
     setAnimatingCards((prev) => new Map(prev).set(order.orderId, "accept"));
     playAcceptSound();
-
-    // 낙관적 업데이트: 즉시 로컬 상태 변경
     updateOrderStatus(order.orderId, "accepted");
 
     try {
@@ -258,17 +264,15 @@ export default function DashboardPage() {
           description: "처리를 시작합니다",
           icon: <CheckCircle className="text-green-500" />,
         });
-        setTimeout(() => {
-          clearAnim(order.orderId);
-        }, 400);
+        setTimeout(() => clearAnim(order.orderId), 400);
       } else {
         toast.error("주문 접수에 실패했습니다");
-        updateOrderStatus(order.orderId, "pending"); // 롤백
+        updateOrderStatus(order.orderId, "pending");
         clearAnim(order.orderId);
       }
     } catch {
       toast.error("네트워크 오류가 발생했습니다");
-      updateOrderStatus(order.orderId, "pending"); // 롤백
+      updateOrderStatus(order.orderId, "pending");
       clearAnim(order.orderId);
     }
   };
@@ -280,7 +284,6 @@ export default function DashboardPage() {
     setAnimatingCards((prev) => new Map(prev).set(order.orderId, "complete"));
     playCompleteSound();
 
-    // 버튼 위치에서 컨페티 발사
     const rect = (e.target as HTMLElement).getBoundingClientRect();
     const x = (rect.left + rect.width / 2) / window.innerWidth;
     const y = (rect.top + rect.height / 2) / window.innerHeight;
@@ -295,7 +298,6 @@ export default function DashboardPage() {
       scalar: 0.9,
     });
 
-    // 낙관적 업데이트: 즉시 로컬 상태 변경
     const prevStatus = order.status;
     updateOrderStatus(order.orderId, "completed");
 
@@ -311,17 +313,15 @@ export default function DashboardPage() {
           description: "고객에게 전달해주세요",
           icon: <span className="text-xl">🎉</span>,
         });
-        setTimeout(() => {
-          clearAnim(order.orderId);
-        }, 500);
+        setTimeout(() => clearAnim(order.orderId), 500);
       } else {
         toast.error("주문 완료 처리에 실패했습니다");
-        updateOrderStatus(order.orderId, prevStatus); // 롤백
+        updateOrderStatus(order.orderId, prevStatus);
         clearAnim(order.orderId);
       }
     } catch {
       toast.error("네트워크 오류가 발생했습니다");
-      updateOrderStatus(order.orderId, prevStatus); // 롤백
+      updateOrderStatus(order.orderId, prevStatus);
       clearAnim(order.orderId);
     }
   };
@@ -358,7 +358,6 @@ export default function DashboardPage() {
   };
 
   const handleReject = async (orderId: string) => {
-    // 낙관적 업데이트: 즉시 로컬 상태 변경
     updateOrderStatus(orderId, "rejected");
 
     try {
@@ -371,16 +370,18 @@ export default function DashboardPage() {
         toast.error("주문이 거절되었습니다");
       } else {
         toast.error("주문 거절에 실패했습니다");
-        updateOrderStatus(orderId, "pending"); // 롤백
+        updateOrderStatus(orderId, "pending");
       }
     } catch {
       toast.error("네트워크 오류가 발생했습니다");
-      updateOrderStatus(orderId, "pending"); // 롤백
+      updateOrderStatus(orderId, "pending");
     }
   };
 
   const handleServiceAccept = async (req: ServiceRequest) => {
     playAcceptSound();
+    updateServiceStatus(req.requestId, "accepted");
+
     const res = await fetch(`/api/service-requests/${req.requestId}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -388,12 +389,16 @@ export default function DashboardPage() {
     });
     if (res.ok) {
       toast.success(`${req.roomNumber}호 ${req.categoryName} 접수!`);
-      fetchServiceRequests();
+    } else {
+      toast.error("서비스 접수에 실패했습니다");
+      updateServiceStatus(req.requestId, "requested");
     }
   };
 
   const handleServiceComplete = async (req: ServiceRequest) => {
     playCompleteSound();
+    updateServiceStatus(req.requestId, "completed");
+
     const res = await fetch(`/api/service-requests/${req.requestId}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -401,92 +406,35 @@ export default function DashboardPage() {
     });
     if (res.ok) {
       toast.success(`${req.roomNumber}호 ${req.categoryName} 완료!`);
-      fetchServiceRequests();
-      // 유료 연장 등 후불 항목이 있을 수 있으므로 미정산 현황 갱신
       fetchDeferred();
+    } else {
+      toast.error("서비스 완료 처리에 실패했습니다");
+      updateServiceStatus(req.requestId, "accepted");
     }
   };
 
-  const pendingOrders = orders.filter((o) => o.status === "pending");
-  const preparingOrders = orders.filter(
+  // 주문 분류: 활성 상태만 표시 (rejected/cancelled 제외)
+  const activeOrders = orders.filter(
+    (o) => o.status !== "rejected" && o.status !== "cancelled"
+  );
+  const pendingOrders = activeOrders.filter((o) => o.status === "pending");
+  const preparingOrders = activeOrders.filter(
     (o) => o.status === "accepted" || o.status === "preparing"
   );
-  const allCompletedOrders = orders.filter((o) => o.status === "completed");
+  const completedOrders = activeOrders.filter((o) => o.status === "completed").slice(0, 10);
 
+  // 서비스 분류
   const pendingServices = serviceRequests.filter((r) => r.status === "requested");
   const acceptedServices = serviceRequests.filter((r) => r.status === "accepted");
-  const allCompletedServices = serviceRequests.filter((r) => r.status === "completed");
-
-  // 통합 카드: 객실별 그룹핑
-  interface UnifiedCard {
-    key: string;
-    roomNumber: string;
-    orders: OrderWithItems[];
-    services: ServiceRequest[];
-    latestTime: string;
-    priority: number; // 0=pending, 1=processing, 2=completed
-  }
-
-  const unifiedCards = useMemo(() => {
-    const roomMap = new Map<string, { orders: OrderWithItems[]; services: ServiceRequest[] }>();
-
-    // 완료 항목은 최근 20개만
-    const activeOrders = [...pendingOrders, ...preparingOrders];
-    const recentCompleted = allCompletedOrders.slice(0, 20);
-    const allOrders = [...activeOrders, ...recentCompleted];
-
-    const activeServices = [...pendingServices, ...acceptedServices];
-    const recentCompletedServices = allCompletedServices.slice(0, 20);
-    const allServices = [...activeServices, ...recentCompletedServices];
-
-    for (const order of allOrders) {
-      const room = order.roomNumber;
-      if (!roomMap.has(room)) roomMap.set(room, { orders: [], services: [] });
-      roomMap.get(room)!.orders.push(order);
-    }
-    for (const svc of allServices) {
-      const room = svc.roomNumber;
-      if (!roomMap.has(room)) roomMap.set(room, { orders: [], services: [] });
-      roomMap.get(room)!.services.push(svc);
-    }
-
-    const cards: UnifiedCard[] = [];
-    for (const [roomNumber, { orders: roomOrders, services: roomServices }] of roomMap) {
-      // priority: 가장 긴급한 상태 기준
-      const hasPending = roomOrders.some((o) => o.status === "pending") ||
-        roomServices.some((s) => s.status === "requested");
-      const hasProcessing = roomOrders.some((o) => o.status === "accepted" || o.status === "preparing") ||
-        roomServices.some((s) => s.status === "accepted");
-      const priority = hasPending ? 0 : hasProcessing ? 1 : 2;
-
-      const times = [
-        ...roomOrders.map((o) => o.createdAt),
-        ...roomServices.map((s) => s.createdAt),
-      ];
-      const latestTime = times.sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] || "";
-
-      cards.push({
-        key: `room-${roomNumber}`,
-        roomNumber,
-        orders: roomOrders,
-        services: roomServices,
-        latestTime,
-        priority,
-      });
-    }
-
-    // priority 오름차순 (긴급 먼저), 같으면 최신순
-    cards.sort((a, b) => {
-      if (a.priority !== b.priority) return a.priority - b.priority;
-      return new Date(b.latestTime).getTime() - new Date(a.latestTime).getTime();
-    });
-
-    return cards;
-  }, [pendingOrders, preparingOrders, allCompletedOrders, pendingServices, acceptedServices, allCompletedServices]);
+  const completedServices = serviceRequests.filter((r) => r.status === "completed").slice(0, 10);
 
   const totalPending = pendingOrders.length + pendingServices.length;
   const totalProcessing = preparingOrders.length + acceptedServices.length;
-  const totalCompleted = allCompletedOrders.length + allCompletedServices.length;
+  const totalCompleted = completedOrders.length + completedServices.length;
+
+  // 정렬된 개별 카드 목록: 대기 → 처리중 → 완료
+  const sortedOrders = [...pendingOrders, ...preparingOrders, ...completedOrders];
+  const sortedServices = [...pendingServices, ...acceptedServices, ...completedServices];
 
   return (
     <div className="p-3 md:p-6 h-full min-h-0 flex flex-col overflow-auto md:overflow-hidden">
@@ -592,7 +540,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* 통합 Stats 바 */}
+      {/* Stats 바 */}
       <div className="mb-4 shrink-0 bg-white border rounded-xl px-3 md:px-4 py-2.5 flex items-center gap-0 flex-wrap">
         <div className="flex items-center gap-1.5 md:gap-2 pr-3 md:pr-5">
           <span className="w-2 md:w-2.5 h-2 md:h-2.5 rounded-full bg-orange-400" />
@@ -667,22 +615,32 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* 통합 카드 리스트 */}
+      {/* 개별 카드 리스트 */}
       <div className="flex flex-col min-h-0 flex-1">
         <div className="space-y-3 overflow-y-auto flex-1 pr-1">
-          {unifiedCards.map((card) => (
-            <UnifiedRoomCard
-              key={card.key}
-              card={card}
+          {/* 주문 카드 (건별) */}
+          {sortedOrders.map((order) => (
+            <OrderCard
+              key={order.orderId}
+              order={order}
               animatingCards={animatingCards}
-              onAcceptOrder={handleAccept}
-              onCompleteOrder={handleComplete}
-              onRejectOrder={handleReject}
-              onAcceptService={handleServiceAccept}
-              onCompleteService={handleServiceComplete}
+              onAccept={handleAccept}
+              onComplete={handleComplete}
+              onReject={handleReject}
             />
           ))}
-          {unifiedCards.length === 0 && (
+
+          {/* 서비스 요청 카드 (건별) */}
+          {sortedServices.map((req) => (
+            <ServiceCard
+              key={req.requestId}
+              request={req}
+              onAccept={handleServiceAccept}
+              onComplete={handleServiceComplete}
+            />
+          ))}
+
+          {sortedOrders.length === 0 && sortedServices.length === 0 && (
             <p className="text-gray-400 text-sm text-center py-8">
               주문 및 서비스 요청이 없습니다
             </p>
@@ -703,29 +661,20 @@ export default function DashboardPage() {
   );
 }
 
-function UnifiedRoomCard({
-  card,
+/* ── 주문 개별 카드 ── */
+function OrderCard({
+  order,
   animatingCards,
-  onAcceptOrder,
-  onCompleteOrder,
-  onRejectOrder,
-  onAcceptService,
-  onCompleteService,
+  onAccept,
+  onComplete,
+  onReject,
 }: {
-  card: {
-    roomNumber: string;
-    orders: OrderWithItems[];
-    services: ServiceRequest[];
-    priority: number;
-  };
+  order: OrderWithItems;
   animatingCards: Map<string, "accept" | "complete">;
-  onAcceptOrder: (order: OrderWithItems) => void;
-  onCompleteOrder: (order: OrderWithItems, e: React.MouseEvent) => void;
-  onRejectOrder: (orderId: string) => void;
-  onAcceptService: (req: ServiceRequest) => void;
-  onCompleteService: (req: ServiceRequest) => void;
+  onAccept: (order: OrderWithItems) => void;
+  onComplete: (order: OrderWithItems, e: React.MouseEvent) => void;
+  onReject: (orderId: string) => void;
 }) {
-  const cardRef = useRef<HTMLDivElement>(null);
   const formatPrice = (price: number) =>
     price.toLocaleString("ko-KR") + "원";
 
@@ -738,36 +687,29 @@ function UnifiedRoomCard({
     return `${hours}시간 전`;
   };
 
-  const isAllCompleted = card.priority === 2;
+  const animType = animatingCards.get(order.orderId);
+  const isAnimating = !!animType;
 
-  // 카드 전체의 스텝 (가장 긴급한 상태 기준)
-  const step = isAllCompleted ? 2 : card.priority === 1 ? 1 : 0;
-  const stepLabels = ["접수", "처리", "완료"];
-
-  // 애니메이션: 카드 내 어떤 주문이라도 애니메이팅 중이면
-  const animatingEntry = card.orders
-    .map((o) => ({ orderId: o.orderId, type: animatingCards.get(o.orderId) }))
-    .find((e) => e.type !== undefined);
-  const anyAnimating = !!animatingEntry;
-  const animationType = animatingEntry?.type;
-
-  const animClass = anyAnimating
-    ? animationType === "accept"
+  const animClass = isAnimating
+    ? animType === "accept"
       ? "scale-95 opacity-50 border-green-400 shadow-green-200 shadow-lg"
       : "scale-90 opacity-0 translate-y-4"
     : "scale-100 opacity-100 translate-y-0";
 
-  // 가장 최근 시각
-  const latestTime = [...card.orders.map((o) => o.createdAt), ...card.services.map((s) => s.createdAt)]
-    .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
+  const isCompleted = order.status === "completed";
+
+  // 스텝 인디케이터
+  const step = order.status === "pending" ? 0
+    : order.status === "completed" ? 2
+    : 1;
+  const stepLabels = ["접수", "처리", "완료"];
 
   return (
     <Card
-      ref={cardRef}
-      className={`relative transition-all duration-400 ease-in-out ${animClass} ${isAllCompleted ? "opacity-60" : ""}`}
+      className={`relative transition-all duration-300 ease-in-out ${animClass} ${isCompleted ? "opacity-60" : ""}`}
     >
       {/* 접수 시 체크 오버레이 */}
-      {anyAnimating && animationType === "accept" && (
+      {isAnimating && animType === "accept" && (
         <div className="absolute inset-0 flex items-center justify-center bg-green-50/80 rounded-lg z-10 animate-in fade-in duration-200">
           <CheckCircle className="w-12 h-12 text-green-500 animate-in zoom-in duration-300" />
         </div>
@@ -775,24 +717,29 @@ function UnifiedRoomCard({
 
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">{card.roomNumber}호</CardTitle>
+          <CardTitle className="text-lg">{order.roomNumber}호</CardTitle>
           <div className="flex items-center gap-2">
-            {card.orders.length > 0 && (
-              <Badge variant="secondary" className="text-xs">
-                주문 {card.orders.length}
-              </Badge>
-            )}
-            {card.services.length > 0 && (
-              <Badge variant="outline" className="text-xs">
-                서비스 {card.services.length}
-              </Badge>
-            )}
+            <Badge
+              variant={order.paymentMethod === "kakaopay" ? "default" : "secondary"}
+              className="text-[10px]"
+            >
+              {PAYMENT_METHOD_LABELS[order.paymentMethod]}
+            </Badge>
+            <Badge
+              variant={
+                order.status === "pending" ? "destructive"
+                  : order.status === "completed" ? "outline"
+                  : "secondary"
+              }
+              className="text-[10px]"
+            >
+              {ORDER_STATUS_LABELS[order.status]}
+            </Badge>
           </div>
         </div>
-        {latestTime && (
-          <p className="text-xs text-gray-400">{timeAgo(latestTime)}</p>
-        )}
+        <p className="text-xs text-gray-400">{timeAgo(order.createdAt)}</p>
       </CardHeader>
+
       <CardContent className="space-y-3">
         {/* 스텝 인디케이터 */}
         <div className="flex items-center gap-0 px-2">
@@ -802,7 +749,7 @@ function UnifiedRoomCard({
                 <div
                   className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${
                     i <= step
-                      ? isAllCompleted
+                      ? isCompleted
                         ? "bg-green-500"
                         : "bg-blue-500"
                       : "bg-gray-200"
@@ -813,7 +760,7 @@ function UnifiedRoomCard({
                 <span
                   className={`text-[10px] mt-1 ${
                     i <= step
-                      ? isAllCompleted
+                      ? isCompleted
                         ? "text-green-600 font-semibold"
                         : "text-blue-600 font-semibold"
                       : "text-gray-400"
@@ -826,7 +773,7 @@ function UnifiedRoomCard({
                 <div
                   className={`flex-1 h-0.5 mx-1 mt-[-12px] ${
                     i < step
-                      ? isAllCompleted
+                      ? isCompleted
                         ? "bg-green-500"
                         : "bg-blue-500"
                       : "bg-gray-200"
@@ -837,200 +784,208 @@ function UnifiedRoomCard({
           ))}
         </div>
 
-        {/* 주문 섹션 */}
-        {card.orders.map((order) => (
-          <div key={order.orderId} className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-gray-500 uppercase">주문</span>
-              <Badge
-                variant={order.paymentMethod === "kakaopay" ? "default" : "secondary"}
-                className="text-[10px]"
-              >
-                {PAYMENT_METHOD_LABELS[order.paymentMethod]}
-              </Badge>
-              <Badge
-                variant={
-                  order.status === "pending" ? "destructive"
-                    : order.status === "completed" ? "outline"
-                    : "secondary"
-                }
-                className="text-[10px]"
-              >
-                {ORDER_STATUS_LABELS[order.status]}
-              </Badge>
+        {/* 메뉴 아이템 */}
+        <div className="space-y-1">
+          {order.items.map((item, idx) => (
+            <div key={idx} className="flex justify-between text-sm">
+              <span>{item.menuItemName} x{item.quantity}</span>
+              <span className="text-gray-500">{formatPrice(item.subtotal)}</span>
             </div>
-            <div className="space-y-1">
-              {order.items.map((item, idx) => (
-                <div key={idx} className="flex justify-between text-sm">
-                  <span>{item.menuItemName} x{item.quantity}</span>
-                  <span className="text-gray-500">{formatPrice(item.subtotal)}</span>
-                </div>
-              ))}
-            </div>
-            {order.note && (
-              <p className="text-xs text-orange-600 bg-orange-50 p-2 rounded">
-                요청: {order.note}
-              </p>
-            )}
-            <div className="flex justify-between items-center">
-              <span className="font-semibold">{formatPrice(order.totalAmount)}</span>
-              <div className="flex gap-2">
-                {order.status === "pending" && (
-                  <>
-                    <Button
-                      size="sm"
-                      className="transition-all duration-150 active:scale-90 hover:shadow-lg"
-                      onClick={() => onAcceptOrder(order)}
-                    >
-                      접수
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      className="transition-all duration-150 active:scale-90"
-                      onClick={() => onRejectOrder(order.orderId)}
-                    >
-                      거절
-                    </Button>
-                  </>
-                )}
-                {(order.status === "accepted" || order.status === "preparing") && (
-                  <Button
-                    size="sm"
-                    className="bg-green-600 hover:bg-green-700 transition-all duration-150 active:scale-90 hover:shadow-lg"
-                    onClick={(e) => onCompleteOrder(order, e)}
-                  >
-                    완료
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
 
-        {/* 서비스 요청 섹션 */}
-        {card.services.length > 0 && card.orders.length > 0 && (
-          <div className="border-t pt-2" />
+        {order.note && (
+          <p className="text-xs text-orange-600 bg-orange-50 p-2 rounded">
+            요청: {order.note}
+          </p>
         )}
-        {card.services.map((req) => (
-          <div key={req.id} className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="text-xl">{req.categoryIcon}</span>
-              <span className="text-sm font-medium">{req.categoryName}</span>
-              <Badge variant="outline" className="text-[10px]">
-                {SERVICE_TYPE_LABELS[req.type]}
-              </Badge>
-              <Badge
-                variant={
-                  req.status === "requested" ? "destructive"
-                    : req.status === "completed" ? "outline"
-                    : "secondary"
-                }
-                className="text-[10px]"
-              >
-                {SERVICE_STATUS_LABELS[req.status]}
-              </Badge>
-            </div>
 
-            {/* 비품 요청 아이템 */}
-            {req.items && req.items.length > 0 && (
-              <div className="space-y-1">
-                {req.items.map((item, idx) => (
-                  <div key={idx} className="flex justify-between text-sm text-gray-600">
-                    <span>{item.name}</span>
-                    <span>x{item.quantity}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* 체크아웃 연장 정보 */}
-            {req.type === "checkout_extension" && req.extensionHours && (
-              <div className={`text-sm p-2 rounded ${req.freeExtension ? "bg-green-50" : "bg-blue-50"}`}>
-                <span className={`font-medium ${req.freeExtension ? "text-green-700" : "text-blue-700"}`}>
-                  +{req.extensionHours}시간 연장
-                </span>
-                {req.freeExtension ? (
-                  <span className="text-green-600 ml-2">(무료 - 리뷰)</span>
-                ) : req.extensionAmount ? (
-                  <span className="text-blue-500 ml-2">
-                    ({req.extensionAmount.toLocaleString()}원 후불)
-                  </span>
-                ) : null}
-              </div>
-            )}
-
-            {/* 청소 옵션 상세 */}
-            {req.type === "cleaning" && req.cleaningOptions && (
-              <div className="space-y-1 text-sm">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Badge
-                    variant={
-                      req.cleaningOptions.serviceLevel === "dnd"
-                        ? "destructive"
-                        : req.cleaningOptions.serviceLevel === "full"
-                        ? "default"
-                        : "secondary"
-                    }
-                  >
-                    {CLEANING_LEVEL_LABELS[req.cleaningOptions.serviceLevel]}
-                  </Badge>
-                  {req.cleaningOptions.preferredTime &&
-                    req.cleaningOptions.serviceLevel !== "dnd" && (
-                      <span className="text-xs text-gray-500">
-                        {PREFERRED_TIME_LABELS[req.cleaningOptions.preferredTime]}
-                      </span>
-                    )}
-                </div>
-                {!req.cleaningOptions.linenChange &&
-                  req.cleaningOptions.serviceLevel !== "dnd" && (
-                    <p className="text-xs text-green-600">시트 교체 없이 정리 (Eco)</p>
-                  )}
-                {req.cleaningOptions.contactlessSupplies.length > 0 && (
-                  <p className="text-xs text-sky-600">
-                    비대면 비품:{" "}
-                    {req.cleaningOptions.contactlessSupplies
-                      .map((s) => SUPPLY_ITEM_LABELS[s])
-                      .join(", ")}
-                    {req.cleaningOptions.leaveAtDoor && " (문 앞)"}
-                  </p>
-                )}
-                {req.cleaningOptions.trashRemovalOnly && (
-                  <p className="text-xs text-orange-600">쓰레기 수거만 요청</p>
-                )}
-              </div>
-            )}
-
-            {/* 메모 */}
-            {req.note && (
-              <p className="text-xs text-orange-600 bg-orange-50 p-2 rounded">
-                메모: {req.note}
-              </p>
-            )}
-
-            {/* 서비스 액션 버튼 */}
-            <div className="flex justify-end gap-2">
-              {req.status === "requested" && (
+        <div className="flex justify-between items-center">
+          <span className="font-semibold">{formatPrice(order.totalAmount)}</span>
+          <div className="flex gap-2">
+            {order.status === "pending" && (
+              <>
                 <Button
                   size="sm"
                   className="transition-all duration-150 active:scale-90 hover:shadow-lg"
-                  onClick={() => onAcceptService(req)}
+                  onClick={() => onAccept(order)}
                 >
                   접수
                 </Button>
-              )}
-              {req.status === "accepted" && (
                 <Button
                   size="sm"
-                  className="bg-green-600 hover:bg-green-700 transition-all duration-150 active:scale-90 hover:shadow-lg"
-                  onClick={() => onCompleteService(req)}
+                  variant="destructive"
+                  className="transition-all duration-150 active:scale-90"
+                  onClick={() => onReject(order.orderId)}
                 >
-                  완료
+                  거절
                 </Button>
-              )}
-            </div>
+              </>
+            )}
+            {(order.status === "accepted" || order.status === "preparing") && (
+              <Button
+                size="sm"
+                className="bg-green-600 hover:bg-green-700 transition-all duration-150 active:scale-90 hover:shadow-lg"
+                onClick={(e) => onComplete(order, e)}
+              >
+                완료
+              </Button>
+            )}
           </div>
-        ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ── 서비스 요청 개별 카드 ── */
+function ServiceCard({
+  request: req,
+  onAccept,
+  onComplete,
+}: {
+  request: ServiceRequest;
+  onAccept: (req: ServiceRequest) => void;
+  onComplete: (req: ServiceRequest) => void;
+}) {
+  const timeAgo = (dateStr: string) => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "방금 전";
+    if (mins < 60) return `${mins}분 전`;
+    const hours = Math.floor(mins / 60);
+    return `${hours}시간 전`;
+  };
+
+  const isCompleted = req.status === "completed";
+
+  return (
+    <Card className={`transition-all duration-300 ${isCompleted ? "opacity-60" : ""}`}>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">{req.categoryIcon}</span>
+            <CardTitle className="text-lg">{req.roomNumber}호</CardTitle>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-[10px]">
+              {SERVICE_TYPE_LABELS[req.type]}
+            </Badge>
+            <Badge
+              variant={
+                req.status === "requested" ? "destructive"
+                  : req.status === "completed" ? "outline"
+                  : "secondary"
+              }
+              className="text-[10px]"
+            >
+              {SERVICE_STATUS_LABELS[req.status]}
+            </Badge>
+          </div>
+        </div>
+        <p className="text-xs text-gray-400">{timeAgo(req.createdAt)}</p>
+      </CardHeader>
+
+      <CardContent className="space-y-2">
+        <p className="text-sm font-medium">{req.categoryName}</p>
+
+        {/* 비품 요청 아이템 */}
+        {req.items && req.items.length > 0 && (
+          <div className="space-y-1">
+            {req.items.map((item, idx) => (
+              <div key={idx} className="flex justify-between text-sm text-gray-600">
+                <span>{item.name}</span>
+                <span>x{item.quantity}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 체크아웃 연장 정보 */}
+        {req.type === "checkout_extension" && req.extensionHours && (
+          <div className={`text-sm p-2 rounded ${req.freeExtension ? "bg-green-50" : "bg-blue-50"}`}>
+            <span className={`font-medium ${req.freeExtension ? "text-green-700" : "text-blue-700"}`}>
+              +{req.extensionHours}시간 연장
+            </span>
+            {req.freeExtension ? (
+              <span className="text-green-600 ml-2">(무료 - 리뷰)</span>
+            ) : req.extensionAmount ? (
+              <span className="text-blue-500 ml-2">
+                ({req.extensionAmount.toLocaleString()}원 후불)
+              </span>
+            ) : null}
+          </div>
+        )}
+
+        {/* 청소 옵션 상세 */}
+        {req.type === "cleaning" && req.cleaningOptions && (
+          <div className="space-y-1 text-sm">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge
+                variant={
+                  req.cleaningOptions.serviceLevel === "dnd"
+                    ? "destructive"
+                    : req.cleaningOptions.serviceLevel === "full"
+                    ? "default"
+                    : "secondary"
+                }
+              >
+                {CLEANING_LEVEL_LABELS[req.cleaningOptions.serviceLevel]}
+              </Badge>
+              {req.cleaningOptions.preferredTime &&
+                req.cleaningOptions.serviceLevel !== "dnd" && (
+                  <span className="text-xs text-gray-500">
+                    {PREFERRED_TIME_LABELS[req.cleaningOptions.preferredTime]}
+                  </span>
+                )}
+            </div>
+            {!req.cleaningOptions.linenChange &&
+              req.cleaningOptions.serviceLevel !== "dnd" && (
+                <p className="text-xs text-green-600">시트 교체 없이 정리 (Eco)</p>
+              )}
+            {req.cleaningOptions.contactlessSupplies.length > 0 && (
+              <p className="text-xs text-sky-600">
+                비대면 비품:{" "}
+                {req.cleaningOptions.contactlessSupplies
+                  .map((s) => SUPPLY_ITEM_LABELS[s])
+                  .join(", ")}
+                {req.cleaningOptions.leaveAtDoor && " (문 앞)"}
+              </p>
+            )}
+            {req.cleaningOptions.trashRemovalOnly && (
+              <p className="text-xs text-orange-600">쓰레기 수거만 요청</p>
+            )}
+          </div>
+        )}
+
+        {/* 메모 */}
+        {req.note && (
+          <p className="text-xs text-orange-600 bg-orange-50 p-2 rounded">
+            메모: {req.note}
+          </p>
+        )}
+
+        {/* 액션 버튼 */}
+        <div className="flex justify-end gap-2">
+          {req.status === "requested" && (
+            <Button
+              size="sm"
+              className="transition-all duration-150 active:scale-90 hover:shadow-lg"
+              onClick={() => onAccept(req)}
+            >
+              접수
+            </Button>
+          )}
+          {req.status === "accepted" && (
+            <Button
+              size="sm"
+              className="bg-green-600 hover:bg-green-700 transition-all duration-150 active:scale-90 hover:shadow-lg"
+              onClick={() => onComplete(req)}
+            >
+              완료
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
