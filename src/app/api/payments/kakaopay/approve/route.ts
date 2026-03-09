@@ -7,7 +7,7 @@ import {
   where,
   updateDoc,
 } from "firebase/firestore";
-import { kakaoPayApprove } from "@/lib/kakaopay";
+import { kakaoPayApprove, kakaoPayCancel } from "@/lib/kakaopay";
 import { orderEvents } from "@/lib/sse";
 import { getBaseUrlFromRequest } from "@/lib/constants";
 
@@ -68,6 +68,15 @@ export async function GET(req: NextRequest) {
       console.error(
         `Payment amount mismatch: expected ${order.totalAmount}, got ${approveResult.amount?.total}`
       );
+      // Cancel the already-approved payment on KakaoPay side
+      try {
+        await kakaoPayCancel({
+          tid: order.kakaoTid!,
+          cancelAmount: approveResult.amount?.total ?? order.totalAmount,
+        });
+      } catch (cancelErr) {
+        console.error("Failed to cancel mismatched payment:", cancelErr);
+      }
       await updateDoc(orderDoc.ref, {
         paymentStatus: "failed",
         updatedAt: new Date().toISOString(),

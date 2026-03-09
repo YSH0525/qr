@@ -35,7 +35,48 @@ export async function POST(req: NextRequest) {
       roomNumber: string;
       roomUuid: string;
       totalAmount: number;
+      paymentMethod: string;
+      paymentStatus: string;
+      status: string;
+      kakaoTid: string | null;
     };
+
+    // Validate order is eligible for KakaoPay payment
+    if (order.paymentMethod !== "kakaopay") {
+      return NextResponse.json(
+        { error: "카카오페이 결제 대상 주문이 아닙니다" },
+        { status: 400 }
+      );
+    }
+
+    if (order.paymentStatus !== "pending") {
+      return NextResponse.json(
+        { error: "결제 대기 상태의 주문만 결제할 수 있습니다" },
+        { status: 400 }
+      );
+    }
+
+    if (order.status === "cancelled" || order.status === "rejected") {
+      return NextResponse.json(
+        { error: "취소되거나 거부된 주문은 결제할 수 없습니다" },
+        { status: 400 }
+      );
+    }
+
+    if (!order.totalAmount || order.totalAmount <= 0) {
+      return NextResponse.json(
+        { error: "결제 금액이 올바르지 않습니다" },
+        { status: 400 }
+      );
+    }
+
+    // Prevent duplicate payment preparation
+    if (order.kakaoTid) {
+      return NextResponse.json(
+        { error: "이미 결제가 진행 중입니다" },
+        { status: 409 }
+      );
+    }
 
     const baseUrl = getBaseUrlFromRequest(req);
 

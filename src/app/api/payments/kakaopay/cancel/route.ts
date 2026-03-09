@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
   const order = orderDoc.data() as { roomUuid: string };
 
   await updateDoc(orderDoc.ref, {
-    paymentStatus: "failed",
+    paymentStatus: "cancelled",
     status: "cancelled",
     updatedAt: new Date().toISOString(),
   });
