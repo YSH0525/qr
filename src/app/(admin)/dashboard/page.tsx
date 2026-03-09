@@ -432,9 +432,31 @@ export default function DashboardPage() {
   const totalProcessing = preparingOrders.length + acceptedServices.length;
   const totalCompleted = completedOrders.length + completedServices.length;
 
-  // 정렬된 개별 카드 목록: 대기 → 처리중 → 완료
-  const sortedOrders = [...pendingOrders, ...preparingOrders, ...completedOrders];
-  const sortedServices = [...pendingServices, ...acceptedServices, ...completedServices];
+  // 주문 + 서비스를 통합 정렬: 대기 → 처리중 → 완료 (같은 상태 내에서 최신순)
+  type CardItem =
+    | { type: "order"; data: OrderWithItems; key: string; priority: number; time: string }
+    | { type: "service"; data: ServiceRequest; key: string; priority: number; time: string };
+
+  const allCards: CardItem[] = [
+    ...[...pendingOrders, ...preparingOrders, ...completedOrders].map((o) => ({
+      type: "order" as const,
+      data: o,
+      key: o.orderId,
+      priority: o.status === "pending" ? 0 : o.status === "completed" ? 2 : 1,
+      time: o.createdAt,
+    })),
+    ...[...pendingServices, ...acceptedServices, ...completedServices].map((s) => ({
+      type: "service" as const,
+      data: s,
+      key: s.requestId,
+      priority: s.status === "requested" ? 0 : s.status === "completed" ? 2 : 1,
+      time: s.createdAt,
+    })),
+  ];
+  allCards.sort((a, b) => {
+    if (a.priority !== b.priority) return a.priority - b.priority;
+    return new Date(b.time).getTime() - new Date(a.time).getTime();
+  });
 
   return (
     <div className="p-3 md:p-6 h-full min-h-0 flex flex-col overflow-auto md:overflow-hidden">
@@ -615,32 +637,31 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* 개별 카드 리스트 */}
+      {/* 개별 카드 리스트 - 반응형 그리드 */}
       <div className="flex flex-col min-h-0 flex-1">
-        <div className="space-y-3 overflow-y-auto flex-1 pr-1">
-          {/* 주문 카드 (건별) */}
-          {sortedOrders.map((order) => (
-            <OrderCard
-              key={order.orderId}
-              order={order}
-              animatingCards={animatingCards}
-              onAccept={handleAccept}
-              onComplete={handleComplete}
-              onReject={handleReject}
-            />
-          ))}
-
-          {/* 서비스 요청 카드 (건별) */}
-          {sortedServices.map((req) => (
-            <ServiceCard
-              key={req.requestId}
-              request={req}
-              onAccept={handleServiceAccept}
-              onComplete={handleServiceComplete}
-            />
-          ))}
-
-          {sortedOrders.length === 0 && sortedServices.length === 0 && (
+        <div className="overflow-y-auto flex-1 pr-1">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
+            {allCards.map((card) =>
+              card.type === "order" ? (
+                <OrderCard
+                  key={card.key}
+                  order={card.data}
+                  animatingCards={animatingCards}
+                  onAccept={handleAccept}
+                  onComplete={handleComplete}
+                  onReject={handleReject}
+                />
+              ) : (
+                <ServiceCard
+                  key={card.key}
+                  request={card.data}
+                  onAccept={handleServiceAccept}
+                  onComplete={handleServiceComplete}
+                />
+              )
+            )}
+          </div>
+          {allCards.length === 0 && (
             <p className="text-gray-400 text-sm text-center py-8">
               주문 및 서비스 요청이 없습니다
             </p>
