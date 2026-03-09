@@ -9,7 +9,6 @@ import {
   where,
 } from "firebase/firestore";
 import { kakaoPayApprove, kakaoPayCancel } from "@/lib/kakaopay";
-import { orderEvents } from "@/lib/sse";
 import { getNextDailySeq } from "@/lib/daily-seq";
 import { getBaseUrlFromRequest } from "@/lib/constants";
 
@@ -133,15 +132,8 @@ export async function GET(req: NextRequest) {
       )
     );
 
-    const fullOrder = {
-      id: orderRef.id,
-      ...orderData,
-      items: data.items,
-    };
-
-    // Defer non-critical work to after the response is sent
+    // Defer cleanup to after the response is sent
     after(async () => {
-      orderEvents.broadcast("new-order", fullOrder);
       await deleteDoc(pendingDoc.ref);
     });
 

@@ -7,7 +7,6 @@ import {
   where,
   updateDoc,
 } from "firebase/firestore";
-import { orderEvents } from "@/lib/sse";
 
 export async function PATCH(
   req: NextRequest,
@@ -52,8 +51,6 @@ export async function PATCH(
   await updateDoc(orderDoc.ref, { status, updatedAt });
 
   const updated = { id: orderDoc.id, ...orderDoc.data(), status, updatedAt };
-
-  orderEvents.broadcast("order-updated", updated);
 
   return NextResponse.json(updated);
 }
