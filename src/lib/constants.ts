@@ -26,11 +26,15 @@ export function getBaseUrlFromRequest(req: NextRequest): string {
  * the Kakao Pay app redirecting back to the browser.
  */
 export function getCallbackBaseUrl(req: NextRequest): string {
+  // 1. NEXT_PUBLIC_BASE_URL (explicitly configured public URL)
   const envUrl = process.env.NEXT_PUBLIC_BASE_URL;
-  // Use env URL if it's explicitly set and not localhost
   if (envUrl && !envUrl.includes("localhost") && !envUrl.includes("127.0.0.1")) {
     return envUrl.replace(/\/$/, "");
   }
-  // Fallback to request headers
+  // 2. VERCEL_URL (auto-set by Vercel, always publicly accessible)
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  // 3. Fallback to request headers
   return getBaseUrlFromRequest(req);
 }
