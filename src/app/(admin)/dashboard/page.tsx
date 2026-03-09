@@ -62,19 +62,6 @@ export default function DashboardPage() {
   const ordersVersionRef = useRef(0);
   const servicesVersionRef = useRef(0);
 
-  // 폴링 기반 알림 fallback: SSE가 실패해도 새 요청 감지
-  const knownOrderIdsRef = useRef<Set<string>>(new Set());
-  const knownServiceIdsRef = useRef<Set<string>>(new Set());
-  const initialLoadDoneRef = useRef(false);
-
-  // 알림 함수를 ref로 저장하여 fetch 의존성 안정화
-  const playNewOrderAlertRef = useRef(playNewOrderAlert);
-  playNewOrderAlertRef.current = playNewOrderAlert;
-  const playServiceRequestAlertRef = useRef(playServiceRequestAlert);
-  playServiceRequestAlertRef.current = playServiceRequestAlert;
-  const notifyRef = useRef(notify);
-  notifyRef.current = notify;
-
   // 사용자 클릭으로 오디오 + TTS 활성화
   const enableAudio = useCallback(() => {
     playAcceptSound();
@@ -93,25 +80,6 @@ export default function DashboardPage() {
     if (res.ok) {
       const data: OrderWithItems[] = await res.json();
       if (version !== ordersVersionRef.current) return;
-
-      // 폴링 fallback: 새 주문 감지 시 알림 (SSE 미수신 대비)
-      if (initialLoadDoneRef.current) {
-        for (const order of data) {
-          if (
-            order.status === "pending" &&
-            !knownOrderIdsRef.current.has(order.orderId)
-          ) {
-            playNewOrderAlertRef.current(order.roomNumber, order.items || []);
-            notifyRef.current(
-              `새 주문! ${order.roomNumber}호`,
-              (order.items || []).map((i) => `${i.menuItemName} x${i.quantity}`).join(", ") || "새로운 주문이 들어왔습니다"
-            );
-            toast.success(`새 주문! ${order.roomNumber}호`);
-          }
-        }
-      }
-      knownOrderIdsRef.current = new Set(data.map((o) => o.orderId));
-
       setOrders(data);
     }
   }, []);
@@ -129,30 +97,14 @@ export default function DashboardPage() {
     if (res.ok) {
       const data: ServiceRequest[] = await res.json();
       if (version !== servicesVersionRef.current) return;
-
-      // 폴링 fallback: 새 서비스 요청 감지 시 알림 (SSE 미수신 대비)
-      if (initialLoadDoneRef.current) {
-        for (const req of data) {
-          if (!knownServiceIdsRef.current.has(req.requestId)) {
-            playServiceRequestAlertRef.current(req.roomNumber, req.categoryName);
-            notifyRef.current(`서비스 요청! ${req.roomNumber}호`, req.categoryName);
-            toast.success(`서비스 요청! ${req.roomNumber}호 — ${req.categoryName}`);
-          }
-        }
-      }
-      knownServiceIdsRef.current = new Set(data.map((r) => r.requestId));
-
       setServiceRequests(data);
     }
   }, []);
 
   useEffect(() => {
-    // 초기 로드: 기존 데이터를 알림 없이 불러온 뒤 폴링 시작
-    Promise.all([fetchOrders(), fetchDeferred(), fetchServiceRequests()]).then(
-      () => {
-        initialLoadDoneRef.current = true;
-      }
-    );
+    fetchOrders();
+    fetchDeferred();
+    fetchServiceRequests();
 
     const poll = setInterval(() => {
       fetchOrders();
@@ -176,8 +128,6 @@ export default function DashboardPage() {
       (event: string, data: Record<string, unknown>) => {
         if (event === "new-order") {
           const order = data as unknown as OrderWithItems;
-          // SSE에서 수신한 ID를 기록하여 폴링 중복 알림 방지
-          knownOrderIdsRef.current.add(order.orderId);
           setOrders((prev) => [order, ...prev]);
 
           playNewOrderAlert(order.roomNumber, order.items || []);
@@ -208,8 +158,6 @@ export default function DashboardPage() {
           fetchDeferred();
         } else if (event === "new-service-request") {
           const req = data as unknown as ServiceRequest;
-          // SSE에서 수신한 ID를 기록하여 폴링 중복 알림 방지
-          knownServiceIdsRef.current.add(req.requestId);
           setServiceRequests((prev) => [req, ...prev]);
           playServiceRequestAlert(req.roomNumber, req.categoryName);
           notify(`서비스 요청! ${req.roomNumber}호`, req.categoryName);
