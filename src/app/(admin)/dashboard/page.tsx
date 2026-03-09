@@ -67,6 +67,14 @@ export default function DashboardPage() {
   const knownServiceIdsRef = useRef<Set<string>>(new Set());
   const initialLoadDoneRef = useRef(false);
 
+  // 알림 함수를 ref로 저장하여 fetch 의존성 안정화
+  const playNewOrderAlertRef = useRef(playNewOrderAlert);
+  playNewOrderAlertRef.current = playNewOrderAlert;
+  const playServiceRequestAlertRef = useRef(playServiceRequestAlert);
+  playServiceRequestAlertRef.current = playServiceRequestAlert;
+  const notifyRef = useRef(notify);
+  notifyRef.current = notify;
+
   // 사용자 클릭으로 오디오 + TTS 활성화
   const enableAudio = useCallback(() => {
     playAcceptSound();
@@ -93,8 +101,8 @@ export default function DashboardPage() {
             order.status === "pending" &&
             !knownOrderIdsRef.current.has(order.orderId)
           ) {
-            playNewOrderAlert(order.roomNumber, order.items || []);
-            notify(
+            playNewOrderAlertRef.current(order.roomNumber, order.items || []);
+            notifyRef.current(
               `새 주문! ${order.roomNumber}호`,
               (order.items || []).map((i) => `${i.menuItemName} x${i.quantity}`).join(", ") || "새로운 주문이 들어왔습니다"
             );
@@ -106,7 +114,7 @@ export default function DashboardPage() {
 
       setOrders(data);
     }
-  }, [playNewOrderAlert, notify]);
+  }, []);
 
   const fetchDeferred = useCallback(async () => {
     const res = await fetch("/api/payments/deferred");
@@ -126,8 +134,8 @@ export default function DashboardPage() {
       if (initialLoadDoneRef.current) {
         for (const req of data) {
           if (!knownServiceIdsRef.current.has(req.requestId)) {
-            playServiceRequestAlert(req.roomNumber, req.categoryName);
-            notify(`서비스 요청! ${req.roomNumber}호`, req.categoryName);
+            playServiceRequestAlertRef.current(req.roomNumber, req.categoryName);
+            notifyRef.current(`서비스 요청! ${req.roomNumber}호`, req.categoryName);
             toast.success(`서비스 요청! ${req.roomNumber}호 — ${req.categoryName}`);
           }
         }
@@ -136,7 +144,7 @@ export default function DashboardPage() {
 
       setServiceRequests(data);
     }
-  }, [playServiceRequestAlert, notify]);
+  }, []);
 
   useEffect(() => {
     // 초기 로드: 기존 데이터를 알림 없이 불러온 뒤 폴링 시작
