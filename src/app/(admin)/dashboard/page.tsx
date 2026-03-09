@@ -66,7 +66,7 @@ interface TodaySummary {
 
 export default function DashboardPage() {
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
-  const [animatingCards, setAnimatingCards] = useState<Set<string>>(new Set());
+  const [animatingCards, setAnimatingCards] = useState<Map<string, "accept" | "complete">>(new Map());
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [deferredPayments, setDeferredPayments] = useState<DeferredPayment[]>([]);
   const [showDeferred, setShowDeferred] = useState(true);
@@ -214,14 +214,14 @@ export default function DashboardPage() {
 
   const clearAnim = (orderId: string) => {
     setAnimatingCards((prev) => {
-      const next = new Set(prev);
+      const next = new Map(prev);
       next.delete(orderId);
       return next;
     });
   };
 
   const handleAccept = async (order: OrderWithItems) => {
-    setAnimatingCards((prev) => new Set(prev).add(order.orderId));
+    setAnimatingCards((prev) => new Map(prev).set(order.orderId, "accept"));
     playAcceptSound();
 
     try {
@@ -255,7 +255,7 @@ export default function DashboardPage() {
     order: OrderWithItems,
     e: React.MouseEvent
   ) => {
-    setAnimatingCards((prev) => new Set(prev).add(order.orderId));
+    setAnimatingCards((prev) => new Map(prev).set(order.orderId, "complete"));
     playCompleteSound();
 
     // 버튼 위치에서 컨페티 발사
@@ -688,7 +688,7 @@ function UnifiedRoomCard({
     services: ServiceRequest[];
     priority: number;
   };
-  animatingCards: Set<string>;
+  animatingCards: Map<string, "accept" | "complete">;
   onAcceptOrder: (order: OrderWithItems) => void;
   onCompleteOrder: (order: OrderWithItems, e: React.MouseEvent) => void;
   onRejectOrder: (orderId: string) => void;
@@ -715,11 +715,11 @@ function UnifiedRoomCard({
   const stepLabels = ["접수", "처리", "완료"];
 
   // 애니메이션: 카드 내 어떤 주문이라도 애니메이팅 중이면
-  const anyAnimating = card.orders.some((o) => animatingCards.has(o.orderId));
-  const animatingOrder = card.orders.find((o) => animatingCards.has(o.orderId));
-  const animationType = animatingOrder
-    ? animatingOrder.status === "pending" ? "accept" : "complete"
-    : undefined;
+  const animatingEntry = card.orders
+    .map((o) => ({ orderId: o.orderId, type: animatingCards.get(o.orderId) }))
+    .find((e) => e.type !== undefined);
+  const anyAnimating = !!animatingEntry;
+  const animationType = animatingEntry?.type;
 
   const animClass = anyAnimating
     ? animationType === "accept"
@@ -734,7 +734,7 @@ function UnifiedRoomCard({
   return (
     <Card
       ref={cardRef}
-      className={`transition-all duration-400 ease-in-out ${animClass} ${isAllCompleted ? "opacity-60" : ""}`}
+      className={`relative transition-all duration-400 ease-in-out ${animClass} ${isAllCompleted ? "opacity-60" : ""}`}
     >
       {/* 접수 시 체크 오버레이 */}
       {anyAnimating && animationType === "accept" && (
