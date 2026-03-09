@@ -534,10 +534,11 @@ export default function DashboardPage() {
           {/* 활성 카드 (대기 + 처리중) - 그리드 */}
           {activeCards.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
-              {activeCards.map((card) =>
+              {activeCards.map((card, index) =>
                 card.type === "order" ? (
                   <OrderCard
                     key={card.key}
+                    seq={index + 1}
                     order={card.data}
                     animatingCards={animatingCards}
                     onAccept={handleAccept}
@@ -548,6 +549,7 @@ export default function DashboardPage() {
                 ) : (
                   <ServiceCard
                     key={card.key}
+                    seq={index + 1}
                     request={card.data}
                     onAccept={handleServiceAccept}
                     onComplete={handleServiceComplete}
@@ -658,6 +660,16 @@ function CompletedRow({ card }: {
       <Badge variant="outline" className="text-[10px] shrink-0">
         {SERVICE_TYPE_LABELS[s.type]}
       </Badge>
+      {s.paymentMethod === "kakaopay" && (
+        <Badge variant="default" className="text-[10px] shrink-0 bg-yellow-400 text-yellow-900 hover:bg-yellow-400">
+          카카오페이
+        </Badge>
+      )}
+      {s.paymentMethod === "deferred" && (
+        <Badge variant="secondary" className="text-[10px] shrink-0">
+          후불
+        </Badge>
+      )}
       <span className="text-gray-500 truncate flex-1 min-w-0">{label}</span>
       <span className="text-xs text-gray-400 shrink-0">{timeAgo(card.time)}</span>
     </div>
@@ -666,6 +678,7 @@ function CompletedRow({ card }: {
 
 /* ── 주문 개별 카드 ── */
 function OrderCard({
+  seq,
   order,
   animatingCards,
   onAccept,
@@ -673,6 +686,7 @@ function OrderCard({
   onComplete,
   onReject,
 }: {
+  seq: number;
   order: OrderWithItems;
   animatingCards: Map<string, "accept" | "prepare" | "complete">;
   onAccept: (order: OrderWithItems) => void;
@@ -725,7 +739,10 @@ function OrderCard({
 
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">{order.roomNumber}호</CardTitle>
+          <div className="flex items-center gap-2">
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-900 text-white text-xs font-bold">{seq}</span>
+              <CardTitle className="text-lg">{order.roomNumber}호</CardTitle>
+            </div>
           <div className="flex items-center gap-2">
             <Badge
               variant={order.paymentMethod === "kakaopay" ? "default" : "secondary"}
@@ -857,10 +874,12 @@ function OrderCard({
 
 /* ── 서비스 요청 개별 카드 ── */
 function ServiceCard({
+  seq,
   request: req,
   onAccept,
   onComplete,
 }: {
+  seq: number;
   request: ServiceRequest;
   onAccept: (req: ServiceRequest) => void;
   onComplete: (req: ServiceRequest) => void;
@@ -881,12 +900,23 @@ function ServiceCard({
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
+            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-900 text-white text-xs font-bold">{seq}</span>
             <CardTitle className="text-lg">{req.roomNumber}호</CardTitle>
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-[10px]">
               {SERVICE_TYPE_LABELS[req.type]}
             </Badge>
+            {req.paymentMethod === "kakaopay" && (
+              <Badge variant="default" className="text-[10px] bg-yellow-400 text-yellow-900 hover:bg-yellow-400">
+                카카오페이
+              </Badge>
+            )}
+            {req.paymentMethod === "deferred" && (
+              <Badge variant="secondary" className="text-[10px]">
+                후불결제
+              </Badge>
+            )}
             <Badge
               variant={
                 req.status === "requested" ? "destructive"
@@ -926,8 +956,9 @@ function ServiceCard({
             {req.freeExtension ? (
               <span className="text-green-600 ml-2">(무료 - 리뷰)</span>
             ) : req.extensionAmount ? (
-              <span className="text-blue-500 ml-2">
-                ({req.extensionAmount.toLocaleString()}원 후불)
+              <span className={`ml-2 ${req.paymentStatus === "paid" ? "text-green-600" : "text-blue-500"}`}>
+                ({req.extensionAmount.toLocaleString()}원{" "}
+                {req.paymentStatus === "paid" ? "결제완료" : req.paymentMethod === "kakaopay" ? "카카오페이" : "후불"})
               </span>
             ) : null}
           </div>
