@@ -35,12 +35,15 @@ interface PendingOrderData {
 export async function GET(req: NextRequest) {
   const baseUrl = getBaseUrlFromRequest(req);
 
+  console.log("[KakaoPay approve] URL:", req.url, "baseUrl:", baseUrl);
+
   try {
     const { searchParams } = new URL(req.url);
     const pgToken = searchParams.get("pg_token");
     const orderId = searchParams.get("orderId");
 
     if (!pgToken || !orderId) {
+      console.error("[KakaoPay approve] Missing params - pgToken:", !!pgToken, "orderId:", !!orderId);
       return NextResponse.redirect(baseUrl);
     }
 

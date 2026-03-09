@@ -12,7 +12,7 @@ import {
   where,
 } from "firebase/firestore";
 import { kakaoPayReady } from "@/lib/kakaopay";
-import { getBaseUrlFromRequest } from "@/lib/constants";
+import { getBaseUrlFromRequest, getCallbackBaseUrl } from "@/lib/constants";
 import { format } from "date-fns";
 
 function generateOrderId(): string {
@@ -140,17 +140,20 @@ export async function POST(req: NextRequest) {
     );
 
     const baseUrl = getBaseUrlFromRequest(req);
+    const callbackBaseUrl = getCallbackBaseUrl(req);
+
+    console.log("[KakaoPay ready] baseUrl:", baseUrl, "callbackBaseUrl:", callbackBaseUrl);
 
     const result = await kakaoPayReady({
       orderId,
       itemName: `${roomData.roomNumber}호 주문`,
       totalAmount,
       roomId: roomData.roomId,
-      baseUrl,
+      baseUrl: callbackBaseUrl,
       callbackUrls: {
-        approval: `${baseUrl}/api/payments/kakaopay/approve?orderId=${orderId}`,
-        cancel: `${baseUrl}/api/payments/kakaopay/cancel?orderId=${orderId}`,
-        fail: `${baseUrl}/api/payments/kakaopay/fail?orderId=${orderId}`,
+        approval: `${callbackBaseUrl}/api/payments/kakaopay/approve?orderId=${orderId}`,
+        cancel: `${callbackBaseUrl}/api/payments/kakaopay/cancel?orderId=${orderId}`,
+        fail: `${callbackBaseUrl}/api/payments/kakaopay/fail?orderId=${orderId}`,
       },
     });
 

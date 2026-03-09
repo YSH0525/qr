@@ -11,7 +11,7 @@ import {
   where,
 } from "firebase/firestore";
 import { kakaoPayReady } from "@/lib/kakaopay";
-import { getBaseUrlFromRequest } from "@/lib/constants";
+import { getBaseUrlFromRequest, getCallbackBaseUrl } from "@/lib/constants";
 import { format } from "date-fns";
 import type { ServiceType } from "@/types/service";
 
@@ -144,17 +144,20 @@ export async function POST(req: NextRequest) {
     );
 
     const baseUrl = getBaseUrlFromRequest(req);
+    const callbackBaseUrl = getCallbackBaseUrl(req);
+
+    console.log("[KakaoPay service-ready] baseUrl:", baseUrl, "callbackBaseUrl:", callbackBaseUrl);
 
     const result = await kakaoPayReady({
       orderId: requestId,
       itemName: `${roomData.roomNumber}호 ${catData.name} ${extensionHours}시간`,
       totalAmount: extensionAmount,
       roomId: roomData.roomId,
-      baseUrl,
+      baseUrl: callbackBaseUrl,
       callbackUrls: {
-        approval: `${baseUrl}/api/payments/kakaopay/service-approve?requestId=${requestId}`,
-        cancel: `${baseUrl}/api/payments/kakaopay/service-cancel?requestId=${requestId}`,
-        fail: `${baseUrl}/api/payments/kakaopay/service-fail?requestId=${requestId}`,
+        approval: `${callbackBaseUrl}/api/payments/kakaopay/service-approve?requestId=${requestId}`,
+        cancel: `${callbackBaseUrl}/api/payments/kakaopay/service-cancel?requestId=${requestId}`,
+        fail: `${callbackBaseUrl}/api/payments/kakaopay/service-fail?requestId=${requestId}`,
       },
     });
 

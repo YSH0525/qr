@@ -16,6 +16,8 @@ import { getBaseUrlFromRequest } from "@/lib/constants";
 export async function GET(req: NextRequest) {
   const baseUrl = getBaseUrlFromRequest(req);
 
+  console.log("[KakaoPay service-approve] URL:", req.url, "baseUrl:", baseUrl);
+
   try {
     const { searchParams } = new URL(req.url);
     const pgToken = searchParams.get("pg_token");
