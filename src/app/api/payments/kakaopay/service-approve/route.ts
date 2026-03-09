@@ -3,9 +3,10 @@ import { firestore } from "@/lib/firebase";
 import {
   collection,
   getDocs,
+  addDoc,
+  deleteDoc,
   query,
   where,
-  updateDoc,
 } from "firebase/firestore";
 import { kakaoPayApprove } from "@/lib/kakaopay";
 import { orderEvents } from "@/lib/sse";
@@ -26,29 +27,39 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // Look up pending payment data
     const snap = await getDocs(
       query(
-        collection(firestore, "serviceRequests"),
+        collection(firestore, "pendingServicePayments"),
         where("requestId", "==", requestId)
       )
     );
 
     if (snap.empty) {
       return NextResponse.json(
-        { error: "서비스 요청을 찾을 수 없습니다" },
+        { error: "결제 정보를 찾을 수 없습니다" },
         { status: 404 }
       );
     }
 
-    const docRef = snap.docs[0];
-    const data = docRef.data() as {
+    const pendingDoc = snap.docs[0];
+    const data = pendingDoc.data() as {
       requestId: string;
+      categoryId: string;
+      categoryName: string;
+      categoryIcon: string;
+      type: string;
+      roomId: string;
       roomUuid: string;
       roomNumber: string;
-      kakaoTid: string | null;
+      note: string | null;
+      items: unknown[];
+      extensionHours: number;
       extensionAmount: number;
-      type: string;
-      categoryName: string;
+      freeExtension: boolean;
+      paymentMethod: string;
+      kakaoTid: string | null;
+      createdAt: string;
     };
 
     if (!data.kakaoTid) {
@@ -70,27 +81,49 @@ export async function GET(req: NextRequest) {
       console.error(
         `Service payment amount mismatch: expected ${data.extensionAmount}, got ${approveResult.amount?.total}`
       );
-      await updateDoc(docRef.ref, {
-        paymentStatus: "failed",
-        updatedAt: new Date().toISOString(),
-      });
+      // Clean up pending data
+      await deleteDoc(pendingDoc.ref);
       return NextResponse.redirect(
         `${baseUrl}/room/${data.roomUuid}/service/confirm?requestId=${requestId}&failed=true&name=${encodeURIComponent(data.categoryName)}&type=${data.type}`
       );
     }
 
-    // Update payment status
-    const updatedAt = new Date().toISOString();
-    await updateDoc(docRef.ref, {
+    // Payment approved — now create the actual service request
+    const now = new Date().toISOString();
+    const requestData = {
+      requestId: data.requestId,
+      categoryId: data.categoryId,
+      categoryName: data.categoryName,
+      categoryIcon: data.categoryIcon,
+      type: data.type,
+      roomId: data.roomId,
+      roomUuid: data.roomUuid,
+      roomNumber: data.roomNumber,
+      status: "accepted",
+      note: data.note,
+      items: data.items,
+      cleaningOptions: null,
+      extensionHours: data.extensionHours,
+      extensionAmount: data.extensionAmount,
+      freeExtension: false,
+      paymentMethod: "kakaopay",
       paymentStatus: "paid",
-      updatedAt,
-    });
+      createdAt: data.createdAt,
+      updatedAt: now,
+    };
 
-    orderEvents.broadcast("service-request-updated", {
-      id: docRef.id,
-      ...data,
-      paymentStatus: "paid",
-    });
+    const docRef = await addDoc(
+      collection(firestore, "serviceRequests"),
+      requestData
+    );
+
+    const fullRequest = { id: docRef.id, ...requestData };
+
+    // Broadcast to dashboard
+    orderEvents.broadcast("new-service-request", fullRequest);
+
+    // Clean up pending data
+    await deleteDoc(pendingDoc.ref);
 
     // Redirect to confirmation page
     return NextResponse.redirect(
@@ -102,18 +135,16 @@ export async function GET(req: NextRequest) {
     const failRequestId = searchParams.get("requestId") || "";
 
     try {
+      // Try to clean up and redirect with error
       const failSnap = await getDocs(
         query(
-          collection(firestore, "serviceRequests"),
+          collection(firestore, "pendingServicePayments"),
           where("requestId", "==", failRequestId)
         )
       );
       if (!failSnap.empty) {
         const failData = failSnap.docs[0].data() as { roomUuid: string; categoryName: string; type: string };
-        await updateDoc(failSnap.docs[0].ref, {
-          paymentStatus: "failed",
-          updatedAt: new Date().toISOString(),
-        });
+        await deleteDoc(failSnap.docs[0].ref);
         return NextResponse.redirect(
           `${baseUrl}/room/${failData.roomUuid}/service/confirm?requestId=${failRequestId}&failed=true&name=${encodeURIComponent(failData.categoryName)}&type=${failData.type}`
         );

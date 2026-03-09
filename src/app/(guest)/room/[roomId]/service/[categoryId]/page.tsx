@@ -167,17 +167,7 @@ export default function ServiceRequestPage({
         return;
       }
 
-      const res = await fetch("/api/service-requests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      if (!res.ok) throw new Error("요청 실패");
-
-      const data = await res.json();
-
-      // 카카오페이 결제 플로우
+      // 카카오페이: 결제 먼저 → 승인 후 서비스 요청 생성
       if (
         category.type === "checkout_extension" &&
         !isFreeExtension &&
@@ -186,7 +176,7 @@ export default function ServiceRequestPage({
         const payRes = await fetch("/api/payments/kakaopay/service-ready", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ requestId: data.requestId }),
+          body: JSON.stringify(body),
         });
 
         if (payRes.ok) {
@@ -205,6 +195,17 @@ export default function ServiceRequestPage({
           return;
         }
       }
+
+      // 후불/무료/기타: 즉시 서비스 요청 생성
+      const res = await fetch("/api/service-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) throw new Error("요청 실패");
+
+      const data = await res.json();
 
       router.push(
         `/room/${roomId}/service/confirm?requestId=${data.requestId}&type=${category.type}&name=${encodeURIComponent(category.name)}`

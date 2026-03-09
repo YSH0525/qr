@@ -3,9 +3,9 @@ import { firestore } from "@/lib/firebase";
 import {
   collection,
   getDocs,
+  deleteDoc,
   query,
   where,
-  updateDoc,
 } from "firebase/firestore";
 import { getBaseUrlFromRequest } from "@/lib/constants";
 
@@ -17,9 +17,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(baseUrl);
   }
 
+  // Clean up pending payment data
   const snap = await getDocs(
     query(
-      collection(firestore, "serviceRequests"),
+      collection(firestore, "pendingServicePayments"),
       where("requestId", "==", requestId)
     )
   );
@@ -31,10 +32,7 @@ export async function GET(req: NextRequest) {
   const docRef = snap.docs[0];
   const data = docRef.data() as { roomUuid: string; categoryName: string; type: string };
 
-  await updateDoc(docRef.ref, {
-    paymentStatus: "failed",
-    updatedAt: new Date().toISOString(),
-  });
+  await deleteDoc(docRef.ref);
 
   return NextResponse.redirect(
     `${baseUrl}/room/${data.roomUuid}/service/confirm?requestId=${requestId}&failed=true&name=${encodeURIComponent(data.categoryName)}&type=${data.type}`

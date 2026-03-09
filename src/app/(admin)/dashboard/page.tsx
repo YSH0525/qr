@@ -660,6 +660,16 @@ function CompletedRow({ card }: {
       <Badge variant="outline" className="text-[10px] shrink-0">
         {SERVICE_TYPE_LABELS[s.type]}
       </Badge>
+      {s.paymentMethod === "kakaopay" && (
+        <Badge variant="default" className="text-[10px] shrink-0 bg-yellow-400 text-yellow-900 hover:bg-yellow-400">
+          카카오페이
+        </Badge>
+      )}
+      {s.paymentMethod === "deferred" && (
+        <Badge variant="secondary" className="text-[10px] shrink-0">
+          후불
+        </Badge>
+      )}
       <span className="text-gray-500 truncate flex-1 min-w-0">{label}</span>
       <span className="text-xs text-gray-400 shrink-0">{timeAgo(card.time)}</span>
     </div>
@@ -897,6 +907,16 @@ function ServiceCard({
             <Badge variant="outline" className="text-[10px]">
               {SERVICE_TYPE_LABELS[req.type]}
             </Badge>
+            {req.paymentMethod === "kakaopay" && (
+              <Badge variant="default" className="text-[10px] bg-yellow-400 text-yellow-900 hover:bg-yellow-400">
+                카카오페이
+              </Badge>
+            )}
+            {req.paymentMethod === "deferred" && (
+              <Badge variant="secondary" className="text-[10px]">
+                후불결제
+              </Badge>
+            )}
             <Badge
               variant={
                 req.status === "requested" ? "destructive"
@@ -936,8 +956,9 @@ function ServiceCard({
             {req.freeExtension ? (
               <span className="text-green-600 ml-2">(무료 - 리뷰)</span>
             ) : req.extensionAmount ? (
-              <span className="text-blue-500 ml-2">
-                ({req.extensionAmount.toLocaleString()}원 후불)
+              <span className={`ml-2 ${req.paymentStatus === "paid" ? "text-green-600" : "text-blue-500"}`}>
+                ({req.extensionAmount.toLocaleString()}원{" "}
+                {req.paymentStatus === "paid" ? "결제완료" : req.paymentMethod === "kakaopay" ? "카카오페이" : "후불"})
               </span>
             ) : null}
           </div>
