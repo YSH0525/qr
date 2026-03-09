@@ -10,10 +10,10 @@ import {
 } from "firebase/firestore";
 import { kakaoPayApprove, kakaoPayCancel } from "@/lib/kakaopay";
 import { getNextDailySeq } from "@/lib/daily-seq";
-import { getBaseUrlFromRequest } from "@/lib/constants";
+import { getCallbackBaseUrl } from "@/lib/constants";
 
 export async function GET(req: NextRequest) {
-  const baseUrl = getBaseUrlFromRequest(req);
+  const baseUrl = getCallbackBaseUrl(req);
 
   console.log("[KakaoPay service-approve] URL:", req.url, "baseUrl:", baseUrl);
 

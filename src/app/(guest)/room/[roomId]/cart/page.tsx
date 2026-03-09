@@ -63,10 +63,25 @@ export default function CartPage({
         if (payRes.ok) {
           const payData = await payRes.json();
           clearCart();
+
+          // 결제 대기 페이지를 현재 탭에 먼저 표시한 뒤 카카오페이로 이동
+          // 카카오톡 앱에서 결제 후 브라우저로 돌아오면 대기 페이지가 polling으로 결과 감지
+          const waitingUrl = `/room/${roomId}/payment/waiting?orderId=${payData.orderId}`;
           const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-          window.location.href = isMobile
-            ? payData.redirectUrl
-            : payData.redirectPcUrl;
+          const kakaoUrl = isMobile ? payData.redirectUrl : payData.redirectPcUrl;
+
+          // 모바일: 현재 탭을 대기 페이지로 교체 후 카카오페이 열기
+          // PC: 새 탭에서 카카오페이 열고 현재 탭은 대기 페이지
+          if (isMobile) {
+            router.replace(waitingUrl);
+            // 짧은 딜레이 후 카카오페이 열기 (대기 페이지 로드 보장)
+            setTimeout(() => {
+              window.location.href = kakaoUrl;
+            }, 100);
+          } else {
+            window.open(kakaoUrl, "_blank");
+            router.replace(waitingUrl);
+          }
           return;
         } else {
           const payError = await payRes.json().catch(() => null);
