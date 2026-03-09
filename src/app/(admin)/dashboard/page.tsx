@@ -31,6 +31,11 @@ import {
   SERVICE_STATUS_LABELS,
 } from "@/types";
 import {
+  CLEANING_LEVEL_LABELS,
+  PREFERRED_TIME_LABELS,
+  SUPPLY_ITEM_LABELS,
+} from "@/types/service";
+import {
   SettlementModal,
   type SettlementPreviewData,
 } from "@/components/admin/settlement-modal";
@@ -309,6 +314,22 @@ export default function DashboardPage() {
     const s = row.data;
     if (s.type === "checkout_extension" && s.extensionHours) {
       return `+${s.extensionHours}h 연장${s.freeExtension ? " (무료)" : s.extensionAmount ? ` ${formatPrice(s.extensionAmount)}` : ""}`;
+    }
+    if (s.type === "cleaning" && s.cleaningOptions) {
+      const parts: string[] = [CLEANING_LEVEL_LABELS[s.cleaningOptions.serviceLevel]];
+      if (s.cleaningOptions.preferredTime && s.cleaningOptions.serviceLevel !== "dnd") {
+        parts.push(PREFERRED_TIME_LABELS[s.cleaningOptions.preferredTime]);
+      }
+      if (!s.cleaningOptions.linenChange && s.cleaningOptions.serviceLevel !== "dnd") {
+        parts.push("시트교체 없음");
+      }
+      if (s.cleaningOptions.contactlessSupplies.length > 0) {
+        parts.push("비품: " + s.cleaningOptions.contactlessSupplies.map((i) => SUPPLY_ITEM_LABELS[i]).join(", "));
+      }
+      if (s.cleaningOptions.trashRemovalOnly) {
+        parts.push("쓰레기 수거만");
+      }
+      return parts.join(" · ");
     }
     if (s.items?.length) return s.items.map((i) => `${i.name}x${i.quantity}`).join(", ");
     return s.categoryName;
