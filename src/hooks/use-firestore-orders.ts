@@ -70,6 +70,9 @@ export function useFirestoreOrders(
       ...constraints,
     );
 
+    // items 재시도 타이머
+    const retryTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
     const unsubscribe = onSnapshot(q, async (snapshot) => {
       // items 서브컬렉션을 병렬로 로드
       const ordersWithItems = await Promise.all(
@@ -92,28 +95,58 @@ export function useFirestoreOrders(
       );
 
       // 낙관적 잠금된 주문은 서버 데이터로 덮어쓰지 않음
+      // items가 비어있지만 이전 데이터에 items가 있으면 보존
       setOrders((prev) => {
         const lockedIds = optimisticLockRef.current;
-        if (lockedIds.size === 0) return ordersWithItems;
+        const prevMap = new Map(prev.map((o) => [o.orderId, o]));
 
-        const lockedOrders = new Map(
-          prev.filter((o) => lockedIds.has(o.orderId)).map((o) => [o.orderId, o])
-        );
-
-        return ordersWithItems.map((o) =>
-          lockedOrders.has(o.orderId) ? lockedOrders.get(o.orderId)! : o
-        );
+        return ordersWithItems.map((o) => {
+          // 낙관적 잠금된 주문은 그대로 유지
+          if (lockedIds.has(o.orderId) && prevMap.has(o.orderId)) {
+            return prevMap.get(o.orderId)!;
+          }
+          // items가 비어있지만 이전에 items가 있었으면 이전 items 보존
+          const prevOrder = prevMap.get(o.orderId);
+          if (o.items.length === 0 && prevOrder && prevOrder.items.length > 0) {
+            return { ...o, items: prevOrder.items };
+          }
+          return o;
+        });
       });
+
+      // items가 비어있는 주문에 대해 1초 후 재시도
+      for (const order of ordersWithItems) {
+        if (order.items.length === 0 && !retryTimers.has(order.orderId)) {
+          const timer = setTimeout(async () => {
+            retryTimers.delete(order.orderId);
+            const retrySnap = await getDocs(
+              collection(firestore, "orders", order.id, "items")
+            );
+            if (retrySnap.empty) return;
+            const retryItems = retrySnap.docs.map((item) => ({
+              id: item.id,
+              ...item.data(),
+            }));
+            setOrders((prev) =>
+              prev.map((o) =>
+                o.orderId === order.orderId && o.items.length === 0
+                  ? { ...o, items: retryItems as OrderWithItems["items"] }
+                  : o
+              )
+            );
+          }, 1000);
+          retryTimers.set(order.orderId, timer);
+        }
+      }
 
       setLoading(false);
     });
 
     return () => {
       unsubscribe();
-      // 클린업 시 모든 타이머 해제
-      for (const timer of lockTimersRef.current.values()) {
-        clearTimeout(timer);
-      }
+      for (const timer of lockTimersRef.current.values()) clearTimeout(timer);
+      for (const timer of retryTimers.values()) clearTimeout(timer);
+      retryTimers.clear();
     };
   }, [statusFilter]);
 
