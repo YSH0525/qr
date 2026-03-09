@@ -432,31 +432,51 @@ export default function DashboardPage() {
   const totalProcessing = preparingOrders.length + acceptedServices.length;
   const totalCompleted = completedOrders.length + completedServices.length;
 
-  // 주문 + 서비스를 통합 정렬: 대기 → 처리중 → 완료 (같은 상태 내에서 최신순)
+  // 주문 + 서비스 통합: 활성(대기/처리중) vs 완료 분리
   type CardItem =
     | { type: "order"; data: OrderWithItems; key: string; priority: number; time: string }
     | { type: "service"; data: ServiceRequest; key: string; priority: number; time: string };
 
-  const allCards: CardItem[] = [
-    ...[...pendingOrders, ...preparingOrders, ...completedOrders].map((o) => ({
+  const activeCards: CardItem[] = [
+    ...[...pendingOrders, ...preparingOrders].map((o) => ({
       type: "order" as const,
       data: o,
       key: o.orderId,
-      priority: o.status === "pending" ? 0 : o.status === "completed" ? 2 : 1,
+      priority: o.status === "pending" ? 0 : 1,
       time: o.createdAt,
     })),
-    ...[...pendingServices, ...acceptedServices, ...completedServices].map((s) => ({
+    ...[...pendingServices, ...acceptedServices].map((s) => ({
       type: "service" as const,
       data: s,
       key: s.requestId,
-      priority: s.status === "requested" ? 0 : s.status === "completed" ? 2 : 1,
+      priority: s.status === "requested" ? 0 : 1,
       time: s.createdAt,
     })),
   ];
-  allCards.sort((a, b) => {
+  activeCards.sort((a, b) => {
     if (a.priority !== b.priority) return a.priority - b.priority;
     return new Date(b.time).getTime() - new Date(a.time).getTime();
   });
+
+  const completedCards: CardItem[] = [
+    ...completedOrders.map((o) => ({
+      type: "order" as const,
+      data: o,
+      key: o.orderId,
+      priority: 2,
+      time: o.updatedAt || o.createdAt,
+    })),
+    ...completedServices.map((s) => ({
+      type: "service" as const,
+      data: s,
+      key: s.requestId,
+      priority: 2,
+      time: s.updatedAt || s.createdAt,
+    })),
+  ];
+  completedCards.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+
+  const [completedOpen, setCompletedOpen] = useState(false);
 
   return (
     <div className="p-3 md:p-6 h-full min-h-0 flex flex-col overflow-auto md:overflow-hidden">
@@ -639,32 +659,69 @@ export default function DashboardPage() {
 
       {/* 개별 카드 리스트 - 반응형 그리드 */}
       <div className="flex flex-col min-h-0 flex-1">
-        <div className="overflow-y-auto flex-1 pr-1">
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
-            {allCards.map((card) =>
-              card.type === "order" ? (
-                <OrderCard
-                  key={card.key}
-                  order={card.data}
-                  animatingCards={animatingCards}
-                  onAccept={handleAccept}
-                  onComplete={handleComplete}
-                  onReject={handleReject}
-                />
-              ) : (
-                <ServiceCard
-                  key={card.key}
-                  request={card.data}
-                  onAccept={handleServiceAccept}
-                  onComplete={handleServiceComplete}
-                />
-              )
-            )}
-          </div>
-          {allCards.length === 0 && (
+        <div className="overflow-y-auto flex-1 pr-1 space-y-4">
+          {/* 활성 카드 (대기 + 처리중) - 그리드 */}
+          {activeCards.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
+              {activeCards.map((card) =>
+                card.type === "order" ? (
+                  <OrderCard
+                    key={card.key}
+                    order={card.data}
+                    animatingCards={animatingCards}
+                    onAccept={handleAccept}
+                    onComplete={handleComplete}
+                    onReject={handleReject}
+                  />
+                ) : (
+                  <ServiceCard
+                    key={card.key}
+                    request={card.data}
+                    onAccept={handleServiceAccept}
+                    onComplete={handleServiceComplete}
+                  />
+                )
+              )}
+            </div>
+          ) : completedCards.length === 0 ? (
             <p className="text-gray-400 text-sm text-center py-8">
               주문 및 서비스 요청이 없습니다
             </p>
+          ) : (
+            <p className="text-gray-400 text-sm text-center py-4">
+              처리 중인 주문이 없습니다
+            </p>
+          )}
+
+          {/* 완료 목록 - 컴팩트 리스트 */}
+          {completedCards.length > 0 && (
+            <div className="border rounded-xl bg-gray-50/50">
+              <button
+                type="button"
+                onClick={() => setCompletedOpen((v) => !v)}
+                className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-gray-500 hover:bg-gray-100 rounded-xl transition-colors"
+              >
+                <span className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-green-400" />
+                  완료 내역
+                  <span className="text-xs font-medium text-gray-400">
+                    {completedCards.length}건
+                  </span>
+                </span>
+                {completedOpen ? (
+                  <ChevronUp className="w-4 h-4" />
+                ) : (
+                  <ChevronDown className="w-4 h-4" />
+                )}
+              </button>
+              {completedOpen && (
+                <div className="px-2 pb-2 space-y-1">
+                  {completedCards.map((card) => (
+                    <CompletedRow key={card.key} card={card} />
+                  ))}
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -678,6 +735,60 @@ export default function DashboardPage() {
         preview={settlementPreview}
         onConfirm={handleSettleConfirm}
       />
+    </div>
+  );
+}
+
+/* ── 완료 목록 한 줄 행 ── */
+function CompletedRow({ card }: {
+  card:
+    | { type: "order"; data: OrderWithItems; key: string; time: string }
+    | { type: "service"; data: ServiceRequest; key: string; time: string };
+}) {
+  const formatPrice = (price: number) => price.toLocaleString("ko-KR") + "원";
+
+  const timeAgo = (dateStr: string) => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "방금 전";
+    if (mins < 60) return `${mins}분 전`;
+    const hours = Math.floor(mins / 60);
+    return `${hours}시간 전`;
+  };
+
+  if (card.type === "order") {
+    const o = card.data;
+    const summary = o.items.length <= 2
+      ? o.items.map((i) => `${i.menuItemName} x${i.quantity}`).join(", ")
+      : `${o.items[0].menuItemName} x${o.items[0].quantity} 외 ${o.items.length - 1}건`;
+    return (
+      <div className="flex items-center gap-3 px-3 py-2 bg-white rounded-lg text-sm">
+        <span className="font-semibold text-gray-700 shrink-0">{o.roomNumber}호</span>
+        <Badge variant="outline" className="text-[10px] shrink-0">
+          {PAYMENT_METHOD_LABELS[o.paymentMethod]}
+        </Badge>
+        <span className="text-gray-500 truncate flex-1 min-w-0">{summary}</span>
+        <span className="font-medium text-gray-700 shrink-0">{formatPrice(o.totalAmount)}</span>
+        <span className="text-xs text-gray-400 shrink-0">{timeAgo(card.time)}</span>
+      </div>
+    );
+  }
+
+  const s = card.data;
+  const label = s.type === "checkout_extension"
+    ? `연장 +${s.extensionHours}시간`
+    : s.items.length > 0
+    ? s.items.map((i) => `${i.name} x${i.quantity}`).join(", ")
+    : s.categoryName;
+  return (
+    <div className="flex items-center gap-3 px-3 py-2 bg-white rounded-lg text-sm">
+      <span className="text-base shrink-0">{s.categoryIcon}</span>
+      <span className="font-semibold text-gray-700 shrink-0">{s.roomNumber}호</span>
+      <Badge variant="outline" className="text-[10px] shrink-0">
+        {SERVICE_TYPE_LABELS[s.type]}
+      </Badge>
+      <span className="text-gray-500 truncate flex-1 min-w-0">{label}</span>
+      <span className="text-xs text-gray-400 shrink-0">{timeAgo(card.time)}</span>
     </div>
   );
 }
