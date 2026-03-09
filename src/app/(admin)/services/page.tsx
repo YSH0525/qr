@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/table";
 import { useFirestoreServiceRequests } from "@/hooks/use-firestore-orders";
 import { useNotificationSound } from "@/hooks/use-audio";
-import { useBrowserNotification } from "@/hooks/use-notification";
 import { toast } from "sonner";
 import type { ServiceRequest } from "@/types/service";
 import {
@@ -35,7 +34,6 @@ export default function ServicesPage() {
   const { serviceRequests: requests } = useFirestoreServiceRequests();
   const [filter, setFilter] = useState<string>("all");
   const { playServiceRequestAlert, playAcceptSound, playCompleteSound } = useNotificationSound();
-  const { notify } = useBrowserNotification();
 
   // 새 서비스 요청 알림 감지
   const prevIdsRef = useRef<Set<string>>(new Set());
@@ -54,14 +52,12 @@ export default function ServicesPage() {
 
     for (const req of requests) {
       if (!prevIdsRef.current.has(req.requestId)) {
-        playServiceRequestAlert(req.roomNumber, req.categoryName);
-        notify(`서비스 요청! ${req.roomNumber}호`, req.categoryName);
-        toast.success(`서비스 요청! ${req.roomNumber}호 — ${req.categoryName}`);
+        playServiceRequestAlert();
       }
     }
 
     prevIdsRef.current = currentIds;
-  }, [requests, playServiceRequestAlert, notify]);
+  }, [requests, playServiceRequestAlert]);
 
   const updateStatus = async (requestId: string, status: string) => {
     if (status === "accepted") playAcceptSound();

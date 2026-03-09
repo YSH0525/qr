@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useFirestoreOrders, useFirestoreServiceRequests } from "@/hooks/use-firestore-orders";
 import { useNotificationSound } from "@/hooks/use-audio";
-import { useBrowserNotification } from "@/hooks/use-notification";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -87,7 +86,6 @@ export default function DashboardPage() {
   const [settlementModalOpen, setSettlementModalOpen] = useState(false);
   const { playNewOrderAlert, playAcceptSound, playCompleteSound, playServiceRequestAlert } =
     useNotificationSound();
-  const { notify } = useBrowserNotification();
 
   // 새 주문/서비스 감지
   const prevOrderIdsRef = useRef<Set<string>>(new Set());
@@ -105,14 +103,11 @@ export default function DashboardPage() {
     }
     for (const order of orders) {
       if (!prevOrderIdsRef.current.has(order.orderId)) {
-        playNewOrderAlert(order.roomNumber, order.items || []);
-        const itemText = (order.items || []).map((i) => `${i.menuItemName} x${i.quantity}`).join(", ");
-        notify(`새 주문! ${order.roomNumber}호`, itemText || "새로운 주문이 들어왔습니다");
-        toast.success(`새 주문! ${order.roomNumber}호`, { description: itemText || undefined });
+        playNewOrderAlert();
       }
     }
     prevOrderIdsRef.current = currentIds;
-  }, [orders, playNewOrderAlert, notify]);
+  }, [orders, playNewOrderAlert]);
 
   useEffect(() => {
     if (serviceRequests.length === 0 && isFirstServiceLoadRef.current) return;
@@ -124,23 +119,15 @@ export default function DashboardPage() {
     }
     for (const req of serviceRequests) {
       if (!prevServiceIdsRef.current.has(req.requestId)) {
-        playServiceRequestAlert(req.roomNumber, req.categoryName);
-        notify(`서비스 요청! ${req.roomNumber}호`, req.categoryName);
-        toast.success(`서비스 요청! ${req.roomNumber}호 — ${req.categoryName}`);
+        playServiceRequestAlert();
       }
     }
     prevServiceIdsRef.current = currentIds;
-  }, [serviceRequests, playServiceRequestAlert, notify]);
+  }, [serviceRequests, playServiceRequestAlert]);
 
   const enableAudio = useCallback(() => {
     playAcceptSound();
-    if ("speechSynthesis" in window) {
-      const warm = new SpeechSynthesisUtterance("");
-      warm.volume = 0;
-      window.speechSynthesis.speak(warm);
-    }
     setAudioEnabled(true);
-    toast.success("알림 소리가 활성화되었습니다");
   }, [playAcceptSound]);
 
   // 후불 정산 폴링
