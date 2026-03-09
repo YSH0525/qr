@@ -66,7 +66,7 @@ interface TodaySummary {
 
 export default function DashboardPage() {
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
-  const [animatingCards, setAnimatingCards] = useState<Map<string, "accept" | "complete">>(new Map());
+  const [animatingCards, setAnimatingCards] = useState<Map<string, "accept" | "prepare" | "complete">>(new Map());
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [deferredPayments, setDeferredPayments] = useState<DeferredPayment[]>([]);
   const [showDeferred, setShowDeferred] = useState(true);
@@ -261,7 +261,7 @@ export default function DashboardPage() {
 
       if (res.ok) {
         toast(`${order.roomNumber}호 주문 접수!`, {
-          description: "처리를 시작합니다",
+          description: "처리를 시작해주세요",
           icon: <CheckCircle className="text-green-500" />,
         });
         setTimeout(() => clearAnim(order.orderId), 400);
@@ -273,6 +273,35 @@ export default function DashboardPage() {
     } catch {
       toast.error("네트워크 오류가 발생했습니다");
       updateOrderStatus(order.orderId, "pending");
+      clearAnim(order.orderId);
+    }
+  };
+
+  const handlePrepare = async (order: OrderWithItems) => {
+    setAnimatingCards((prev) => new Map(prev).set(order.orderId, "prepare"));
+    updateOrderStatus(order.orderId, "preparing");
+
+    try {
+      const res = await fetch(`/api/orders/${order.orderId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "preparing" }),
+      });
+
+      if (res.ok) {
+        toast(`${order.roomNumber}호 주문 처리 시작!`, {
+          description: "완료되면 완료 버튼을 눌러주세요",
+          icon: <span className="text-xl">👨‍🍳</span>,
+        });
+        setTimeout(() => clearAnim(order.orderId), 400);
+      } else {
+        toast.error("상태 변경에 실패했습니다");
+        updateOrderStatus(order.orderId, "accepted");
+        clearAnim(order.orderId);
+      }
+    } catch {
+      toast.error("네트워크 오류가 발생했습니다");
+      updateOrderStatus(order.orderId, "accepted");
       clearAnim(order.orderId);
     }
   };
@@ -298,7 +327,6 @@ export default function DashboardPage() {
       scalar: 0.9,
     });
 
-    const prevStatus = order.status;
     updateOrderStatus(order.orderId, "completed");
 
     try {
@@ -316,12 +344,12 @@ export default function DashboardPage() {
         setTimeout(() => clearAnim(order.orderId), 500);
       } else {
         toast.error("주문 완료 처리에 실패했습니다");
-        updateOrderStatus(order.orderId, prevStatus);
+        updateOrderStatus(order.orderId, "preparing");
         clearAnim(order.orderId);
       }
     } catch {
       toast.error("네트워크 오류가 발생했습니다");
-      updateOrderStatus(order.orderId, prevStatus);
+      updateOrderStatus(order.orderId, "preparing");
       clearAnim(order.orderId);
     }
   };
@@ -670,6 +698,7 @@ export default function DashboardPage() {
                     order={card.data}
                     animatingCards={animatingCards}
                     onAccept={handleAccept}
+                    onPrepare={handlePrepare}
                     onComplete={handleComplete}
                     onReject={handleReject}
                   />
@@ -798,12 +827,14 @@ function OrderCard({
   order,
   animatingCards,
   onAccept,
+  onPrepare,
   onComplete,
   onReject,
 }: {
   order: OrderWithItems;
-  animatingCards: Map<string, "accept" | "complete">;
+  animatingCards: Map<string, "accept" | "prepare" | "complete">;
   onAccept: (order: OrderWithItems) => void;
+  onPrepare: (order: OrderWithItems) => void;
   onComplete: (order: OrderWithItems, e: React.MouseEvent) => void;
   onReject: (orderId: string) => void;
 }) {
@@ -825,15 +856,18 @@ function OrderCard({
   const animClass = isAnimating
     ? animType === "accept"
       ? "scale-95 opacity-50 border-green-400 shadow-green-200 shadow-lg"
+      : animType === "prepare"
+      ? "scale-95 opacity-50 border-blue-400 shadow-blue-200 shadow-lg"
       : "scale-90 opacity-0 translate-y-4"
     : "scale-100 opacity-100 translate-y-0";
 
   const isCompleted = order.status === "completed";
 
-  // 스텝 인디케이터
+  // 스텝 인디케이터: pending=0, accepted=1, preparing=1.5, completed=2
   const step = order.status === "pending" ? 0
+    : order.status === "accepted" ? 0.5
     : order.status === "completed" ? 2
-    : 1;
+    : 1; // preparing
   const stepLabels = ["접수", "처리", "완료"];
 
   return (
@@ -954,7 +988,16 @@ function OrderCard({
                 </Button>
               </>
             )}
-            {(order.status === "accepted" || order.status === "preparing") && (
+            {order.status === "accepted" && (
+              <Button
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700 transition-all duration-150 active:scale-90 hover:shadow-lg"
+                onClick={() => onPrepare(order)}
+              >
+                처리 시작
+              </Button>
+            )}
+            {order.status === "preparing" && (
               <Button
                 size="sm"
                 className="bg-green-600 hover:bg-green-700 transition-all duration-150 active:scale-90 hover:shadow-lg"
