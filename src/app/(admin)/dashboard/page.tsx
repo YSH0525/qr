@@ -437,7 +437,7 @@ export default function DashboardPage() {
                             </Badge>
                           ) : row.data.paymentMethod ? (
                             <Badge variant="secondary" className="text-[10px]">
-                              {row.data.paymentMethod === "kakaopay" ? "카카오" : "후불"}
+                              {row.data.paymentMethod === "kakaopay" ? "카카오페이" : "후불"}
                             </Badge>
                           ) : (
                             <span className="text-gray-300">-</span>
