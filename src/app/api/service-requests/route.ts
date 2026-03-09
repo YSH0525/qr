@@ -10,6 +10,7 @@ import {
   where,
 } from "firebase/firestore";
 import { orderEvents } from "@/lib/sse";
+import { getNextDailySeq } from "@/lib/daily-seq";
 import { format } from "date-fns";
 import type { ServiceType } from "@/types/service";
 
@@ -100,9 +101,11 @@ export async function POST(req: NextRequest) {
 
     const requestId = generateRequestId();
     const now = new Date().toISOString();
+    const dailySeq = await getNextDailySeq();
 
     const requestData = {
       requestId,
+      dailySeq,
       categoryId,
       categoryName: catData.name,
       categoryIcon: catData.icon,

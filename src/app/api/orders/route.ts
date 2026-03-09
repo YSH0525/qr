@@ -11,6 +11,7 @@ import {
 } from "firebase/firestore";
 import { orderEvents } from "@/lib/sse";
 import { orderSchema } from "@/lib/validations";
+import { getNextDailySeq } from "@/lib/daily-seq";
 import { format } from "date-fns";
 
 function generateOrderId(): string {
@@ -139,6 +140,7 @@ export async function POST(req: NextRequest) {
     const orderId = generateOrderId();
     const paymentStatus = paymentMethod === "deferred" ? "deferred" : "pending";
     const now = new Date().toISOString();
+    const dailySeq = await getNextDailySeq();
 
     const orderData = {
       orderId,
@@ -151,6 +153,7 @@ export async function POST(req: NextRequest) {
       totalAmount,
       note: note || null,
       kakaoTid: null,
+      dailySeq,
       createdAt: now,
       updatedAt: now,
     };
