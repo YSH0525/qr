@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { firestore } from "@/lib/firebase";
 import {
   collection,
@@ -35,12 +35,15 @@ interface PendingOrderData {
 export async function GET(req: NextRequest) {
   const baseUrl = getBaseUrlFromRequest(req);
 
+  console.log("[KakaoPay approve] URL:", req.url, "baseUrl:", baseUrl);
+
   try {
     const { searchParams } = new URL(req.url);
     const pgToken = searchParams.get("pg_token");
     const orderId = searchParams.get("orderId");
 
     if (!pgToken || !orderId) {
+      console.error("[KakaoPay approve] Missing params - pgToken:", !!pgToken, "orderId:", !!orderId);
       return NextResponse.redirect(baseUrl);
     }
 
@@ -67,27 +70,33 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const approveResult = await kakaoPayApprove({
-      tid: data.kakaoTid,
-      orderId: data.orderId,
-      roomId: data.roomUuid,
-      pgToken,
-    });
+    // Run Kakao approve + dailySeq in parallel to reduce latency
+    const [approveResult, dailySeq] = await Promise.all([
+      kakaoPayApprove({
+        tid: data.kakaoTid,
+        orderId: data.orderId,
+        roomId: data.roomUuid,
+        pgToken,
+      }),
+      getNextDailySeq(),
+    ]);
 
     // Verify approved amount matches order amount
     if (approveResult.amount?.total !== data.totalAmount) {
       console.error(
         `Payment amount mismatch: expected ${data.totalAmount}, got ${approveResult.amount?.total}`
       );
-      try {
-        await kakaoPayCancel({
-          tid: data.kakaoTid,
-          cancelAmount: approveResult.amount?.total ?? data.totalAmount,
-        });
-      } catch (cancelErr) {
-        console.error("Failed to cancel mismatched payment:", cancelErr);
-      }
-      await deleteDoc(pendingDoc.ref);
+      after(async () => {
+        try {
+          await kakaoPayCancel({
+            tid: data.kakaoTid!,
+            cancelAmount: approveResult.amount?.total ?? data.totalAmount,
+          });
+        } catch (cancelErr) {
+          console.error("Failed to cancel mismatched payment:", cancelErr);
+        }
+        await deleteDoc(pendingDoc.ref);
+      });
       return NextResponse.redirect(
         `${baseUrl}/room/${data.roomUuid}/payment/fail?orderId=${orderId}`
       );
@@ -95,7 +104,6 @@ export async function GET(req: NextRequest) {
 
     // Payment approved — now create the actual order
     const now = new Date().toISOString();
-    const dailySeq = await getNextDailySeq();
 
     const orderData = {
       orderId: data.orderId,
@@ -118,13 +126,12 @@ export async function GET(req: NextRequest) {
       orderData
     );
 
-    // Create order items in subcollection
-    for (const item of data.items) {
-      await addDoc(
-        collection(firestore, "orders", orderRef.id, "items"),
-        item
-      );
-    }
+    // Create order items in parallel
+    await Promise.all(
+      data.items.map((item) =>
+        addDoc(collection(firestore, "orders", orderRef.id, "items"), item)
+      )
+    );
 
     const fullOrder = {
       id: orderRef.id,
@@ -132,13 +139,13 @@ export async function GET(req: NextRequest) {
       items: data.items,
     };
 
-    // Broadcast to dashboard
-    orderEvents.broadcast("new-order", fullOrder);
+    // Defer non-critical work to after the response is sent
+    after(async () => {
+      orderEvents.broadcast("new-order", fullOrder);
+      await deleteDoc(pendingDoc.ref);
+    });
 
-    // Clean up pending data
-    await deleteDoc(pendingDoc.ref);
-
-    // Redirect to success page
+    // Redirect to success page immediately
     return NextResponse.redirect(
       `${baseUrl}/room/${data.roomUuid}/payment/success?orderId=${orderId}`
     );

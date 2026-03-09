@@ -12,7 +12,29 @@ export const BASE_URL = getBaseUrl();
 
 export function getBaseUrlFromRequest(req: NextRequest): string {
   const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
-  const proto = req.headers.get("x-forwarded-proto") || "https";
+  // x-forwarded-proto can contain multiple values like "http,https" from proxies
+  const rawProto = req.headers.get("x-forwarded-proto") || "https";
+  const proto = rawProto.split(",")[0].trim();
   if (host) return `${proto}://${host}`;
   return BASE_URL;
+}
+
+/**
+ * Get a reliable base URL for Kakao Pay callback URLs.
+ * Prioritizes NEXT_PUBLIC_BASE_URL (explicitly configured public URL) over
+ * request headers, since callback URLs must be publicly accessible from
+ * the Kakao Pay app redirecting back to the browser.
+ */
+export function getCallbackBaseUrl(req: NextRequest): string {
+  // 1. NEXT_PUBLIC_BASE_URL (explicitly configured public URL)
+  const envUrl = process.env.NEXT_PUBLIC_BASE_URL;
+  if (envUrl && !envUrl.includes("localhost") && !envUrl.includes("127.0.0.1")) {
+    return envUrl.replace(/\/$/, "");
+  }
+  // 2. VERCEL_URL (auto-set by Vercel, always publicly accessible)
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  // 3. Fallback to request headers
+  return getBaseUrlFromRequest(req);
 }

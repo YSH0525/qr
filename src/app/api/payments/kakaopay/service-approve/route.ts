@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { firestore } from "@/lib/firebase";
 import {
   collection,
@@ -15,6 +15,8 @@ import { getBaseUrlFromRequest } from "@/lib/constants";
 
 export async function GET(req: NextRequest) {
   const baseUrl = getBaseUrlFromRequest(req);
+
+  console.log("[KakaoPay service-approve] URL:", req.url, "baseUrl:", baseUrl);
 
   try {
     const { searchParams } = new URL(req.url);
@@ -70,29 +72,33 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const approveResult = await kakaoPayApprove({
-      tid: data.kakaoTid,
-      orderId: data.requestId,
-      roomId: data.roomUuid,
-      pgToken,
-    });
+    // Run Kakao approve + dailySeq in parallel to reduce latency
+    const [approveResult, dailySeq] = await Promise.all([
+      kakaoPayApprove({
+        tid: data.kakaoTid,
+        orderId: data.requestId,
+        roomId: data.roomUuid,
+        pgToken,
+      }),
+      getNextDailySeq(),
+    ]);
 
     // Verify approved amount matches extension amount
     if (approveResult.amount?.total !== data.extensionAmount) {
       console.error(
         `Service payment amount mismatch: expected ${data.extensionAmount}, got ${approveResult.amount?.total}`
       );
-      // Cancel the already-approved payment on KakaoPay side
-      try {
-        await kakaoPayCancel({
-          tid: data.kakaoTid,
-          cancelAmount: approveResult.amount?.total ?? data.extensionAmount,
-        });
-      } catch (cancelErr) {
-        console.error("Failed to cancel mismatched payment:", cancelErr);
-      }
-      // Clean up pending data
-      await deleteDoc(pendingDoc.ref);
+      after(async () => {
+        try {
+          await kakaoPayCancel({
+            tid: data.kakaoTid!,
+            cancelAmount: approveResult.amount?.total ?? data.extensionAmount,
+          });
+        } catch (cancelErr) {
+          console.error("Failed to cancel mismatched payment:", cancelErr);
+        }
+        await deleteDoc(pendingDoc.ref);
+      });
       return NextResponse.redirect(
         `${baseUrl}/room/${data.roomUuid}/service/confirm?requestId=${requestId}&failed=true&name=${encodeURIComponent(data.categoryName)}&type=${data.type}`
       );
@@ -100,7 +106,6 @@ export async function GET(req: NextRequest) {
 
     // Payment approved — now create the actual service request
     const now = new Date().toISOString();
-    const dailySeq = await getNextDailySeq();
     const requestData = {
       requestId: data.requestId,
       dailySeq,
@@ -132,13 +137,13 @@ export async function GET(req: NextRequest) {
 
     const fullRequest = { id: docRef.id, ...requestData };
 
-    // Broadcast to dashboard
-    orderEvents.broadcast("new-service-request", fullRequest);
+    // Defer non-critical work to after the response is sent
+    after(async () => {
+      orderEvents.broadcast("new-service-request", fullRequest);
+      await deleteDoc(pendingDoc.ref);
+    });
 
-    // Clean up pending data
-    await deleteDoc(pendingDoc.ref);
-
-    // Redirect to confirmation page
+    // Redirect to confirmation page immediately
     return NextResponse.redirect(
       `${baseUrl}/room/${data.roomUuid}/service/confirm?requestId=${requestId}&paid=true&name=${encodeURIComponent(data.categoryName)}&type=${data.type}`
     );
