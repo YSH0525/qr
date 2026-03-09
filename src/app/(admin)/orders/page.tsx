@@ -3,7 +3,6 @@
 import { useEffect, useRef } from "react";
 import { useFirestoreOrders } from "@/hooks/use-firestore-orders";
 import { useNotificationSound } from "@/hooks/use-audio";
-import { useBrowserNotification } from "@/hooks/use-notification";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -22,12 +21,9 @@ import {
 import type { OrderStatus, PaymentStatus } from "@/types";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
-import { toast } from "sonner";
-
 export default function OrdersPage() {
   const { orders } = useFirestoreOrders();
   const { playNewOrderAlert } = useNotificationSound();
-  const { notify } = useBrowserNotification();
 
   // 새 주문 알림 감지
   const prevOrderIdsRef = useRef<Set<string>>(new Set());
@@ -46,21 +42,12 @@ export default function OrdersPage() {
 
     for (const order of orders) {
       if (!prevOrderIdsRef.current.has(order.orderId)) {
-        playNewOrderAlert(order.roomNumber, order.items || []);
-
-        const itemText = (order.items || [])
-          .map((i) => `${i.menuItemName} x${i.quantity}`)
-          .join(", ");
-        notify(
-          `새 주문! ${order.roomNumber}호`,
-          itemText || "새로운 주문이 들어왔습니다"
-        );
-        toast.success(`새 주문! ${order.roomNumber}호`);
+        playNewOrderAlert();
       }
     }
 
     prevOrderIdsRef.current = currentIds;
-  }, [orders, playNewOrderAlert, notify]);
+  }, [orders, playNewOrderAlert]);
 
   const formatPrice = (price: number) => price.toLocaleString("ko-KR") + "원";
 
