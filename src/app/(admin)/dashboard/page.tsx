@@ -505,12 +505,13 @@ export default function DashboardPage() {
           {showDeferred && (
             <div className="flex gap-3 overflow-x-auto pb-1">
               {deferredPayments.map((p) => (
-                <Card key={p.room.id} className="border-red-100 shrink-0 w-44 md:w-52">
+                <Card key={p.room.id} className="border-red-100 shrink-0 w-44 md:w-52 overflow-hidden">
+                  <div className="bg-red-50 px-3 py-2 flex items-center justify-between">
+                    <p className="text-sm font-bold text-gray-900">{p.room.roomNumber}호</p>
+                    <span className="text-xs text-gray-500">{p.orderCount}건</span>
+                  </div>
                   <CardContent className="p-3 flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="font-bold">{p.room.roomNumber}호 <span className="text-xs font-normal text-gray-400">{p.orderCount}건</span></p>
-                      <p className="text-lg font-bold text-red-600">{p.totalDeferred.toLocaleString()}원</p>
-                    </div>
+                    <p className="text-lg font-bold text-red-600">{p.totalDeferred.toLocaleString()}원</p>
                     <Button
                       size="sm"
                       className="shrink-0"
