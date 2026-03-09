@@ -655,7 +655,6 @@ function CompletedRow({ card }: {
     : s.categoryName;
   return (
     <div className="flex items-center gap-3 px-3 py-2 bg-white rounded-lg text-sm">
-      <span className="text-base shrink-0">{s.categoryIcon}</span>
       <span className="font-semibold text-gray-700 shrink-0">{s.roomNumber}호</span>
       <Badge variant="outline" className="text-[10px] shrink-0">
         {SERVICE_TYPE_LABELS[s.type]}
@@ -883,7 +882,6 @@ function ServiceCard({
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-xl">{req.categoryIcon}</span>
             <CardTitle className="text-lg">{req.roomNumber}호</CardTitle>
           </div>
           <div className="flex items-center gap-2">
