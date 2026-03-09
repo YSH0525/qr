@@ -19,9 +19,21 @@ export async function kakaoPayReady(params: {
   totalAmount: number;
   roomId: string;
   baseUrl: string;
+  callbackUrls?: {
+    approval: string;
+    cancel: string;
+    fail: string;
+  };
 }) {
   const baseUrl = params.baseUrl;
   const cid = process.env.KAKAOPAY_CID || "TC0ONETIME";
+
+  const approvalUrl = params.callbackUrls?.approval
+    ?? `${baseUrl}/api/payments/kakaopay/approve?orderId=${params.orderId}`;
+  const cancelUrl = params.callbackUrls?.cancel
+    ?? `${baseUrl}/api/payments/kakaopay/cancel?orderId=${params.orderId}`;
+  const failUrl = params.callbackUrls?.fail
+    ?? `${baseUrl}/api/payments/kakaopay/fail?orderId=${params.orderId}`;
 
   const response = await fetch(`${KAKAOPAY_BASE_URL}/ready`, {
     method: "POST",
@@ -34,9 +46,9 @@ export async function kakaoPayReady(params: {
       quantity: 1,
       total_amount: params.totalAmount,
       tax_free_amount: 0,
-      approval_url: `${baseUrl}/api/payments/kakaopay/approve?orderId=${params.orderId}`,
-      cancel_url: `${baseUrl}/api/payments/kakaopay/cancel?orderId=${params.orderId}`,
-      fail_url: `${baseUrl}/api/payments/kakaopay/fail?orderId=${params.orderId}`,
+      approval_url: approvalUrl,
+      cancel_url: cancelUrl,
+      fail_url: failUrl,
     }),
   });
 
