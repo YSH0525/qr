@@ -1,16 +1,22 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useFirestoreOrders, useFirestoreServiceRequests } from "@/hooks/use-firestore-orders";
 import { useNotificationSound } from "@/hooks/use-audio";
 import { useBrowserNotification } from "@/hooks/use-notification";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
-import confetti from "canvas-confetti";
 import {
-  CheckCircle,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { toast } from "sonner";
+import {
   Volume2,
   Wallet,
   ChevronDown,
@@ -19,14 +25,8 @@ import {
 import type { OrderWithItems } from "@/types";
 import type { ServiceRequest } from "@/types/service";
 import {
-  CLEANING_LEVEL_LABELS,
-  PREFERRED_TIME_LABELS,
-  SUPPLY_ITEM_LABELS,
-} from "@/types/service";
-import {
   ORDER_STATUS_LABELS,
   PAYMENT_METHOD_LABELS,
-  PAYMENT_STATUS_LABELS,
   SERVICE_TYPE_LABELS,
   SERVICE_STATUS_LABELS,
 } from "@/types";
@@ -36,22 +36,33 @@ import {
 } from "@/components/admin/settlement-modal";
 
 interface DeferredPayment {
-  room: {
-    id: string;
-    roomNumber: string;
-    roomId: string;
-  };
+  room: { id: string; roomNumber: string; roomId: string };
   totalDeferred: number;
   orderCount: number;
 }
 
-// 대시보드에서 표시할 주문 상태 (활성 + 완료)
 const DASHBOARD_ORDER_STATUSES = ["pending", "accepted", "preparing", "completed"];
-// 대시보드에서 표시할 서비스 상태
 const DASHBOARD_SERVICE_STATUSES = ["requested", "accepted", "completed"];
 
+/* ── 상태별 행 배경색 ── */
+const ORDER_ROW_BG: Record<string, string> = {
+  pending: "bg-red-50",
+  accepted: "bg-blue-50",
+  preparing: "bg-yellow-50",
+  completed: "",
+};
+const SERVICE_ROW_BG: Record<string, string> = {
+  requested: "bg-red-50",
+  accepted: "bg-blue-50",
+  completed: "",
+};
+
+/* ── 통합 행 타입 ── */
+type RowItem =
+  | { kind: "order"; data: OrderWithItems; key: string; priority: number; time: string }
+  | { kind: "service"; data: ServiceRequest; key: string; priority: number; time: string };
+
 export default function DashboardPage() {
-  // Firestore 실시간 구독 — 폴링/SSE 대체
   const {
     orders,
     optimisticUpdate: optimisticOrderUpdate,
@@ -64,67 +75,48 @@ export default function DashboardPage() {
     releaseOptimisticLock: releaseServiceLock,
   } = useFirestoreServiceRequests(DASHBOARD_SERVICE_STATUSES);
 
-  const [animatingCards, setAnimatingCards] = useState<Map<string, "accept" | "prepare" | "complete">>(new Map());
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [deferredPayments, setDeferredPayments] = useState<DeferredPayment[]>([]);
   const [showDeferred, setShowDeferred] = useState(true);
   const [settlementPreview, setSettlementPreview] = useState<SettlementPreviewData | null>(null);
   const [settlementModalOpen, setSettlementModalOpen] = useState(false);
-  const { playNewOrderAlert, playAcceptSound, playCompleteSound, playServiceRequestAlert, speak } =
+  const { playNewOrderAlert, playAcceptSound, playCompleteSound, playServiceRequestAlert } =
     useNotificationSound();
   const { notify } = useBrowserNotification();
 
-  // 새 주문/서비스 감지를 위한 이전 ID 세트
+  // 새 주문/서비스 감지
   const prevOrderIdsRef = useRef<Set<string>>(new Set());
   const prevServiceIdsRef = useRef<Set<string>>(new Set());
   const isFirstLoadRef = useRef(true);
   const isFirstServiceLoadRef = useRef(true);
 
-  // 새 주문 알림 감지
   useEffect(() => {
     if (orders.length === 0 && isFirstLoadRef.current) return;
-
     const currentIds = new Set(orders.map((o) => o.orderId));
-
     if (isFirstLoadRef.current) {
       prevOrderIdsRef.current = currentIds;
       isFirstLoadRef.current = false;
       return;
     }
-
     for (const order of orders) {
       if (!prevOrderIdsRef.current.has(order.orderId)) {
-        // 새 주문 발견
         playNewOrderAlert(order.roomNumber, order.items || []);
-
-        const itemText = (order.items || [])
-          .map((i) => `${i.menuItemName} x${i.quantity}`)
-          .join(", ");
-        notify(
-          `새 주문! ${order.roomNumber}호`,
-          itemText || "새로운 주문이 들어왔습니다"
-        );
-        toast.success(`새 주문! ${order.roomNumber}호`, {
-          description: itemText || undefined,
-        });
+        const itemText = (order.items || []).map((i) => `${i.menuItemName} x${i.quantity}`).join(", ");
+        notify(`새 주문! ${order.roomNumber}호`, itemText || "새로운 주문이 들어왔습니다");
+        toast.success(`새 주문! ${order.roomNumber}호`, { description: itemText || undefined });
       }
     }
-
     prevOrderIdsRef.current = currentIds;
   }, [orders, playNewOrderAlert, notify]);
 
-  // 새 서비스 요청 알림 감지
   useEffect(() => {
     if (serviceRequests.length === 0 && isFirstServiceLoadRef.current) return;
-
     const currentIds = new Set(serviceRequests.map((r) => r.requestId));
-
     if (isFirstServiceLoadRef.current) {
       prevServiceIdsRef.current = currentIds;
       isFirstServiceLoadRef.current = false;
       return;
     }
-
     for (const req of serviceRequests) {
       if (!prevServiceIdsRef.current.has(req.requestId)) {
         playServiceRequestAlert(req.roomNumber, req.categoryName);
@@ -132,11 +124,9 @@ export default function DashboardPage() {
         toast.success(`서비스 요청! ${req.roomNumber}호 — ${req.categoryName}`);
       }
     }
-
     prevServiceIdsRef.current = currentIds;
   }, [serviceRequests, playServiceRequestAlert, notify]);
 
-  // 사용자 클릭으로 오디오 + TTS 활성화
   const enableAudio = useCallback(() => {
     playAcceptSound();
     if ("speechSynthesis" in window) {
@@ -148,12 +138,10 @@ export default function DashboardPage() {
     toast.success("알림 소리가 활성화되었습니다");
   }, [playAcceptSound]);
 
-  // 후불 정산은 복잡한 집계 쿼리라 폴링 유지
+  // 후불 정산 폴링
   const fetchDeferred = useCallback(async () => {
     const res = await fetch("/api/payments/deferred");
-    if (res.ok) {
-      setDeferredPayments(await res.json());
-    }
+    if (res.ok) setDeferredPayments(await res.json());
   }, []);
 
   useEffect(() => {
@@ -162,188 +150,58 @@ export default function DashboardPage() {
     return () => clearInterval(poll);
   }, [fetchDeferred]);
 
-  const clearAnim = (id: string) => {
-    setAnimatingCards((prev) => {
-      const next = new Map(prev);
-      next.delete(id);
-      return next;
-    });
-  };
-
-  const handleAccept = async (order: OrderWithItems) => {
-    setAnimatingCards((prev) => new Map(prev).set(order.orderId, "accept"));
-    playAcceptSound();
-    optimisticOrderUpdate(order.orderId, { status: "accepted", updatedAt: new Date().toISOString() });
-
-    try {
-      const res = await fetch(`/api/orders/${order.orderId}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "accepted" }),
-      });
-
-      if (res.ok) {
-        releaseOrderLock(order.orderId);
-        toast(`${order.roomNumber}호 주문 접수!`, {
-          description: "처리를 시작해주세요",
-          icon: <CheckCircle className="text-green-500" />,
-        });
-        setTimeout(() => clearAnim(order.orderId), 400);
-      } else {
-        toast.error("주문 접수에 실패했습니다");
-        optimisticOrderUpdate(order.orderId, { status: "pending" });
-        releaseOrderLock(order.orderId);
-        clearAnim(order.orderId);
-      }
-    } catch {
-      toast.error("네트워크 오류가 발생했습니다");
-      optimisticOrderUpdate(order.orderId, { status: "pending" });
-      releaseOrderLock(order.orderId);
-      clearAnim(order.orderId);
-    }
-  };
-
-  const handlePrepare = async (order: OrderWithItems) => {
-    setAnimatingCards((prev) => new Map(prev).set(order.orderId, "prepare"));
-    optimisticOrderUpdate(order.orderId, { status: "preparing", updatedAt: new Date().toISOString() });
-
-    try {
-      const res = await fetch(`/api/orders/${order.orderId}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "preparing" }),
-      });
-
-      if (res.ok) {
-        releaseOrderLock(order.orderId);
-        toast(`${order.roomNumber}호 주문 처리 시작!`, {
-          description: "완료되면 완료 버튼을 눌러주세요",
-          icon: <span className="text-xl">👨‍🍳</span>,
-        });
-        setTimeout(() => clearAnim(order.orderId), 400);
-      } else {
-        toast.error("상태 변경에 실패했습니다");
-        optimisticOrderUpdate(order.orderId, { status: "accepted" });
-        releaseOrderLock(order.orderId);
-        clearAnim(order.orderId);
-      }
-    } catch {
-      toast.error("네트워크 오류가 발생했습니다");
-      optimisticOrderUpdate(order.orderId, { status: "accepted" });
-      releaseOrderLock(order.orderId);
-      clearAnim(order.orderId);
-    }
-  };
-
-  const handleComplete = async (
-    order: OrderWithItems,
-    e: React.MouseEvent
-  ) => {
-    setAnimatingCards((prev) => new Map(prev).set(order.orderId, "complete"));
-    playCompleteSound();
-
-    const rect = (e.target as HTMLElement).getBoundingClientRect();
-    const x = (rect.left + rect.width / 2) / window.innerWidth;
-    const y = (rect.top + rect.height / 2) / window.innerHeight;
-
-    confetti({
-      particleCount: 80,
-      spread: 60,
-      origin: { x, y },
-      colors: ["#22c55e", "#16a34a", "#4ade80", "#86efac", "#fbbf24"],
-      ticks: 150,
-      gravity: 1.2,
-      scalar: 0.9,
-    });
-
-    optimisticOrderUpdate(order.orderId, { status: "completed", updatedAt: new Date().toISOString() });
-
-    try {
-      const res = await fetch(`/api/orders/${order.orderId}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "completed" }),
-      });
-
-      if (res.ok) {
-        releaseOrderLock(order.orderId);
-        toast(`${order.roomNumber}호 주문 완료!`, {
-          description: "고객에게 전달해주세요",
-          icon: <span className="text-xl">🎉</span>,
-        });
-        setTimeout(() => clearAnim(order.orderId), 500);
-      } else {
-        toast.error("주문 완료 처리에 실패했습니다");
-        optimisticOrderUpdate(order.orderId, { status: "preparing" });
-        releaseOrderLock(order.orderId);
-        clearAnim(order.orderId);
-      }
-    } catch {
-      toast.error("네트워크 오류가 발생했습니다");
-      optimisticOrderUpdate(order.orderId, { status: "preparing" });
-      releaseOrderLock(order.orderId);
-      clearAnim(order.orderId);
-    }
-  };
-
-  const handleSettle = async (roomId: string, _roomNumber: string) => {
-    const res = await fetch(`/api/payments/deferred/${roomId}/preview`);
-    if (res.ok) {
-      const data: SettlementPreviewData = await res.json();
-      setSettlementPreview(data);
-      setSettlementModalOpen(true);
-    } else {
-      toast.error("정산 내역 조회 실패");
-    }
-  };
-
-  const handleSettleConfirm = async () => {
-    if (!settlementPreview) return;
-
-    const res = await fetch(
-      `/api/payments/deferred/${settlementPreview.roomId}/settle`,
-      { method: "POST" }
-    );
-
-    if (res.ok) {
-      const data = await res.json();
-      toast.success(
-        `${settlementPreview.roomNumber}호 정산 완료: ${data.settled}건, ${data.totalAmount.toLocaleString()}원`
-      );
-      fetchDeferred();
-    } else {
-      toast.error("정산 처리 실패");
-    }
-  };
-
-  const handleReject = async (orderId: string) => {
-    optimisticOrderUpdate(orderId, { status: "rejected" as OrderWithItems["status"], updatedAt: new Date().toISOString() });
-
+  /* ── 핸들러 ── */
+  const patchOrder = async (orderId: string, status: string, rollback: string) => {
     try {
       const res = await fetch(`/api/orders/${orderId}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "rejected" }),
+        body: JSON.stringify({ status }),
       });
       if (res.ok) {
         releaseOrderLock(orderId);
-        toast.error("주문이 거절되었습니다");
-      } else {
-        toast.error("주문 거절에 실패했습니다");
-        optimisticOrderUpdate(orderId, { status: "pending" });
-        releaseOrderLock(orderId);
+        return true;
       }
-    } catch {
-      toast.error("네트워크 오류가 발생했습니다");
-      optimisticOrderUpdate(orderId, { status: "pending" });
+      optimisticOrderUpdate(orderId, { status: rollback as OrderWithItems["status"] });
       releaseOrderLock(orderId);
+      return false;
+    } catch {
+      optimisticOrderUpdate(orderId, { status: rollback as OrderWithItems["status"] });
+      releaseOrderLock(orderId);
+      return false;
     }
+  };
+
+  const handleAccept = async (order: OrderWithItems) => {
+    playAcceptSound();
+    optimisticOrderUpdate(order.orderId, { status: "accepted", updatedAt: new Date().toISOString() });
+    const ok = await patchOrder(order.orderId, "accepted", "pending");
+    toast[ok ? "success" : "error"](ok ? `${order.roomNumber}호 주문 접수!` : "주문 접수에 실패했습니다");
+  };
+
+  const handlePrepare = async (order: OrderWithItems) => {
+    optimisticOrderUpdate(order.orderId, { status: "preparing", updatedAt: new Date().toISOString() });
+    const ok = await patchOrder(order.orderId, "preparing", "accepted");
+    toast[ok ? "success" : "error"](ok ? `${order.roomNumber}호 처리 시작!` : "상태 변경에 실패했습니다");
+  };
+
+  const handleComplete = async (order: OrderWithItems) => {
+    playCompleteSound();
+    optimisticOrderUpdate(order.orderId, { status: "completed", updatedAt: new Date().toISOString() });
+    const ok = await patchOrder(order.orderId, "completed", "preparing");
+    toast[ok ? "success" : "error"](ok ? `${order.roomNumber}호 주문 완료!` : "주문 완료 처리에 실패했습니다");
+  };
+
+  const handleReject = async (orderId: string) => {
+    optimisticOrderUpdate(orderId, { status: "rejected" as OrderWithItems["status"], updatedAt: new Date().toISOString() });
+    const ok = await patchOrder(orderId, "rejected", "pending");
+    if (ok) toast.error("주문이 거절되었습니다");
+    else toast.error("주문 거절에 실패했습니다");
   };
 
   const handleServiceAccept = async (req: ServiceRequest) => {
     playAcceptSound();
     optimisticServiceUpdate(req.requestId, { status: "accepted", updatedAt: new Date().toISOString() });
-
     const res = await fetch(`/api/service-requests/${req.requestId}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -353,16 +211,15 @@ export default function DashboardPage() {
       releaseServiceLock(req.requestId);
       toast.success(`${req.roomNumber}호 ${req.categoryName} 접수!`);
     } else {
-      toast.error("서비스 접수에 실패했습니다");
       optimisticServiceUpdate(req.requestId, { status: "requested" });
       releaseServiceLock(req.requestId);
+      toast.error("서비스 접수에 실패했습니다");
     }
   };
 
   const handleServiceComplete = async (req: ServiceRequest) => {
     playCompleteSound();
     optimisticServiceUpdate(req.requestId, { status: "completed", updatedAt: new Date().toISOString() });
-
     const res = await fetch(`/api/service-requests/${req.requestId}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -373,104 +230,135 @@ export default function DashboardPage() {
       toast.success(`${req.roomNumber}호 ${req.categoryName} 완료!`);
       fetchDeferred();
     } else {
-      toast.error("서비스 완료 처리에 실패했습니다");
       optimisticServiceUpdate(req.requestId, { status: "accepted" });
       releaseServiceLock(req.requestId);
+      toast.error("서비스 완료 처리에 실패했습니다");
     }
   };
 
-  // 주문 분류: 활성 상태만 표시 (rejected/cancelled 제외)
-  const activeOrders = orders.filter(
-    (o) => o.status !== "rejected" && o.status !== "cancelled"
-  );
-  const pendingOrders = activeOrders.filter((o) => o.status === "pending");
-  const preparingOrders = activeOrders.filter(
-    (o) => o.status === "accepted" || o.status === "preparing"
-  );
-  // 서비스 분류
-  const pendingServices = serviceRequests.filter((r) => r.status === "requested");
-  const acceptedServices = serviceRequests.filter((r) => r.status === "accepted");
+  const handleSettle = async (roomId: string) => {
+    const res = await fetch(`/api/payments/deferred/${roomId}/preview`);
+    if (res.ok) {
+      setSettlementPreview(await res.json());
+      setSettlementModalOpen(true);
+    } else {
+      toast.error("정산 내역 조회 실패");
+    }
+  };
 
-  // 주문 + 서비스 통합: 활성(대기/처리중)만 표시
-  type CardItem =
-    | { type: "order"; data: OrderWithItems; key: string; priority: number; time: string }
-    | { type: "service"; data: ServiceRequest; key: string; priority: number; time: string };
+  const handleSettleConfirm = async () => {
+    if (!settlementPreview) return;
+    const res = await fetch(`/api/payments/deferred/${settlementPreview.roomId}/settle`, { method: "POST" });
+    if (res.ok) {
+      const data = await res.json();
+      toast.success(`${settlementPreview.roomNumber}호 정산 완료: ${data.settled}건, ${data.totalAmount.toLocaleString()}원`);
+      fetchDeferred();
+    } else {
+      toast.error("정산 처리 실패");
+    }
+  };
 
-  const activeCards: CardItem[] = [
-    ...[...pendingOrders, ...preparingOrders].map((o) => ({
-      type: "order" as const,
-      data: o,
-      key: o.orderId,
-      priority: o.status === "pending" ? 0 : 1,
-      time: o.createdAt,
-    })),
-    ...[...pendingServices, ...acceptedServices].map((s) => ({
-      type: "service" as const,
-      data: s,
-      key: s.requestId,
-      priority: s.status === "requested" ? 0 : 1,
-      time: s.createdAt,
-    })),
-  ];
-  activeCards.sort((a, b) => {
-    if (a.priority !== b.priority) return a.priority - b.priority;
-    return new Date(b.time).getTime() - new Date(a.time).getTime();
-  });
+  /* ── 통합 행 (대기 우선 → 시간순) ── */
+  const activeOrders = orders.filter((o) => o.status !== "rejected" && o.status !== "cancelled");
+  const activeServices = serviceRequests.filter((r) => r.status !== "completed");
+  const completedOrders = orders.filter((o) => o.status === "completed");
+  const completedServices = serviceRequests.filter((r) => r.status === "completed");
 
+  const buildRows = (
+    ords: OrderWithItems[],
+    srvs: ServiceRequest[],
+  ): RowItem[] => {
+    const rows: RowItem[] = [
+      ...ords.map((o) => ({
+        kind: "order" as const,
+        data: o,
+        key: o.orderId,
+        priority: o.status === "pending" ? 0 : 1,
+        time: o.createdAt,
+      })),
+      ...srvs.map((s) => ({
+        kind: "service" as const,
+        data: s,
+        key: s.requestId,
+        priority: s.status === "requested" ? 0 : 1,
+        time: s.createdAt,
+      })),
+    ];
+    rows.sort((a, b) => {
+      if (a.priority !== b.priority) return a.priority - b.priority;
+      return new Date(b.time).getTime() - new Date(a.time).getTime();
+    });
+    return rows;
+  };
+
+  const activeRows = buildRows(activeOrders, activeServices);
+  const completedRows = buildRows(completedOrders, completedServices);
+
+  const timeAgo = (dateStr: string) => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "방금 전";
+    if (mins < 60) return `${mins}분 전`;
+    return `${Math.floor(mins / 60)}시간 전`;
+  };
+
+  const formatPrice = (n: number) => n.toLocaleString("ko-KR") + "원";
+
+  const summarize = (row: RowItem) => {
+    if (row.kind === "order") {
+      const o = row.data;
+      return o.items.map((i) => `${i.menuItemName}x${i.quantity}`).join(", ");
+    }
+    const s = row.data;
+    if (s.type === "checkout_extension" && s.extensionHours) {
+      return `+${s.extensionHours}h 연장${s.freeExtension ? " (무료)" : s.extensionAmount ? ` ${formatPrice(s.extensionAmount)}` : ""}`;
+    }
+    if (s.items?.length) return s.items.map((i) => `${i.name}x${i.quantity}`).join(", ");
+    return s.categoryName;
+  };
+
+  /* ── 렌더 ── */
   return (
     <div className="p-3 md:p-6 h-full min-h-0 flex flex-col overflow-auto md:overflow-hidden">
-      <div className="flex items-center justify-between mb-4 shrink-0 flex-wrap gap-2">
-        <h1 className="text-lg md:text-xl font-bold">운영 현황</h1>
+      {/* 헤더 */}
+      <div className="flex items-center justify-between mb-3 shrink-0 flex-wrap gap-2">
+        <div className="flex items-center gap-3">
+          <h1 className="text-lg md:text-xl font-bold">운영 현황</h1>
+          <Badge variant="secondary" className="text-xs">
+            활성 {activeRows.length}
+          </Badge>
+        </div>
         {!audioEnabled && (
-          <Button
-            variant="outline"
-            onClick={enableAudio}
-            className="animate-pulse border-orange-300 text-orange-600 hover:bg-orange-50"
-          >
+          <Button variant="outline" onClick={enableAudio} className="animate-pulse border-orange-300 text-orange-600 hover:bg-orange-50">
             <Volume2 className="w-4 h-4 mr-2" />
             알림 소리 켜기
           </Button>
         )}
       </div>
 
-      {/* 후불 미정산 현황 */}
+      {/* 후불 미정산 */}
       {deferredPayments.length > 0 && (
-        <div className="mb-4 shrink-0">
+        <div className="mb-3 shrink-0">
           <button
             onClick={() => setShowDeferred((v) => !v)}
             className="flex items-center gap-2 text-sm font-semibold text-red-600 mb-2 hover:text-red-700 transition"
           >
             <Wallet className="w-4 h-4" />
-            후불 미정산 현황
-            <Badge variant="destructive" className="ml-1 text-xs">
-              {deferredPayments.length}개 객실
-            </Badge>
-            {showDeferred ? (
-              <ChevronUp className="w-3 h-3" />
-            ) : (
-              <ChevronDown className="w-3 h-3" />
-            )}
+            후불 미정산
+            <Badge variant="destructive" className="ml-1 text-xs">{deferredPayments.length}개 객실</Badge>
+            {showDeferred ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
           </button>
-
           {showDeferred && (
             <div className="flex gap-3 overflow-x-auto pb-1">
               {deferredPayments.map((p) => (
                 <Card key={p.room.id} className="border-red-100 shrink-0 w-44 md:w-52 overflow-hidden">
                   <div className="bg-red-50 px-3 py-2 flex items-center justify-between">
-                    <p className="text-sm font-bold text-gray-900">{p.room.roomNumber}호</p>
+                    <p className="text-sm font-bold">{p.room.roomNumber}호</p>
                     <span className="text-xs text-gray-500">{p.orderCount}건</span>
                   </div>
                   <CardContent className="p-3 flex items-center justify-between gap-3">
                     <p className="text-lg font-bold text-red-600">{p.totalDeferred.toLocaleString()}원</p>
-                    <Button
-                      size="sm"
-                      className="shrink-0"
-                      onClick={() =>
-                        handleSettle(p.room.roomId, p.room.roomNumber)
-                      }
-                    >
-                      정산
-                    </Button>
+                    <Button size="sm" className="shrink-0" onClick={() => handleSettle(p.room.roomId)}>정산</Button>
                   </CardContent>
                 </Card>
               ))}
@@ -479,49 +367,200 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* 개별 카드 리스트 - 반응형 그리드 */}
-      <div className="flex flex-col min-h-0 flex-1">
-        <div className="overflow-y-auto flex-1 pr-1 space-y-4">
-          {/* 활성 카드 (대기 + 처리중) - 그리드 */}
-          {activeCards.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
-              {activeCards.map((card, index) =>
-                card.type === "order" ? (
-                  <OrderCard
-                    key={card.key}
-                    seq={card.data.dailySeq ?? (index + 1)}
-                    order={card.data}
-                    animatingCards={animatingCards}
-                    onAccept={handleAccept}
-                    onPrepare={handlePrepare}
-                    onComplete={handleComplete}
-                    onReject={handleReject}
-                  />
-                ) : (
-                  <ServiceCard
-                    key={card.key}
-                    seq={card.data.dailySeq ?? (index + 1)}
-                    request={card.data}
-                    onAccept={handleServiceAccept}
-                    onComplete={handleServiceComplete}
-                  />
-                )
-              )}
+      {/* 활성 목록 — 데스크탑: 테이블, 모바일: 컴팩트 리스트 */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        {activeRows.length > 0 ? (
+          <>
+            {/* 데스크탑 테이블 */}
+            <div className="hidden md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10">#</TableHead>
+                    <TableHead className="w-16">객실</TableHead>
+                    <TableHead className="w-16">유형</TableHead>
+                    <TableHead>내용</TableHead>
+                    <TableHead className="w-20">결제</TableHead>
+                    <TableHead className="w-16">상태</TableHead>
+                    <TableHead className="w-16">시간</TableHead>
+                    <TableHead className="w-36 text-right">처리</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {activeRows.map((row, idx) => {
+                    const isOrder = row.kind === "order";
+                    const status = isOrder ? row.data.status : row.data.status;
+                    const bg = isOrder ? ORDER_ROW_BG[status] : SERVICE_ROW_BG[status];
+                    return (
+                      <TableRow key={row.key} className={bg}>
+                        <TableCell className="font-mono text-xs text-gray-400">
+                          {(isOrder ? row.data.dailySeq : row.data.dailySeq) ?? idx + 1}
+                        </TableCell>
+                        <TableCell className="font-semibold">
+                          {isOrder ? row.data.roomNumber : row.data.roomNumber}호
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-[10px]">
+                            {isOrder ? "주문" : SERVICE_TYPE_LABELS[row.data.type]}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm max-w-xs truncate">
+                          {summarize(row)}
+                          {((isOrder && row.data.note) || (!isOrder && row.data.note)) && (
+                            <span className="text-orange-500 ml-2 text-xs">
+                              [{isOrder ? row.data.note : row.data.note}]
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {isOrder ? (
+                            <Badge variant="secondary" className="text-[10px]">
+                              {PAYMENT_METHOD_LABELS[row.data.paymentMethod]}
+                            </Badge>
+                          ) : row.data.paymentMethod ? (
+                            <Badge variant="secondary" className="text-[10px]">
+                              {row.data.paymentMethod === "kakaopay" ? "카카오" : "후불"}
+                            </Badge>
+                          ) : (
+                            <span className="text-gray-300">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              (isOrder && status === "pending") || (!isOrder && status === "requested")
+                                ? "destructive"
+                                : "secondary"
+                            }
+                            className="text-[10px]"
+                          >
+                            {isOrder ? ORDER_STATUS_LABELS[row.data.status] : SERVICE_STATUS_LABELS[row.data.status]}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs text-gray-400">
+                          {timeAgo(row.time)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex gap-1 justify-end">
+                            {isOrder ? (
+                              <OrderActions order={row.data} onAccept={handleAccept} onPrepare={handlePrepare} onComplete={handleComplete} onReject={handleReject} />
+                            ) : (
+                              <ServiceActions request={row.data} onAccept={handleServiceAccept} onComplete={handleServiceComplete} />
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </div>
-          ) : (
-            <p className="text-gray-400 text-sm text-center py-8">
-              주문 및 서비스 요청이 없습니다
-            </p>
-          )}
-        </div>
+
+            {/* 모바일 리스트 */}
+            <div className="md:hidden space-y-2">
+              {activeRows.map((row, idx) => {
+                const isOrder = row.kind === "order";
+                const status = isOrder ? row.data.status : row.data.status;
+                const bg = isOrder ? ORDER_ROW_BG[status] : SERVICE_ROW_BG[status];
+                return (
+                  <div key={row.key} className={`rounded-lg border p-3 ${bg}`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-400 font-mono">
+                          #{(isOrder ? row.data.dailySeq : row.data.dailySeq) ?? idx + 1}
+                        </span>
+                        <span className="font-semibold text-sm">
+                          {isOrder ? row.data.roomNumber : row.data.roomNumber}호
+                        </span>
+                        <Badge variant="outline" className="text-[10px]">
+                          {isOrder ? "주문" : SERVICE_TYPE_LABELS[row.data.type]}
+                        </Badge>
+                      </div>
+                      <span className="text-xs text-gray-400">{timeAgo(row.time)}</span>
+                    </div>
+                    <p className="text-sm text-gray-700 truncate mb-2">{summarize(row)}</p>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1">
+                        <Badge
+                          variant={
+                            (isOrder && status === "pending") || (!isOrder && status === "requested")
+                              ? "destructive"
+                              : "secondary"
+                          }
+                          className="text-[10px]"
+                        >
+                          {isOrder ? ORDER_STATUS_LABELS[row.data.status] : SERVICE_STATUS_LABELS[row.data.status]}
+                        </Badge>
+                        {isOrder && (
+                          <Badge variant="secondary" className="text-[10px]">
+                            {PAYMENT_METHOD_LABELS[row.data.paymentMethod]}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex gap-1">
+                        {isOrder ? (
+                          <OrderActions order={row.data} onAccept={handleAccept} onPrepare={handlePrepare} onComplete={handleComplete} onReject={handleReject} />
+                        ) : (
+                          <ServiceActions request={row.data} onAccept={handleServiceAccept} onComplete={handleServiceComplete} />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        ) : (
+          <p className="text-gray-400 text-sm text-center py-12">주문 및 서비스 요청이 없습니다</p>
+        )}
+
+        {/* 완료 목록 */}
+        {completedRows.length > 0 && (
+          <div className="mt-6">
+            <h2 className="text-sm font-semibold text-gray-400 mb-2">완료 ({completedRows.length})</h2>
+            <div className="hidden md:block">
+              <Table>
+                <TableBody>
+                  {completedRows.slice(0, 10).map((row, idx) => {
+                    const isOrder = row.kind === "order";
+                    return (
+                      <TableRow key={row.key} className="opacity-50">
+                        <TableCell className="font-mono text-xs text-gray-400 w-10">
+                          {(isOrder ? row.data.dailySeq : row.data.dailySeq) ?? idx + 1}
+                        </TableCell>
+                        <TableCell className="w-16">{isOrder ? row.data.roomNumber : row.data.roomNumber}호</TableCell>
+                        <TableCell className="w-16">
+                          <Badge variant="outline" className="text-[10px]">{isOrder ? "주문" : SERVICE_TYPE_LABELS[row.data.type]}</Badge>
+                        </TableCell>
+                        <TableCell className="text-sm truncate max-w-xs">{summarize(row)}</TableCell>
+                        <TableCell className="text-xs text-gray-400 w-16">{timeAgo(row.time)}</TableCell>
+                        <TableCell className="w-16">
+                          <Badge variant="outline" className="text-[10px]">완료</Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="md:hidden space-y-1">
+              {completedRows.slice(0, 10).map((row) => {
+                const isOrder = row.kind === "order";
+                return (
+                  <div key={row.key} className="flex items-center justify-between px-3 py-2 text-sm text-gray-400 border-b">
+                    <span>{isOrder ? row.data.roomNumber : row.data.roomNumber}호 — {summarize(row)}</span>
+                    <span className="text-xs">{timeAgo(row.time)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       <SettlementModal
         open={settlementModalOpen}
-        onClose={() => {
-          setSettlementModalOpen(false);
-          setSettlementPreview(null);
-        }}
+        onClose={() => { setSettlementModalOpen(false); setSettlementPreview(null); }}
         preview={settlementPreview}
         onConfirm={handleSettleConfirm}
       />
@@ -529,375 +568,52 @@ export default function DashboardPage() {
   );
 }
 
-/* ── 주문 개별 카드 ── */
-function OrderCard({
-  seq,
+/* ── 주문 액션 버튼 ── */
+function OrderActions({
   order,
-  animatingCards,
   onAccept,
   onPrepare,
   onComplete,
   onReject,
 }: {
-  seq: number;
   order: OrderWithItems;
-  animatingCards: Map<string, "accept" | "prepare" | "complete">;
-  onAccept: (order: OrderWithItems) => void;
-  onPrepare: (order: OrderWithItems) => void;
-  onComplete: (order: OrderWithItems, e: React.MouseEvent) => void;
-  onReject: (orderId: string) => void;
+  onAccept: (o: OrderWithItems) => void;
+  onPrepare: (o: OrderWithItems) => void;
+  onComplete: (o: OrderWithItems) => void;
+  onReject: (id: string) => void;
 }) {
-  const formatPrice = (price: number) =>
-    price.toLocaleString("ko-KR") + "원";
-
-  const timeAgo = (dateStr: string) => {
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1) return "방금 전";
-    if (mins < 60) return `${mins}분 전`;
-    const hours = Math.floor(mins / 60);
-    return `${hours}시간 전`;
-  };
-
-  const animType = animatingCards.get(order.orderId);
-  const isAnimating = !!animType;
-
-  const animClass = isAnimating
-    ? animType === "accept"
-      ? "scale-95 opacity-50 border-green-400 shadow-green-200 shadow-lg"
-      : animType === "prepare"
-      ? "scale-95 opacity-50 border-blue-400 shadow-blue-200 shadow-lg"
-      : "scale-90 opacity-0 translate-y-4"
-    : "scale-100 opacity-100 translate-y-0";
-
-  const isCompleted = order.status === "completed";
-
-  // 스텝 인디케이터: pending=0, accepted=1, preparing=1.5, completed=2
-  const step = order.status === "pending" ? 0
-    : order.status === "accepted" ? 0.5
-    : order.status === "completed" ? 2
-    : 1; // preparing
-  const stepLabels = ["접수", "처리", "완료"];
-
-  return (
-    <Card
-      className={`relative transition-all duration-300 ease-in-out ${animClass} ${isCompleted ? "opacity-60" : ""}`}
-    >
-      {/* 접수 시 체크 오버레이 */}
-      {isAnimating && animType === "accept" && (
-        <div className="absolute inset-0 flex items-center justify-center bg-green-50/80 rounded-lg z-10 animate-in fade-in duration-200">
-          <CheckCircle className="w-12 h-12 text-green-500 animate-in zoom-in duration-300" />
-        </div>
-      )}
-
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-900 text-white text-xs font-bold">{seq}</span>
-              <CardTitle className="text-lg">{order.roomNumber}호</CardTitle>
-            </div>
-          <div className="flex items-center gap-2">
-            <Badge
-              variant={
-                order.paymentMethod === "kakaopay"
-                  ? order.paymentStatus === "paid" ? "default" : "outline"
-                  : "secondary"
-              }
-              className={`text-[10px] ${
-                order.paymentMethod === "kakaopay" && order.paymentStatus === "paid"
-                  ? "bg-yellow-400 text-yellow-900 border-yellow-400"
-                  : ""
-              }`}
-            >
-              {PAYMENT_METHOD_LABELS[order.paymentMethod]}
-              {order.paymentMethod === "kakaopay" && order.paymentStatus !== "paid" && (
-                <span className="ml-0.5 text-[9px] opacity-70">({PAYMENT_STATUS_LABELS[order.paymentStatus]})</span>
-              )}
-            </Badge>
-            <Badge
-              variant={
-                order.status === "pending" ? "destructive"
-                  : order.status === "completed" ? "outline"
-                  : "secondary"
-              }
-              className="text-[10px]"
-            >
-              {ORDER_STATUS_LABELS[order.status]}
-            </Badge>
-          </div>
-        </div>
-        <p className="text-xs text-gray-400">{timeAgo(order.createdAt)}</p>
-      </CardHeader>
-
-      <CardContent className="space-y-3">
-        {/* 스텝 인디케이터 */}
-        <div className="flex items-center gap-0 px-2">
-          {stepLabels.map((label, i) => (
-            <div key={label} className="flex items-center flex-1 last:flex-none">
-              <div className="flex flex-col items-center">
-                <div
-                  className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${
-                    i <= step
-                      ? isCompleted
-                        ? "bg-green-500"
-                        : "bg-blue-500"
-                      : "bg-gray-200"
-                  }`}
-                >
-                  {i <= step ? "✓" : i + 1}
-                </div>
-                <span
-                  className={`text-[10px] mt-1 ${
-                    i <= step
-                      ? isCompleted
-                        ? "text-green-600 font-semibold"
-                        : "text-blue-600 font-semibold"
-                      : "text-gray-400"
-                  }`}
-                >
-                  {label}
-                </span>
-              </div>
-              {i < stepLabels.length - 1 && (
-                <div
-                  className={`flex-1 h-0.5 mx-1 mt-[-12px] ${
-                    i < step
-                      ? isCompleted
-                        ? "bg-green-500"
-                        : "bg-blue-500"
-                      : "bg-gray-200"
-                  }`}
-                />
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* 메뉴 아이템 */}
-        <div className="space-y-1">
-          {order.items.map((item, idx) => (
-            <div key={idx} className="flex justify-between text-sm">
-              <span>{item.menuItemName} x{item.quantity}</span>
-              <span className="text-gray-500">{formatPrice(item.subtotal)}</span>
-            </div>
-          ))}
-        </div>
-
-        {order.note && (
-          <p className="text-xs text-orange-600 bg-orange-50 p-2 rounded">
-            요청: {order.note}
-          </p>
-        )}
-
-        <div className="flex justify-between items-center">
-          <span className="font-semibold">{formatPrice(order.totalAmount)}</span>
-          <div className="flex gap-2">
-            {order.status === "pending" && (
-              <>
-                <Button
-                  size="sm"
-                  className="transition-all duration-150 active:scale-90 hover:shadow-lg"
-                  onClick={() => onAccept(order)}
-                >
-                  접수
-                </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  className="transition-all duration-150 active:scale-90"
-                  onClick={() => onReject(order.orderId)}
-                >
-                  거절
-                </Button>
-              </>
-            )}
-            {order.status === "accepted" && (
-              <Button
-                size="sm"
-                className="bg-blue-600 hover:bg-blue-700 transition-all duration-150 active:scale-90 hover:shadow-lg"
-                onClick={() => onPrepare(order)}
-              >
-                처리 시작
-              </Button>
-            )}
-            {order.status === "preparing" && (
-              <Button
-                size="sm"
-                className="bg-green-600 hover:bg-green-700 transition-all duration-150 active:scale-90 hover:shadow-lg"
-                onClick={(e) => onComplete(order, e)}
-              >
-                완료
-              </Button>
-            )}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
+  if (order.status === "pending") {
+    return (
+      <>
+        <Button size="sm" onClick={() => onAccept(order)}>접수</Button>
+        <Button size="sm" variant="destructive" onClick={() => onReject(order.orderId)}>거절</Button>
+      </>
+    );
+  }
+  if (order.status === "accepted") {
+    return <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={() => onPrepare(order)}>처리</Button>;
+  }
+  if (order.status === "preparing") {
+    return <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => onComplete(order)}>완료</Button>;
+  }
+  return null;
 }
 
-/* ── 서비스 요청 개별 카드 ── */
-function ServiceCard({
-  seq,
+/* ── 서비스 액션 버튼 ── */
+function ServiceActions({
   request: req,
   onAccept,
   onComplete,
 }: {
-  seq: number;
   request: ServiceRequest;
-  onAccept: (req: ServiceRequest) => void;
-  onComplete: (req: ServiceRequest) => void;
+  onAccept: (r: ServiceRequest) => void;
+  onComplete: (r: ServiceRequest) => void;
 }) {
-  const timeAgo = (dateStr: string) => {
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1) return "방금 전";
-    if (mins < 60) return `${mins}분 전`;
-    const hours = Math.floor(mins / 60);
-    return `${hours}시간 전`;
-  };
-
-  const isCompleted = req.status === "completed";
-
-  return (
-    <Card className={`transition-all duration-300 ${isCompleted ? "opacity-60" : ""}`}>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-900 text-white text-xs font-bold">{seq}</span>
-            <CardTitle className="text-lg">{req.roomNumber}호</CardTitle>
-          </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-[10px]">
-              {SERVICE_TYPE_LABELS[req.type]}
-            </Badge>
-            {req.paymentMethod === "kakaopay" && (
-              <Badge variant="default" className="text-[10px] bg-yellow-400 text-yellow-900 hover:bg-yellow-400">
-                카카오페이
-              </Badge>
-            )}
-            {req.paymentMethod === "deferred" && (
-              <Badge variant="secondary" className="text-[10px]">
-                후불결제
-              </Badge>
-            )}
-            <Badge
-              variant={
-                req.status === "requested" ? "destructive"
-                  : req.status === "completed" ? "outline"
-                  : "secondary"
-              }
-              className="text-[10px]"
-            >
-              {SERVICE_STATUS_LABELS[req.status]}
-            </Badge>
-          </div>
-        </div>
-        <p className="text-xs text-gray-400">{timeAgo(req.createdAt)}</p>
-      </CardHeader>
-
-      <CardContent className="space-y-2">
-        <p className="text-sm font-medium">{req.categoryName}</p>
-
-        {/* 비품 요청 아이템 */}
-        {req.items && req.items.length > 0 && (
-          <div className="space-y-1">
-            {req.items.map((item, idx) => (
-              <div key={idx} className="flex justify-between text-sm text-gray-600">
-                <span>{item.name}</span>
-                <span>x{item.quantity}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* 체크아웃 연장 정보 */}
-        {req.type === "checkout_extension" && req.extensionHours && (
-          <div className={`text-sm p-2 rounded ${req.freeExtension ? "bg-green-50" : "bg-blue-50"}`}>
-            <span className={`font-medium ${req.freeExtension ? "text-green-700" : "text-blue-700"}`}>
-              +{req.extensionHours}시간 연장
-            </span>
-            {req.freeExtension ? (
-              <span className="text-green-600 ml-2">(무료 - 리뷰)</span>
-            ) : req.extensionAmount ? (
-              <span className={`ml-2 ${req.paymentStatus === "paid" ? "text-green-600" : "text-blue-500"}`}>
-                ({req.extensionAmount.toLocaleString()}원{" "}
-                {req.paymentStatus === "paid" ? "결제완료" : req.paymentMethod === "kakaopay" ? "카카오페이" : "후불"})
-              </span>
-            ) : null}
-          </div>
-        )}
-
-        {/* 청소 옵션 상세 */}
-        {req.type === "cleaning" && req.cleaningOptions && (
-          <div className="space-y-1 text-sm">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Badge
-                variant={
-                  req.cleaningOptions.serviceLevel === "dnd"
-                    ? "destructive"
-                    : req.cleaningOptions.serviceLevel === "full"
-                    ? "default"
-                    : "secondary"
-                }
-              >
-                {CLEANING_LEVEL_LABELS[req.cleaningOptions.serviceLevel]}
-              </Badge>
-              {req.cleaningOptions.preferredTime &&
-                req.cleaningOptions.serviceLevel !== "dnd" && (
-                  <span className="text-xs text-gray-500">
-                    {PREFERRED_TIME_LABELS[req.cleaningOptions.preferredTime]}
-                  </span>
-                )}
-            </div>
-            {!req.cleaningOptions.linenChange &&
-              req.cleaningOptions.serviceLevel !== "dnd" && (
-                <p className="text-xs text-green-600">시트 교체 없이 정리 (Eco)</p>
-              )}
-            {req.cleaningOptions.contactlessSupplies.length > 0 && (
-              <p className="text-xs text-sky-600">
-                비대면 비품:{" "}
-                {req.cleaningOptions.contactlessSupplies
-                  .map((s) => SUPPLY_ITEM_LABELS[s])
-                  .join(", ")}
-                {req.cleaningOptions.leaveAtDoor && " (문 앞)"}
-              </p>
-            )}
-            {req.cleaningOptions.trashRemovalOnly && (
-              <p className="text-xs text-orange-600">쓰레기 수거만 요청</p>
-            )}
-          </div>
-        )}
-
-        {/* 메모 */}
-        {req.note && (
-          <p className="text-xs text-orange-600 bg-orange-50 p-2 rounded">
-            메모: {req.note}
-          </p>
-        )}
-
-        {/* 액션 버튼 */}
-        <div className="flex justify-end gap-2">
-          {req.status === "requested" && (
-            <Button
-              size="sm"
-              className="transition-all duration-150 active:scale-90 hover:shadow-lg"
-              onClick={() => onAccept(req)}
-            >
-              접수
-            </Button>
-          )}
-          {req.status === "accepted" && (
-            <Button
-              size="sm"
-              className="bg-green-600 hover:bg-green-700 transition-all duration-150 active:scale-90 hover:shadow-lg"
-              onClick={() => onComplete(req)}
-            >
-              완료
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
+  if (req.status === "requested") {
+    return <Button size="sm" onClick={() => onAccept(req)}>접수</Button>;
+  }
+  if (req.status === "accepted") {
+    return <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => onComplete(req)}>완료</Button>;
+  }
+  return null;
 }
