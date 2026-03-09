@@ -9,7 +9,6 @@ import {
   query,
   where,
 } from "firebase/firestore";
-import { orderEvents } from "@/lib/sse";
 import { orderSchema } from "@/lib/validations";
 import { getNextDailySeq } from "@/lib/daily-seq";
 import { format } from "date-fns";
@@ -185,9 +184,6 @@ export async function POST(req: NextRequest) {
       ...orderData,
       items: itemDetails,
     };
-
-    // Broadcast to SSE clients
-    orderEvents.broadcast("new-order", fullOrder);
 
     return NextResponse.json(fullOrder, { status: 201 });
   } catch (e) {

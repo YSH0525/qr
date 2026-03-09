@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useOrderSSE } from "@/hooks/use-sse";
+import { useEffect, useRef } from "react";
+import { useFirestoreOrders } from "@/hooks/use-firestore-orders";
 import { useNotificationSound } from "@/hooks/use-audio";
 import { useBrowserNotification } from "@/hooks/use-notification";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,58 +19,48 @@ import {
   PAYMENT_METHOD_LABELS,
   PAYMENT_STATUS_LABELS,
 } from "@/types";
-import type { OrderWithItems, OrderStatus, PaymentStatus } from "@/types";
+import type { OrderStatus, PaymentStatus } from "@/types";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 import { toast } from "sonner";
 
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<OrderWithItems[]>([]);
+  const { orders } = useFirestoreOrders();
   const { playNewOrderAlert } = useNotificationSound();
   const { notify } = useBrowserNotification();
 
-  const fetchOrders = useCallback(async () => {
-    const res = await fetch("/api/orders");
-    if (res.ok) {
-      setOrders(await res.json());
-    }
-  }, []);
+  // 새 주문 알림 감지
+  const prevOrderIdsRef = useRef<Set<string>>(new Set());
+  const isFirstLoadRef = useRef(true);
 
   useEffect(() => {
-    fetchOrders();
-  }, [fetchOrders]);
+    if (orders.length === 0 && isFirstLoadRef.current) return;
 
-  useOrderSSE(
-    useCallback(
-      (event: string, data: Record<string, unknown>) => {
-        if (event === "new-order") {
-          const order = data as unknown as OrderWithItems;
-          setOrders((prev) => [order, ...prev]);
+    const currentIds = new Set(orders.map((o) => o.orderId));
 
-          playNewOrderAlert(order.roomNumber, order.items || []);
+    if (isFirstLoadRef.current) {
+      prevOrderIdsRef.current = currentIds;
+      isFirstLoadRef.current = false;
+      return;
+    }
 
-          const itemText = (order.items || [])
-            .map((i) => `${i.menuItemName} x${i.quantity}`)
-            .join(", ");
-          notify(
-            `새 주문! ${order.roomNumber}호`,
-            itemText || "새로운 주문이 들어왔습니다"
-          );
+    for (const order of orders) {
+      if (!prevOrderIdsRef.current.has(order.orderId)) {
+        playNewOrderAlert(order.roomNumber, order.items || []);
 
-          toast.success(`새 주문! ${order.roomNumber}호`);
-        } else if (event === "order-updated") {
-          setOrders((prev) =>
-            prev.map((o) =>
-              o.orderId === (data as Record<string, unknown>).orderId
-                ? { ...o, ...(data as Partial<OrderWithItems>) }
-                : o
-            )
-          );
-        }
-      },
-      [playNewOrderAlert, notify]
-    )
-  );
+        const itemText = (order.items || [])
+          .map((i) => `${i.menuItemName} x${i.quantity}`)
+          .join(", ");
+        notify(
+          `새 주문! ${order.roomNumber}호`,
+          itemText || "새로운 주문이 들어왔습니다"
+        );
+        toast.success(`새 주문! ${order.roomNumber}호`);
+      }
+    }
+
+    prevOrderIdsRef.current = currentIds;
+  }, [orders, playNewOrderAlert, notify]);
 
   const formatPrice = (price: number) => price.toLocaleString("ko-KR") + "원";
 

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { useOrderSSE } from "@/hooks/use-sse";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useFirestoreOrders, useFirestoreServiceRequests } from "@/hooks/use-firestore-orders";
 import { useNotificationSound } from "@/hooks/use-audio";
 import { useBrowserNotification } from "@/hooks/use-notification";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,23 +45,96 @@ interface DeferredPayment {
   orderCount: number;
 }
 
+// 대시보드에서 표시할 주문 상태 (활성 + 완료)
+const DASHBOARD_ORDER_STATUSES = ["pending", "accepted", "preparing", "completed"];
+// 대시보드에서 표시할 서비스 상태
+const DASHBOARD_SERVICE_STATUSES = ["requested", "accepted", "completed"];
 
 export default function DashboardPage() {
-  const [orders, setOrders] = useState<OrderWithItems[]>([]);
+  // Firestore 실시간 구독 — 폴링/SSE 대체
+  const {
+    orders,
+    optimisticUpdate: optimisticOrderUpdate,
+    releaseOptimisticLock: releaseOrderLock,
+  } = useFirestoreOrders(DASHBOARD_ORDER_STATUSES);
+
+  const {
+    serviceRequests,
+    optimisticUpdate: optimisticServiceUpdate,
+    releaseOptimisticLock: releaseServiceLock,
+  } = useFirestoreServiceRequests(DASHBOARD_SERVICE_STATUSES);
+
   const [animatingCards, setAnimatingCards] = useState<Map<string, "accept" | "prepare" | "complete">>(new Map());
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [deferredPayments, setDeferredPayments] = useState<DeferredPayment[]>([]);
   const [showDeferred, setShowDeferred] = useState(true);
-  const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>([]);
   const [settlementPreview, setSettlementPreview] = useState<SettlementPreviewData | null>(null);
   const [settlementModalOpen, setSettlementModalOpen] = useState(false);
   const { playNewOrderAlert, playAcceptSound, playCompleteSound, playServiceRequestAlert, speak } =
     useNotificationSound();
   const { notify } = useBrowserNotification();
 
-  // 낙관적 업데이트 시 진행 중인 폴링 응답을 무효화하는 버전 카운터
-  const ordersVersionRef = useRef(0);
-  const servicesVersionRef = useRef(0);
+  // 새 주문/서비스 감지를 위한 이전 ID 세트
+  const prevOrderIdsRef = useRef<Set<string>>(new Set());
+  const prevServiceIdsRef = useRef<Set<string>>(new Set());
+  const isFirstLoadRef = useRef(true);
+  const isFirstServiceLoadRef = useRef(true);
+
+  // 새 주문 알림 감지
+  useEffect(() => {
+    if (orders.length === 0 && isFirstLoadRef.current) return;
+
+    const currentIds = new Set(orders.map((o) => o.orderId));
+
+    if (isFirstLoadRef.current) {
+      prevOrderIdsRef.current = currentIds;
+      isFirstLoadRef.current = false;
+      return;
+    }
+
+    for (const order of orders) {
+      if (!prevOrderIdsRef.current.has(order.orderId)) {
+        // 새 주문 발견
+        playNewOrderAlert(order.roomNumber, order.items || []);
+
+        const itemText = (order.items || [])
+          .map((i) => `${i.menuItemName} x${i.quantity}`)
+          .join(", ");
+        notify(
+          `새 주문! ${order.roomNumber}호`,
+          itemText || "새로운 주문이 들어왔습니다"
+        );
+        toast.success(`새 주문! ${order.roomNumber}호`, {
+          description: itemText || undefined,
+        });
+      }
+    }
+
+    prevOrderIdsRef.current = currentIds;
+  }, [orders, playNewOrderAlert, notify]);
+
+  // 새 서비스 요청 알림 감지
+  useEffect(() => {
+    if (serviceRequests.length === 0 && isFirstServiceLoadRef.current) return;
+
+    const currentIds = new Set(serviceRequests.map((r) => r.requestId));
+
+    if (isFirstServiceLoadRef.current) {
+      prevServiceIdsRef.current = currentIds;
+      isFirstServiceLoadRef.current = false;
+      return;
+    }
+
+    for (const req of serviceRequests) {
+      if (!prevServiceIdsRef.current.has(req.requestId)) {
+        playServiceRequestAlert(req.roomNumber, req.categoryName);
+        notify(`서비스 요청! ${req.roomNumber}호`, req.categoryName);
+        toast.success(`서비스 요청! ${req.roomNumber}호 — ${req.categoryName}`);
+      }
+    }
+
+    prevServiceIdsRef.current = currentIds;
+  }, [serviceRequests, playServiceRequestAlert, notify]);
 
   // 사용자 클릭으로 오디오 + TTS 활성화
   const enableAudio = useCallback(() => {
@@ -75,16 +148,7 @@ export default function DashboardPage() {
     toast.success("알림 소리가 활성화되었습니다");
   }, [playAcceptSound]);
 
-  const fetchOrders = useCallback(async () => {
-    const version = ordersVersionRef.current;
-    const res = await fetch("/api/orders");
-    if (res.ok) {
-      const data: OrderWithItems[] = await res.json();
-      if (version !== ordersVersionRef.current) return;
-      setOrders(data);
-    }
-  }, []);
-
+  // 후불 정산은 복잡한 집계 쿼리라 폴링 유지
   const fetchDeferred = useCallback(async () => {
     const res = await fetch("/api/payments/deferred");
     if (res.ok) {
@@ -92,95 +156,11 @@ export default function DashboardPage() {
     }
   }, []);
 
-  const fetchServiceRequests = useCallback(async () => {
-    const version = servicesVersionRef.current;
-    const res = await fetch("/api/service-requests");
-    if (res.ok) {
-      const data: ServiceRequest[] = await res.json();
-      if (version !== servicesVersionRef.current) return;
-      setServiceRequests(data);
-    }
-  }, []);
-
   useEffect(() => {
-    fetchOrders();
     fetchDeferred();
-    fetchServiceRequests();
-
-    const poll = setInterval(() => {
-      fetchOrders();
-      fetchDeferred();
-      fetchServiceRequests();
-    }, 5000);
-
-    return () => {
-      clearInterval(poll);
-    };
-  }, [fetchOrders, fetchDeferred, fetchServiceRequests]);
-
-  const handleSSEReconnect = useCallback(() => {
-    fetchOrders();
-    fetchDeferred();
-    fetchServiceRequests();
-  }, [fetchOrders, fetchDeferred, fetchServiceRequests]);
-
-  useOrderSSE(
-    useCallback(
-      (event: string, data: Record<string, unknown>) => {
-        if (event === "new-order") {
-          const order = data as unknown as OrderWithItems;
-          setOrders((prev) => [order, ...prev]);
-
-          playNewOrderAlert(order.roomNumber, order.items || []);
-
-          const itemText = (order.items || [])
-            .map((i) => `${i.menuItemName} x${i.quantity}`)
-            .join(", ");
-          notify(
-            `새 주문! ${order.roomNumber}호`,
-            itemText || "새로운 주문이 들어왔습니다"
-          );
-
-          toast.success(`새 주문! ${order.roomNumber}호`, {
-            description: itemText || undefined,
-          });
-
-          if (order.paymentMethod === "deferred") {
-            fetchDeferred();
-          }
-        } else if (event === "order-updated") {
-          setOrders((prev) =>
-            prev.map((o) =>
-              o.orderId === (data as Record<string, unknown>).orderId
-                ? { ...o, ...(data as Partial<OrderWithItems>) }
-                : o
-            )
-          );
-          fetchDeferred();
-        } else if (event === "new-service-request") {
-          const req = data as unknown as ServiceRequest;
-          setServiceRequests((prev) => [req, ...prev]);
-          playServiceRequestAlert(req.roomNumber, req.categoryName);
-          notify(`서비스 요청! ${req.roomNumber}호`, req.categoryName);
-          toast.success(`서비스 요청! ${req.roomNumber}호 — ${req.categoryName}`);
-          if (req.freeExtension === false && req.extensionAmount) {
-            fetchDeferred();
-          }
-        } else if (event === "service-request-updated") {
-          setServiceRequests((prev) =>
-            prev.map((r) =>
-              r.requestId === (data as Record<string, unknown>).requestId
-                ? { ...r, ...(data as Partial<ServiceRequest>) }
-                : r
-            )
-          );
-          fetchDeferred();
-        }
-      },
-      [playNewOrderAlert, playServiceRequestAlert, notify, fetchDeferred]
-    ),
-    handleSSEReconnect
-  );
+    const poll = setInterval(fetchDeferred, 10000);
+    return () => clearInterval(poll);
+  }, [fetchDeferred]);
 
   const clearAnim = (id: string) => {
     setAnimatingCards((prev) => {
@@ -190,32 +170,10 @@ export default function DashboardPage() {
     });
   };
 
-  const updateOrderStatus = (orderId: string, status: string) => {
-    ordersVersionRef.current++;
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.orderId === orderId
-          ? { ...o, status: status as OrderWithItems["status"], updatedAt: new Date().toISOString() }
-          : o
-      )
-    );
-  };
-
-  const updateServiceStatus = (requestId: string, status: string) => {
-    servicesVersionRef.current++;
-    setServiceRequests((prev) =>
-      prev.map((r) =>
-        r.requestId === requestId
-          ? { ...r, status: status as ServiceRequest["status"], updatedAt: new Date().toISOString() }
-          : r
-      )
-    );
-  };
-
   const handleAccept = async (order: OrderWithItems) => {
     setAnimatingCards((prev) => new Map(prev).set(order.orderId, "accept"));
     playAcceptSound();
-    updateOrderStatus(order.orderId, "accepted");
+    optimisticOrderUpdate(order.orderId, { status: "accepted", updatedAt: new Date().toISOString() });
 
     try {
       const res = await fetch(`/api/orders/${order.orderId}/status`, {
@@ -225,7 +183,7 @@ export default function DashboardPage() {
       });
 
       if (res.ok) {
-        ordersVersionRef.current++;
+        releaseOrderLock(order.orderId);
         toast(`${order.roomNumber}호 주문 접수!`, {
           description: "처리를 시작해주세요",
           icon: <CheckCircle className="text-green-500" />,
@@ -233,19 +191,21 @@ export default function DashboardPage() {
         setTimeout(() => clearAnim(order.orderId), 400);
       } else {
         toast.error("주문 접수에 실패했습니다");
-        updateOrderStatus(order.orderId, "pending");
+        optimisticOrderUpdate(order.orderId, { status: "pending" });
+        releaseOrderLock(order.orderId);
         clearAnim(order.orderId);
       }
     } catch {
       toast.error("네트워크 오류가 발생했습니다");
-      updateOrderStatus(order.orderId, "pending");
+      optimisticOrderUpdate(order.orderId, { status: "pending" });
+      releaseOrderLock(order.orderId);
       clearAnim(order.orderId);
     }
   };
 
   const handlePrepare = async (order: OrderWithItems) => {
     setAnimatingCards((prev) => new Map(prev).set(order.orderId, "prepare"));
-    updateOrderStatus(order.orderId, "preparing");
+    optimisticOrderUpdate(order.orderId, { status: "preparing", updatedAt: new Date().toISOString() });
 
     try {
       const res = await fetch(`/api/orders/${order.orderId}/status`, {
@@ -255,7 +215,7 @@ export default function DashboardPage() {
       });
 
       if (res.ok) {
-        ordersVersionRef.current++;
+        releaseOrderLock(order.orderId);
         toast(`${order.roomNumber}호 주문 처리 시작!`, {
           description: "완료되면 완료 버튼을 눌러주세요",
           icon: <span className="text-xl">👨‍🍳</span>,
@@ -263,12 +223,14 @@ export default function DashboardPage() {
         setTimeout(() => clearAnim(order.orderId), 400);
       } else {
         toast.error("상태 변경에 실패했습니다");
-        updateOrderStatus(order.orderId, "accepted");
+        optimisticOrderUpdate(order.orderId, { status: "accepted" });
+        releaseOrderLock(order.orderId);
         clearAnim(order.orderId);
       }
     } catch {
       toast.error("네트워크 오류가 발생했습니다");
-      updateOrderStatus(order.orderId, "accepted");
+      optimisticOrderUpdate(order.orderId, { status: "accepted" });
+      releaseOrderLock(order.orderId);
       clearAnim(order.orderId);
     }
   };
@@ -294,7 +256,7 @@ export default function DashboardPage() {
       scalar: 0.9,
     });
 
-    updateOrderStatus(order.orderId, "completed");
+    optimisticOrderUpdate(order.orderId, { status: "completed", updatedAt: new Date().toISOString() });
 
     try {
       const res = await fetch(`/api/orders/${order.orderId}/status`, {
@@ -304,7 +266,7 @@ export default function DashboardPage() {
       });
 
       if (res.ok) {
-        ordersVersionRef.current++;
+        releaseOrderLock(order.orderId);
         toast(`${order.roomNumber}호 주문 완료!`, {
           description: "고객에게 전달해주세요",
           icon: <span className="text-xl">🎉</span>,
@@ -312,12 +274,14 @@ export default function DashboardPage() {
         setTimeout(() => clearAnim(order.orderId), 500);
       } else {
         toast.error("주문 완료 처리에 실패했습니다");
-        updateOrderStatus(order.orderId, "preparing");
+        optimisticOrderUpdate(order.orderId, { status: "preparing" });
+        releaseOrderLock(order.orderId);
         clearAnim(order.orderId);
       }
     } catch {
       toast.error("네트워크 오류가 발생했습니다");
-      updateOrderStatus(order.orderId, "preparing");
+      optimisticOrderUpdate(order.orderId, { status: "preparing" });
+      releaseOrderLock(order.orderId);
       clearAnim(order.orderId);
     }
   };
@@ -353,7 +317,7 @@ export default function DashboardPage() {
   };
 
   const handleReject = async (orderId: string) => {
-    updateOrderStatus(orderId, "rejected");
+    optimisticOrderUpdate(orderId, { status: "rejected" as OrderWithItems["status"], updatedAt: new Date().toISOString() });
 
     try {
       const res = await fetch(`/api/orders/${orderId}/status`, {
@@ -362,21 +326,23 @@ export default function DashboardPage() {
         body: JSON.stringify({ status: "rejected" }),
       });
       if (res.ok) {
-        ordersVersionRef.current++;
+        releaseOrderLock(orderId);
         toast.error("주문이 거절되었습니다");
       } else {
         toast.error("주문 거절에 실패했습니다");
-        updateOrderStatus(orderId, "pending");
+        optimisticOrderUpdate(orderId, { status: "pending" });
+        releaseOrderLock(orderId);
       }
     } catch {
       toast.error("네트워크 오류가 발생했습니다");
-      updateOrderStatus(orderId, "pending");
+      optimisticOrderUpdate(orderId, { status: "pending" });
+      releaseOrderLock(orderId);
     }
   };
 
   const handleServiceAccept = async (req: ServiceRequest) => {
     playAcceptSound();
-    updateServiceStatus(req.requestId, "accepted");
+    optimisticServiceUpdate(req.requestId, { status: "accepted", updatedAt: new Date().toISOString() });
 
     const res = await fetch(`/api/service-requests/${req.requestId}/status`, {
       method: "PATCH",
@@ -384,17 +350,18 @@ export default function DashboardPage() {
       body: JSON.stringify({ status: "accepted" }),
     });
     if (res.ok) {
-      servicesVersionRef.current++;
+      releaseServiceLock(req.requestId);
       toast.success(`${req.roomNumber}호 ${req.categoryName} 접수!`);
     } else {
       toast.error("서비스 접수에 실패했습니다");
-      updateServiceStatus(req.requestId, "requested");
+      optimisticServiceUpdate(req.requestId, { status: "requested" });
+      releaseServiceLock(req.requestId);
     }
   };
 
   const handleServiceComplete = async (req: ServiceRequest) => {
     playCompleteSound();
-    updateServiceStatus(req.requestId, "completed");
+    optimisticServiceUpdate(req.requestId, { status: "completed", updatedAt: new Date().toISOString() });
 
     const res = await fetch(`/api/service-requests/${req.requestId}/status`, {
       method: "PATCH",
@@ -402,12 +369,13 @@ export default function DashboardPage() {
       body: JSON.stringify({ status: "completed" }),
     });
     if (res.ok) {
-      servicesVersionRef.current++;
+      releaseServiceLock(req.requestId);
       toast.success(`${req.roomNumber}호 ${req.categoryName} 완료!`);
       fetchDeferred();
     } else {
       toast.error("서비스 완료 처리에 실패했습니다");
-      updateServiceStatus(req.requestId, "accepted");
+      optimisticServiceUpdate(req.requestId, { status: "accepted" });
+      releaseServiceLock(req.requestId);
     }
   };
 

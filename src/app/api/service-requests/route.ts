@@ -9,7 +9,6 @@ import {
   query,
   where,
 } from "firebase/firestore";
-import { orderEvents } from "@/lib/sse";
 import { getNextDailySeq } from "@/lib/daily-seq";
 import { format } from "date-fns";
 import type { ServiceType } from "@/types/service";
@@ -138,9 +137,6 @@ export async function POST(req: NextRequest) {
     );
 
     const fullRequest = { id: docRef.id, ...requestData };
-
-    // SSE broadcast
-    orderEvents.broadcast("new-service-request", fullRequest);
 
     return NextResponse.json(fullRequest, { status: 201 });
   } catch (e) {

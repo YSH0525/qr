@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useOrderSSE } from "@/hooks/use-sse";
+import { useFirestoreServiceRequests } from "@/hooks/use-firestore-orders";
 import { useNotificationSound } from "@/hooks/use-audio";
 import { useBrowserNotification } from "@/hooks/use-notification";
 import { toast } from "sonner";
@@ -32,43 +32,36 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function ServicesPage() {
-  const [requests, setRequests] = useState<ServiceRequest[]>([]);
+  const { serviceRequests: requests } = useFirestoreServiceRequests();
   const [filter, setFilter] = useState<string>("all");
   const { playServiceRequestAlert, playAcceptSound, playCompleteSound } = useNotificationSound();
   const { notify } = useBrowserNotification();
 
-  const fetchRequests = useCallback(async () => {
-    const res = await fetch("/api/service-requests");
-    if (res.ok) setRequests(await res.json());
-  }, []);
+  // 새 서비스 요청 알림 감지
+  const prevIdsRef = useRef<Set<string>>(new Set());
+  const isFirstLoadRef = useRef(true);
 
   useEffect(() => {
-    fetchRequests();
-  }, [fetchRequests]);
+    if (requests.length === 0 && isFirstLoadRef.current) return;
 
-  useOrderSSE(
-    useCallback(
-      (event: string, data: Record<string, unknown>) => {
-        if (event === "new-service-request") {
-          const req = data as unknown as ServiceRequest;
-          setRequests((prev) => [req, ...prev]);
-          playServiceRequestAlert(req.roomNumber, req.categoryName);
-          notify(`서비스 요청! ${req.roomNumber}호`, req.categoryName);
-          toast.success(`서비스 요청! ${req.roomNumber}호 — ${req.categoryName}`);
-        } else if (event === "service-request-updated") {
-          setRequests((prev) =>
-            prev.map((r) =>
-              r.requestId === (data as Record<string, unknown>).requestId
-                ? { ...r, ...(data as Partial<ServiceRequest>) }
-                : r
-            )
-          );
-        }
-      },
-      [playServiceRequestAlert, notify]
-    ),
-    fetchRequests
-  );
+    const currentIds = new Set(requests.map((r) => r.requestId));
+
+    if (isFirstLoadRef.current) {
+      prevIdsRef.current = currentIds;
+      isFirstLoadRef.current = false;
+      return;
+    }
+
+    for (const req of requests) {
+      if (!prevIdsRef.current.has(req.requestId)) {
+        playServiceRequestAlert(req.roomNumber, req.categoryName);
+        notify(`서비스 요청! ${req.roomNumber}호`, req.categoryName);
+        toast.success(`서비스 요청! ${req.roomNumber}호 — ${req.categoryName}`);
+      }
+    }
+
+    prevIdsRef.current = currentIds;
+  }, [requests, playServiceRequestAlert, notify]);
 
   const updateStatus = async (requestId: string, status: string) => {
     if (status === "accepted") playAcceptSound();
@@ -81,7 +74,6 @@ export default function ServicesPage() {
     });
     if (res.ok) {
       toast.success(`요청 상태가 "${SERVICE_STATUS_LABELS[status as keyof typeof SERVICE_STATUS_LABELS]}"(으)로 변경되었습니다`);
-      fetchRequests();
     }
   };
 
