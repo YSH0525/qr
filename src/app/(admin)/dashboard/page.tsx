@@ -220,9 +220,22 @@ export default function DashboardPage() {
     });
   };
 
+  const updateOrderStatus = (orderId: string, status: string) => {
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.orderId === orderId
+          ? { ...o, status: status as OrderWithItems["status"], updatedAt: new Date().toISOString() }
+          : o
+      )
+    );
+  };
+
   const handleAccept = async (order: OrderWithItems) => {
     setAnimatingCards((prev) => new Map(prev).set(order.orderId, "accept"));
     playAcceptSound();
+
+    // 낙관적 업데이트: 즉시 로컬 상태 변경
+    updateOrderStatus(order.orderId, "accepted");
 
     try {
       const res = await fetch(`/api/orders/${order.orderId}/status`, {
@@ -237,16 +250,16 @@ export default function DashboardPage() {
           icon: <CheckCircle className="text-green-500" />,
         });
         setTimeout(() => {
-          fetchOrders();
           clearAnim(order.orderId);
         }, 400);
       } else {
         toast.error("주문 접수에 실패했습니다");
+        updateOrderStatus(order.orderId, "pending"); // 롤백
         clearAnim(order.orderId);
-        fetchOrders();
       }
     } catch {
       toast.error("네트워크 오류가 발생했습니다");
+      updateOrderStatus(order.orderId, "pending"); // 롤백
       clearAnim(order.orderId);
     }
   };
@@ -273,6 +286,10 @@ export default function DashboardPage() {
       scalar: 0.9,
     });
 
+    // 낙관적 업데이트: 즉시 로컬 상태 변경
+    const prevStatus = order.status;
+    updateOrderStatus(order.orderId, "completed");
+
     try {
       const res = await fetch(`/api/orders/${order.orderId}/status`, {
         method: "PATCH",
@@ -286,16 +303,16 @@ export default function DashboardPage() {
           icon: <span className="text-xl">🎉</span>,
         });
         setTimeout(() => {
-          fetchOrders();
           clearAnim(order.orderId);
         }, 500);
       } else {
         toast.error("주문 완료 처리에 실패했습니다");
+        updateOrderStatus(order.orderId, prevStatus); // 롤백
         clearAnim(order.orderId);
-        fetchOrders();
       }
     } catch {
       toast.error("네트워크 오류가 발생했습니다");
+      updateOrderStatus(order.orderId, prevStatus); // 롤백
       clearAnim(order.orderId);
     }
   };
@@ -332,6 +349,9 @@ export default function DashboardPage() {
   };
 
   const handleReject = async (orderId: string) => {
+    // 낙관적 업데이트: 즉시 로컬 상태 변경
+    updateOrderStatus(orderId, "rejected");
+
     try {
       const res = await fetch(`/api/orders/${orderId}/status`, {
         method: "PATCH",
@@ -339,13 +359,14 @@ export default function DashboardPage() {
         body: JSON.stringify({ status: "rejected" }),
       });
       if (res.ok) {
-        fetchOrders();
         toast.error("주문이 거절되었습니다");
       } else {
         toast.error("주문 거절에 실패했습니다");
+        updateOrderStatus(orderId, "pending"); // 롤백
       }
     } catch {
       toast.error("네트워크 오류가 발생했습니다");
+      updateOrderStatus(orderId, "pending"); // 롤백
     }
   };
 
