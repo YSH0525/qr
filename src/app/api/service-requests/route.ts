@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { roomId: roomUuid, categoryId, note, items, extensionHours, freeExtension, cleaningOptions } = body;
+    const { roomId: roomUuid, categoryId, note, items, extensionHours, freeExtension, cleaningOptions, paymentMethod } = body;
 
     // Find room
     const roomSnap = await getDocs(
@@ -109,9 +109,13 @@ export async function POST(req: NextRequest) {
       extensionHours: extensionHours || null,
       extensionAmount,
       freeExtension: freeExtension || false,
+      paymentMethod:
+        catData.type === "checkout_extension" && extensionHours && !freeExtension
+          ? (paymentMethod || "deferred")
+          : null,
       paymentStatus:
         catData.type === "checkout_extension" && extensionHours && !freeExtension
-          ? "deferred"
+          ? (paymentMethod === "kakaopay" ? "pending" : "deferred")
           : null,
       createdAt: now,
       updatedAt: now,

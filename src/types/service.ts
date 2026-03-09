@@ -94,6 +94,9 @@ export interface ServiceRequest {
   extensionHours: number | null;
   extensionAmount: number | null;
   freeExtension: boolean;
+  paymentStatus?: string | null;
+  paymentMethod?: string | null;
+  kakaoTid?: string | null;
   createdAt: string;
   updatedAt: string;
 }

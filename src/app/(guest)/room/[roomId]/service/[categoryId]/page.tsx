@@ -67,6 +67,7 @@ export default function ServiceRequestPage({
   // checkout_extension
   const [extensionHours, setExtensionHours] = useState(1);
   const [isFreeExtension, setIsFreeExtension] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"kakaopay" | "deferred">("kakaopay");
 
   // amenity
   const [selectedItems, setSelectedItems] = useState<
@@ -142,7 +143,11 @@ export default function ServiceRequestPage({
 
       if (category.type === "checkout_extension") {
         body.extensionHours = extensionHours;
-        if (isFreeExtension) body.freeExtension = true;
+        if (isFreeExtension) {
+          body.freeExtension = true;
+        } else {
+          body.paymentMethod = paymentMethod;
+        }
       }
 
       if (category.type === "cleaning") {
@@ -171,6 +176,36 @@ export default function ServiceRequestPage({
       if (!res.ok) throw new Error("요청 실패");
 
       const data = await res.json();
+
+      // 카카오페이 결제 플로우
+      if (
+        category.type === "checkout_extension" &&
+        !isFreeExtension &&
+        paymentMethod === "kakaopay"
+      ) {
+        const payRes = await fetch("/api/payments/kakaopay/service-ready", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ requestId: data.requestId }),
+        });
+
+        if (payRes.ok) {
+          const payData = await payRes.json();
+          const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+          window.location.href = isMobile
+            ? payData.redirectUrl
+            : payData.redirectPcUrl;
+          return;
+        } else {
+          const payError = await payRes.json().catch(() => null);
+          toast.error(
+            payError?.error || "카카오페이 결제 준비 중 오류가 발생했습니다"
+          );
+          setLoading(false);
+          return;
+        }
+      }
+
       router.push(
         `/room/${roomId}/service/confirm?requestId=${data.requestId}&type=${category.type}&name=${encodeURIComponent(category.name)}`
       );
@@ -550,15 +585,43 @@ export default function ServiceRequestPage({
                   </p>
                 </div>
               ) : category.hourlyRate ? (
-                <div className="mt-3 bg-amber-50 rounded-lg p-3 text-center">
-                  <p className="text-sm text-amber-700">
-                    연장 요금{" "}
-                    <strong>
-                      {formatPrice(category.hourlyRate * extensionHours)}원
-                    </strong>
-                    <span className="text-xs ml-1">(퇴실 시 정산)</span>
-                  </p>
-                </div>
+                <>
+                  <div className="mt-3 bg-amber-50 rounded-lg p-3 text-center">
+                    <p className="text-sm text-amber-700">
+                      연장 요금{" "}
+                      <strong>
+                        {formatPrice(category.hourlyRate * extensionHours)}원
+                      </strong>
+                    </p>
+                  </div>
+                  <div className="mt-4">
+                    <p className="text-sm font-semibold text-gray-700 mb-2">결제 방법</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => setPaymentMethod("kakaopay")}
+                        className={`p-3 rounded-xl border-2 text-center transition ${
+                          paymentMethod === "kakaopay"
+                            ? "border-yellow-400 bg-yellow-50"
+                            : "border-gray-200 hover:border-gray-300"
+                        }`}
+                      >
+                        <p className="text-sm font-bold">카카오페이</p>
+                        <p className="text-xs text-gray-500 mt-0.5">즉시 결제</p>
+                      </button>
+                      <button
+                        onClick={() => setPaymentMethod("deferred")}
+                        className={`p-3 rounded-xl border-2 text-center transition ${
+                          paymentMethod === "deferred"
+                            ? "border-blue-400 bg-blue-50"
+                            : "border-gray-200 hover:border-gray-300"
+                        }`}
+                      >
+                        <p className="text-sm font-bold">퇴실 시 정산</p>
+                        <p className="text-xs text-gray-500 mt-0.5">후불 결제</p>
+                      </button>
+                    </div>
+                  </div>
+                </>
               ) : null}
             </CardContent>
           </Card>

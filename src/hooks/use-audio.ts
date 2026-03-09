@@ -26,13 +26,20 @@ export function useNotificationSound() {
     if (!audioContextRef.current) {
       audioContextRef.current = new AudioContext();
     }
+    // 브라우저가 AudioContext를 suspend 했을 수 있으므로 항상 resume
+    if (audioContextRef.current.state === "suspended") {
+      audioContextRef.current.resume();
+    }
     return audioContextRef.current;
   }, []);
 
   // 배달의민족 스타일 효과음 (띠링~ 2연타)
-  const playChime = useCallback(() => {
+  const playChime = useCallback(async () => {
     try {
       const ctx = getContext();
+      if (ctx.state === "suspended") {
+        await ctx.resume();
+      }
 
       // 첫 번째 음 (높은 띠링)
       const osc1 = ctx.createOscillator();
@@ -182,9 +189,12 @@ export function useNotificationSound() {
   }, [getContext]);
 
   // 서비스 요청 알림음: 벨 톤 (딩~딩~딩~ 3연타 내림)
-  const playServiceAlert = useCallback(() => {
+  const playServiceAlert = useCallback(async () => {
     try {
       const ctx = getContext();
+      if (ctx.state === "suspended") {
+        await ctx.resume();
+      }
       const t = ctx.currentTime;
       const notes = [1175, 988, 784]; // D6, B5, G5 — 내림차순 벨
 
@@ -208,8 +218,8 @@ export function useNotificationSound() {
 
   // 서비스 요청 효과음 + TTS 조합
   const playServiceRequestAlert = useCallback(
-    (roomNumber: string, categoryName: string) => {
-      playServiceAlert();
+    async (roomNumber: string, categoryName: string) => {
+      await playServiceAlert();
       const text = `${roomNumber}호, ${categoryName} 요청입니다`;
       setTimeout(() => speak(text), 700);
     },
