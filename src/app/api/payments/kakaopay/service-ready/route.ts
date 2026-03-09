@@ -3,6 +3,7 @@ import { firestore } from "@/lib/firebase";
 import {
   collection,
   addDoc,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -22,10 +23,32 @@ function generateRequestId(): string {
   return `SRV-${date}-${rand}`;
 }
 
+const THIRTY_MINUTES_MS = 30 * 60 * 1000;
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { roomId: roomUuid, categoryId, note, items, extensionHours, freeExtension } = body;
+
+    // Input validation
+    if (!roomUuid || typeof roomUuid !== "string") {
+      return NextResponse.json({ error: "객실 ID가 필요합니다" }, { status: 400 });
+    }
+    if (!categoryId || typeof categoryId !== "string") {
+      return NextResponse.json({ error: "카테고리 ID가 필요합니다" }, { status: 400 });
+    }
+    if (
+      extensionHours == null ||
+      typeof extensionHours !== "number" ||
+      !Number.isInteger(extensionHours) ||
+      extensionHours < 1 ||
+      extensionHours > 6
+    ) {
+      return NextResponse.json(
+        { error: "연장 시간은 1~6시간 사이의 정수여야 합니다" },
+        { status: 400 }
+      );
+    }
 
     // Find room
     const roomSnap = await getDocs(
@@ -52,15 +75,49 @@ export async function POST(req: NextRequest) {
       hourlyRate?: number;
     };
 
+    // Verify category is checkout_extension
+    if (catData.type !== "checkout_extension") {
+      return NextResponse.json(
+        { error: "시간연장 카테고리만 결제할 수 있습니다" },
+        { status: 400 }
+      );
+    }
+
+    // Verify hourlyRate is configured
+    if (catData.hourlyRate == null || catData.hourlyRate <= 0) {
+      return NextResponse.json(
+        { error: "시간당 요금이 설정되지 않았습니다" },
+        { status: 400 }
+      );
+    }
+
     // Calculate extension amount
-    const extensionAmount = freeExtension ? 0 : (catData.hourlyRate || 0) * extensionHours;
+    const extensionAmount = freeExtension ? 0 : catData.hourlyRate * extensionHours;
 
     if (!extensionAmount || extensionAmount <= 0) {
       return NextResponse.json({ error: "결제 금액이 없습니다" }, { status: 400 });
     }
 
+    // Clean up stale or duplicate pending payments for same room + category
+    const existingPending = await getDocs(
+      query(
+        collection(firestore, "pendingServicePayments"),
+        where("roomUuid", "==", roomData.roomId),
+        where("categoryId", "==", categoryId)
+      )
+    );
+    const now = new Date();
+    for (const pendingDoc of existingPending.docs) {
+      const pendingCreatedAt = pendingDoc.data().createdAt as string;
+      const elapsed = now.getTime() - new Date(pendingCreatedAt).getTime();
+      // Clean up stale entries (>30 min) or any existing entries for same room+category
+      if (elapsed > THIRTY_MINUTES_MS || existingPending.size > 0) {
+        await deleteDoc(pendingDoc.ref);
+      }
+    }
+
     const requestId = generateRequestId();
-    const now = new Date().toISOString();
+    const nowIso = now.toISOString();
 
     // Save pending payment data (NOT in serviceRequests yet)
     const pendingData = {
@@ -74,11 +131,11 @@ export async function POST(req: NextRequest) {
       roomNumber: roomData.roomNumber,
       note: note || null,
       items: items || [],
-      extensionHours: extensionHours || null,
+      extensionHours,
       extensionAmount,
       freeExtension: false,
       paymentMethod: "kakaopay",
-      createdAt: now,
+      createdAt: nowIso,
     };
 
     const pendingRef = await addDoc(

@@ -103,3 +103,39 @@ export async function kakaoPayApprove(params: {
     approved_at: string;
   }>;
 }
+
+export async function kakaoPayCancel(params: {
+  tid: string;
+  cancelAmount: number;
+  cancelTaxFreeAmount?: number;
+}) {
+  const cid = process.env.KAKAOPAY_CID || "TC0ONETIME";
+
+  const response = await fetch(`${KAKAOPAY_BASE_URL}/cancel`, {
+    method: "POST",
+    headers: getHeaders(),
+    body: JSON.stringify({
+      cid,
+      tid: params.tid,
+      cancel_amount: params.cancelAmount,
+      cancel_tax_free_amount: params.cancelTaxFreeAmount ?? 0,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`카카오페이 결제 취소 실패: ${error}`);
+  }
+
+  return response.json() as Promise<{
+    aid: string;
+    tid: string;
+    status: string;
+    approved_cancel_amount: {
+      total: number;
+      tax_free: number;
+      vat: number;
+    };
+    canceled_at: string;
+  }>;
+}
