@@ -225,6 +225,7 @@ export default function DashboardPage() {
       });
 
       if (res.ok) {
+        ordersVersionRef.current++;
         toast(`${order.roomNumber}호 주문 접수!`, {
           description: "처리를 시작해주세요",
           icon: <CheckCircle className="text-green-500" />,
@@ -254,6 +255,7 @@ export default function DashboardPage() {
       });
 
       if (res.ok) {
+        ordersVersionRef.current++;
         toast(`${order.roomNumber}호 주문 처리 시작!`, {
           description: "완료되면 완료 버튼을 눌러주세요",
           icon: <span className="text-xl">👨‍🍳</span>,
@@ -302,6 +304,7 @@ export default function DashboardPage() {
       });
 
       if (res.ok) {
+        ordersVersionRef.current++;
         toast(`${order.roomNumber}호 주문 완료!`, {
           description: "고객에게 전달해주세요",
           icon: <span className="text-xl">🎉</span>,
@@ -359,6 +362,7 @@ export default function DashboardPage() {
         body: JSON.stringify({ status: "rejected" }),
       });
       if (res.ok) {
+        ordersVersionRef.current++;
         toast.error("주문이 거절되었습니다");
       } else {
         toast.error("주문 거절에 실패했습니다");
@@ -380,6 +384,7 @@ export default function DashboardPage() {
       body: JSON.stringify({ status: "accepted" }),
     });
     if (res.ok) {
+      servicesVersionRef.current++;
       toast.success(`${req.roomNumber}호 ${req.categoryName} 접수!`);
     } else {
       toast.error("서비스 접수에 실패했습니다");
@@ -397,6 +402,7 @@ export default function DashboardPage() {
       body: JSON.stringify({ status: "completed" }),
     });
     if (res.ok) {
+      servicesVersionRef.current++;
       toast.success(`${req.roomNumber}호 ${req.categoryName} 완료!`);
       fetchDeferred();
     } else {
