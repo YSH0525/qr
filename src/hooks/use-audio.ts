@@ -106,26 +106,13 @@ export function useNotificationSound() {
     }
   }, []);
 
-  // 효과음 + TTS 조합
-  const playNewOrderAlert = useCallback(
-    (roomNumber: string, items: { menuItemName: string; quantity: number }[]) => {
-      playChime();
-
-      const itemText = items
-        .map((i) => `${i.menuItemName} ${i.quantity}개`)
-        .join(", ");
-      const text = `새 주문이 들어왔습니다. ${roomNumber}호, ${itemText}`;
-
-      // 효과음 끝난 후 TTS 재생
-      setTimeout(() => speak(text), 600);
-    },
-    [playChime, speak]
-  );
-
   // 접수 효과음: "딩동~" 밝은 2음 차임
-  const playAcceptSound = useCallback(() => {
+  const playAcceptSound = useCallback(async () => {
     try {
       const ctx = getContext();
+      if (ctx.state === "suspended") {
+        await ctx.resume();
+      }
       const t = ctx.currentTime;
 
       // 딩 (G5)
@@ -157,6 +144,26 @@ export function useNotificationSound() {
       // Audio not available
     }
   }, [getContext]);
+
+  // 효과음 + TTS 조합 (딩동 → 띠링 → TTS)
+  const playNewOrderAlert = useCallback(
+    async (roomNumber: string, items: { menuItemName: string; quantity: number }[]) => {
+      // 먼저 딩동 차임
+      await playAcceptSound();
+
+      // 딩동 끝난 후 띠링 효과음
+      setTimeout(() => playChime(), 400);
+
+      const itemText = items
+        .map((i) => `${i.menuItemName} ${i.quantity}개`)
+        .join(", ");
+      const text = `새 주문이 들어왔습니다. ${roomNumber}호, ${itemText}`;
+
+      // 효과음 끝난 후 TTS 재생
+      setTimeout(() => speak(text), 1000);
+    },
+    [playAcceptSound, playChime, speak]
+  );
 
   // 완료 효과음: "짠~" 팡파레 (도미솔도 아르페지오)
   const playCompleteSound = useCallback(() => {
