@@ -15,9 +15,6 @@ import {
   Wallet,
   ChevronDown,
   ChevronUp,
-  TrendingUp,
-  TrendingDown,
-  Clock,
 } from "lucide-react";
 import type { OrderWithItems } from "@/types";
 import type { ServiceRequest } from "@/types/service";
@@ -47,22 +44,6 @@ interface DeferredPayment {
   orderCount: number;
 }
 
-interface TodaySummary {
-  totalRevenue: number;
-  orderCount: number;
-  avgOrderValue: number;
-  completionRate: number;
-  comparison: {
-    revenueDiff: number;
-    revenueChangePercent: number;
-    orderCountDiff: number;
-  };
-  hourlyRevenue: { hour: number; revenue: number; orders: number }[];
-  paymentBreakdown: {
-    kakaopay: { count: number; amount: number };
-    deferred: { count: number; amount: number };
-  };
-}
 
 export default function DashboardPage() {
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
@@ -70,8 +51,6 @@ export default function DashboardPage() {
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [deferredPayments, setDeferredPayments] = useState<DeferredPayment[]>([]);
   const [showDeferred, setShowDeferred] = useState(true);
-  const [showSummary, setShowSummary] = useState(true);
-  const [todaySummary, setTodaySummary] = useState<TodaySummary | null>(null);
   const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>([]);
   const [settlementPreview, setSettlementPreview] = useState<SettlementPreviewData | null>(null);
   const [settlementModalOpen, setSettlementModalOpen] = useState(false);
@@ -112,14 +91,6 @@ export default function DashboardPage() {
     }
   }, []);
 
-  const fetchTodaySummary = useCallback(async () => {
-    const today = new Date().toISOString().split("T")[0];
-    const res = await fetch(`/api/analytics?mode=daily&date=${today}`);
-    if (res.ok) {
-      setTodaySummary(await res.json());
-    }
-  }, []);
-
   const fetchServiceRequests = useCallback(async () => {
     const version = servicesVersionRef.current;
     const res = await fetch("/api/service-requests");
@@ -133,7 +104,6 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchOrders();
     fetchDeferred();
-    fetchTodaySummary();
     fetchServiceRequests();
 
     const poll = setInterval(() => {
@@ -141,20 +111,17 @@ export default function DashboardPage() {
       fetchDeferred();
       fetchServiceRequests();
     }, 5000);
-    const summaryPoll = setInterval(fetchTodaySummary, 30000);
 
     return () => {
       clearInterval(poll);
-      clearInterval(summaryPoll);
     };
-  }, [fetchOrders, fetchDeferred, fetchTodaySummary, fetchServiceRequests]);
+  }, [fetchOrders, fetchDeferred, fetchServiceRequests]);
 
   const handleSSEReconnect = useCallback(() => {
     fetchOrders();
     fetchDeferred();
-    fetchTodaySummary();
     fetchServiceRequests();
-  }, [fetchOrders, fetchDeferred, fetchTodaySummary, fetchServiceRequests]);
+  }, [fetchOrders, fetchDeferred, fetchServiceRequests]);
 
   useOrderSSE(
     useCallback(
@@ -177,7 +144,6 @@ export default function DashboardPage() {
             description: itemText || undefined,
           });
 
-          fetchTodaySummary();
 
           if (order.paymentMethod === "deferred") {
             fetchDeferred();
@@ -191,7 +157,6 @@ export default function DashboardPage() {
             )
           );
           fetchDeferred();
-          fetchTodaySummary();
         } else if (event === "new-service-request") {
           const req = data as unknown as ServiceRequest;
           setServiceRequests((prev) => [req, ...prev]);
@@ -212,7 +177,7 @@ export default function DashboardPage() {
           fetchDeferred();
         }
       },
-      [playNewOrderAlert, playServiceRequestAlert, notify, fetchDeferred, fetchTodaySummary]
+      [playNewOrderAlert, playServiceRequestAlert, notify, fetchDeferred]
     ),
     handleSSEReconnect
   );
@@ -379,7 +344,6 @@ export default function DashboardPage() {
         `${settlementPreview.roomNumber}호 정산 완료: ${data.settled}건, ${data.totalAmount.toLocaleString()}원`
       );
       fetchDeferred();
-      fetchTodaySummary();
     } else {
       toast.error("정산 처리 실패");
     }
@@ -456,9 +420,6 @@ export default function DashboardPage() {
   const acceptedServices = serviceRequests.filter((r) => r.status === "accepted");
   const completedServices = serviceRequests.filter((r) => r.status === "completed").slice(0, 10);
 
-  const totalPending = pendingOrders.length + pendingServices.length;
-  const totalProcessing = preparingOrders.length + acceptedServices.length;
-  const totalCompleted = completedOrders.length + completedServices.length;
 
   // 주문 + 서비스 통합: 활성(대기/처리중) vs 완료 분리
   type CardItem =
@@ -520,124 +481,6 @@ export default function DashboardPage() {
             알림 소리 켜기
           </Button>
         )}
-      </div>
-
-      {/* 오늘 매출 요약 바 */}
-      {todaySummary && (
-        <div className="mb-4 shrink-0 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl px-5 py-3">
-          <button
-            onClick={() => setShowSummary((v) => !v)}
-            className="w-full flex items-center justify-between"
-          >
-            <div className="flex items-center gap-2">
-              <span className="text-xs md:text-sm text-gray-500">오늘 매출</span>
-              <span className="text-lg md:text-xl font-bold text-blue-700">
-                {todaySummary.totalRevenue.toLocaleString()}원
-              </span>
-              {todaySummary.comparison.revenueDiff !== 0 && (
-                <span
-                  className={`flex items-center gap-0.5 text-xs font-medium ${
-                    todaySummary.comparison.revenueDiff > 0
-                      ? "text-green-600"
-                      : "text-red-500"
-                  }`}
-                >
-                  {todaySummary.comparison.revenueDiff > 0 ? (
-                    <TrendingUp className="w-3 h-3" />
-                  ) : (
-                    <TrendingDown className="w-3 h-3" />
-                  )}
-                  {todaySummary.comparison.revenueDiff > 0 ? "+" : ""}
-                  {todaySummary.comparison.revenueChangePercent}% vs 어제
-                </span>
-              )}
-            </div>
-            {showSummary ? (
-              <ChevronUp className="w-4 h-4 text-gray-400 shrink-0" />
-            ) : (
-              <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
-            )}
-          </button>
-          {showSummary && (
-            <div className="flex items-center gap-3 md:gap-5 text-xs md:text-sm text-gray-600 flex-wrap mt-2">
-              <span>
-                주문 <strong className="text-gray-900">{todaySummary.orderCount}건</strong>
-                {todaySummary.comparison.orderCountDiff !== 0 && (
-                  <span
-                    className={`ml-1 text-xs ${
-                      todaySummary.comparison.orderCountDiff > 0
-                        ? "text-green-600"
-                        : "text-red-500"
-                    }`}
-                  >
-                    ({todaySummary.comparison.orderCountDiff > 0 ? "+" : ""}
-                    {todaySummary.comparison.orderCountDiff})
-                  </span>
-                )}
-              </span>
-              <span className="text-gray-300">|</span>
-              <span>
-                객단가 <strong className="text-gray-900">{todaySummary.avgOrderValue.toLocaleString()}원</strong>
-              </span>
-              <span className="text-gray-300">|</span>
-              <span>
-                완료율 <strong className="text-gray-900">{todaySummary.completionRate}%</strong>
-              </span>
-              <span className="text-gray-300">|</span>
-              <span className="flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-                피크{" "}
-                <strong className="text-gray-900">
-                  {todaySummary.hourlyRevenue.reduce(
-                    (max, h) => (h.orders > max.orders ? h : max),
-                    todaySummary.hourlyRevenue[0]
-                  ).hour}시
-                </strong>
-              </span>
-              <span className="text-gray-300">|</span>
-              <span>
-                카카오페이{" "}
-                <strong className="text-yellow-600">
-                  {todaySummary.paymentBreakdown.kakaopay.count}건
-                </strong>
-                {" / "}후불{" "}
-                <strong className="text-blue-600">
-                  {todaySummary.paymentBreakdown.deferred.count}건
-                </strong>
-              </span>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Stats 바 */}
-      <div className="mb-4 shrink-0 bg-white border rounded-xl px-3 md:px-4 py-2.5 flex items-center gap-0 flex-wrap">
-        <div className="flex items-center gap-1.5 md:gap-2 pr-3 md:pr-5">
-          <span className="w-2 md:w-2.5 h-2 md:h-2.5 rounded-full bg-orange-400" />
-          <span className="text-xs md:text-sm text-gray-500">신규</span>
-          <span className="text-base md:text-lg font-bold text-orange-500">{totalPending}</span>
-        </div>
-        <div className="border-l h-5" />
-        <div className="flex items-center gap-1.5 md:gap-2 px-3 md:px-5">
-          <span className="w-2 md:w-2.5 h-2 md:h-2.5 rounded-full bg-blue-400" />
-          <span className="text-xs md:text-sm text-gray-500">처리중</span>
-          <span className="text-base md:text-lg font-bold text-blue-500">{totalProcessing}</span>
-        </div>
-        <div className="border-l h-5" />
-        <div className="flex items-center gap-1.5 md:gap-2 px-3 md:px-5">
-          <span className="w-2 md:w-2.5 h-2 md:h-2.5 rounded-full bg-green-400" />
-          <span className="text-xs md:text-sm text-gray-500">완료</span>
-          <span className="text-base md:text-lg font-bold text-green-500">{totalCompleted}</span>
-        </div>
-        <div className="border-l h-5 hidden md:block" />
-        <div className={`flex items-center gap-1.5 md:gap-2 pl-3 md:pl-5 ${deferredPayments.length > 0 ? "" : "opacity-40"}`}>
-          <span className={`w-2 md:w-2.5 h-2 md:h-2.5 rounded-full ${deferredPayments.length > 0 ? "bg-red-400" : "bg-gray-300"}`} />
-          <span className="text-xs md:text-sm text-gray-500">미정산</span>
-          <span className={`text-base md:text-lg font-bold ${deferredPayments.length > 0 ? "text-red-500" : "text-gray-400"}`}>
-            {deferredPayments.reduce((sum, p) => sum + p.totalDeferred, 0).toLocaleString()}
-            <span className="text-xs font-normal ml-0.5">원</span>
-          </span>
-        </div>
       </div>
 
       {/* 후불 미정산 현황 */}
