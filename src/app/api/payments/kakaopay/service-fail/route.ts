@@ -7,12 +7,12 @@ import {
   query,
   where,
 } from "firebase/firestore";
-import { getBaseUrlFromRequest } from "@/lib/constants";
+import { getCallbackBaseUrl } from "@/lib/constants";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const requestId = searchParams.get("requestId");
-  const baseUrl = getBaseUrlFromRequest(req);
+  const baseUrl = getCallbackBaseUrl(req);
   if (!requestId) {
     return NextResponse.redirect(baseUrl);
   }
