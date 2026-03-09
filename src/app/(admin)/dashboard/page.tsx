@@ -26,6 +26,7 @@ import {
 import {
   ORDER_STATUS_LABELS,
   PAYMENT_METHOD_LABELS,
+  PAYMENT_STATUS_LABELS,
   SERVICE_TYPE_LABELS,
   SERVICE_STATUS_LABELS,
 } from "@/types";
@@ -745,10 +746,21 @@ function OrderCard({
             </div>
           <div className="flex items-center gap-2">
             <Badge
-              variant={order.paymentMethod === "kakaopay" ? "default" : "secondary"}
-              className="text-[10px]"
+              variant={
+                order.paymentMethod === "kakaopay"
+                  ? order.paymentStatus === "paid" ? "default" : "outline"
+                  : "secondary"
+              }
+              className={`text-[10px] ${
+                order.paymentMethod === "kakaopay" && order.paymentStatus === "paid"
+                  ? "bg-yellow-400 text-yellow-900 border-yellow-400"
+                  : ""
+              }`}
             >
               {PAYMENT_METHOD_LABELS[order.paymentMethod]}
+              {order.paymentMethod === "kakaopay" && order.paymentStatus !== "paid" && (
+                <span className="ml-0.5 text-[9px] opacity-70">({PAYMENT_STATUS_LABELS[order.paymentStatus]})</span>
+              )}
             </Badge>
             <Badge
               variant={
