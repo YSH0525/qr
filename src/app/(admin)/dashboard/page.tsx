@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useFirestoreOrders, useFirestoreServiceRequests } from "@/hooks/use-firestore-orders";
 import { useNotificationSound } from "@/hooks/use-audio";
-import { Card, CardContent } from "@/components/ui/card";
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -15,12 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import {
-  Volume2,
-  Wallet,
-  ChevronDown,
-  ChevronUp,
-} from "lucide-react";
+import { Volume2 } from "lucide-react";
 import type { OrderWithItems } from "@/types";
 import type { ServiceRequest } from "@/types/service";
 import {
@@ -81,7 +76,6 @@ export default function DashboardPage() {
 
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [deferredPayments, setDeferredPayments] = useState<DeferredPayment[]>([]);
-  const [showDeferred, setShowDeferred] = useState(true);
   const [settlementPreview, setSettlementPreview] = useState<SettlementPreviewData | null>(null);
   const [settlementModalOpen, setSettlementModalOpen] = useState(false);
   const { playNewOrderAlert, playAcceptSound, playCompleteSound, playServiceRequestAlert } =
@@ -343,32 +337,18 @@ export default function DashboardPage() {
 
       {/* 후불 미정산 */}
       {deferredPayments.length > 0 && (
-        <div className="mb-3 shrink-0">
-          <button
-            onClick={() => setShowDeferred((v) => !v)}
-            className="flex items-center gap-2 text-sm font-semibold text-red-600 mb-2 hover:text-red-700 transition"
-          >
-            <Wallet className="w-4 h-4" />
-            후불 미정산
-            <Badge variant="destructive" className="ml-1 text-xs">{deferredPayments.length}개 객실</Badge>
-            {showDeferred ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-          </button>
-          {showDeferred && (
-            <div className="flex gap-3 overflow-x-auto pb-1">
-              {deferredPayments.map((p) => (
-                <Card key={p.room.id} className="border-red-100 shrink-0 w-44 md:w-52 overflow-hidden">
-                  <div className="bg-red-50 px-3 py-2 flex items-center justify-between">
-                    <p className="text-sm font-bold">{p.room.roomNumber}호</p>
-                    <span className="text-xs text-gray-500">{p.orderCount}건</span>
-                  </div>
-                  <CardContent className="p-3 flex items-center justify-between gap-3">
-                    <p className="text-lg font-bold text-red-600">{p.totalDeferred.toLocaleString()}원</p>
-                    <Button size="sm" className="shrink-0" onClick={() => handleSettle(p.room.roomId)}>정산</Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+        <div className="mb-3 shrink-0 flex gap-2 overflow-x-auto pb-1">
+          {deferredPayments.map((p) => (
+            <button
+              key={p.room.id}
+              onClick={() => handleSettle(p.room.roomId)}
+              className="shrink-0 flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 hover:bg-red-100 transition"
+            >
+              <span className="text-sm font-bold">{p.room.roomNumber}호</span>
+              <span className="text-sm font-bold text-red-600">{p.totalDeferred.toLocaleString()}원</span>
+              <span className="text-[10px] text-gray-400">{p.orderCount}건</span>
+            </button>
+          ))}
         </div>
       )}
 
