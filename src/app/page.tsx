@@ -1,26 +1,5 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="text-center space-y-6 p-8">
-        <h1 className="text-4xl font-bold text-gray-900">Easy Tap</h1>
-        <p className="text-gray-600">객실 서비스 관리 시스템</p>
-        <div className="flex flex-col gap-3">
-          <Link
-            href="/demo"
-            className="inline-block px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-          >
-            고객 페이지 체험
-          </Link>
-          <Link
-            href="/dashboard"
-            className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-          >
-            관리자 페이지
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
+  redirect("/dashboard");
 }

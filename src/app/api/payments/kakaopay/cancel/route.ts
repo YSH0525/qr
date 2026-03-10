@@ -35,6 +35,6 @@ export async function GET(req: NextRequest) {
   await deleteDoc(docRef.ref);
 
   return NextResponse.redirect(
-    `${baseUrl}/room/${data.roomUuid}/payment/cancel?orderId=${orderId}`
+    `${baseUrl}/room/${data.roomUuid}?payment=cancel`
   );
 }

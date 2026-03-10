@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
     if (!data.kakaoTid) {
       console.error(`No kakaoTid in pending order: ${orderId}`);
       return NextResponse.redirect(
-        `${baseUrl}/room/${data.roomUuid}/payment/fail?orderId=${orderId}`
+        `${baseUrl}/room/${data.roomUuid}?payment=fail`
       );
     }
 
@@ -92,7 +92,7 @@ export async function GET(req: NextRequest) {
         await deleteDoc(pendingDoc.ref);
       });
       return NextResponse.redirect(
-        `${baseUrl}/room/${data.roomUuid}/payment/fail?orderId=${orderId}`
+        `${baseUrl}/room/${data.roomUuid}?payment=fail`
       );
     }
 
@@ -131,7 +131,7 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.redirect(
-      `${baseUrl}/room/${data.roomUuid}/payment/success?orderId=${orderId}`
+      `${baseUrl}/room/${data.roomUuid}?payment=success`
     );
   } catch (e) {
     console.error("KakaoPay approve error:", e);
@@ -149,7 +149,7 @@ export async function GET(req: NextRequest) {
         const failData = failSnap.docs[0].data() as { roomUuid: string };
         await deleteDoc(failSnap.docs[0].ref);
         return NextResponse.redirect(
-          `${baseUrl}/room/${failData.roomUuid}/payment/fail?orderId=${failOrderId}`
+          `${baseUrl}/room/${failData.roomUuid}?payment=fail`
         );
       }
     } catch {
