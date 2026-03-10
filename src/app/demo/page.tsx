@@ -1,24 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 
 export default function DemoPage() {
-  const router = useRouter();
-
   useEffect(() => {
-    fetch("/api/demo", { redirect: "manual" })
-      .then((res) => {
-        const location = res.headers.get("location");
-        if (location) {
-          router.replace(location);
-        }
-      })
-      .catch(() => {
-        // fallback: direct API call
-        window.location.href = "/api/demo";
-      });
-  }, [router]);
+    window.location.href = "/api/demo";
+  }, []);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
