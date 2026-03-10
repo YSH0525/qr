@@ -2,8 +2,8 @@ import Link from "next/link";
 
 export function GuestFooter() {
   return (
-    <footer className="bg-gray-100 border-t mt-8">
-      <div className="max-w-lg mx-auto px-5 py-6 text-xs text-gray-500 space-y-2">
+    <footer className="bg-gray-100 border-t mt-4">
+      <div className="max-w-lg mx-auto px-5 py-4 text-xs text-gray-500 space-y-2">
         <div className="space-y-1">
           <p className="font-semibold text-gray-700">더반스테이</p>
           <p>대표자: 윤상호 | 사업자등록번호: 617-36-90065</p>
