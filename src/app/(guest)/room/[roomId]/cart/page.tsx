@@ -175,6 +175,12 @@ export default function CartPage({
               <span>{formatPrice(totalAmount())}원</span>
             </div>
           </div>
+
+          {/* 서비스 제공기간 안내 */}
+          <div className="border-t border-dashed border-gray-300 pt-3 mt-3 text-xs text-gray-400">
+            <p>* 주문 접수 후 약 15~30분 내 객실로 제공됩니다.</p>
+            <p>* 호텔 운영 상황에 따라 제공 시간이 변동될 수 있습니다.</p>
+          </div>
         </div>
 
         {/* Payment Method - 0원이면 숨김 */}
