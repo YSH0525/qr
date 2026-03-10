@@ -94,7 +94,7 @@ export async function GET(req: NextRequest) {
         await deleteDoc(pendingDoc.ref);
       });
       return NextResponse.redirect(
-        `${baseUrl}/room/${data.roomUuid}/service/confirm?requestId=${requestId}&failed=true&name=${encodeURIComponent(data.categoryName)}&type=${data.type}`
+        `${baseUrl}/room/${data.roomUuid}?payment=fail`
       );
     }
 
@@ -133,7 +133,7 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.redirect(
-      `${baseUrl}/room/${data.roomUuid}/service/confirm?requestId=${requestId}&paid=true&name=${encodeURIComponent(data.categoryName)}&type=${data.type}`
+      `${baseUrl}/room/${data.roomUuid}?payment=success`
     );
   } catch (e) {
     console.error("KakaoPay service approve error:", e);
@@ -151,7 +151,7 @@ export async function GET(req: NextRequest) {
         const failData = failSnap.docs[0].data() as { roomUuid: string; categoryName: string; type: string };
         await deleteDoc(failSnap.docs[0].ref);
         return NextResponse.redirect(
-          `${baseUrl}/room/${failData.roomUuid}/service/confirm?requestId=${failRequestId}&failed=true&name=${encodeURIComponent(failData.categoryName)}&type=${failData.type}`
+          `${baseUrl}/room/${failData.roomUuid}?payment=fail`
         );
       }
     } catch {
