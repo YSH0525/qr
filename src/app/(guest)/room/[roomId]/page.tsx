@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, use, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Sparkles,
   Clock,
@@ -40,11 +40,29 @@ export default function EasyTapHub({
 }: {
   params: Promise<{ roomId: string }>;
 }) {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-400">로딩 중...</p>
+      </div>
+    }>
+      <EasyTapHubContent params={params} />
+    </Suspense>
+  );
+}
+
+function EasyTapHubContent({
+  params,
+}: {
+  params: Promise<{ roomId: string }>;
+}) {
   const { roomId } = use(params);
   const [room, setRoom] = useState<Room | null>(null);
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [error, setError] = useState("");
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "warning" } | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     fetch(`/api/rooms/${roomId}`)
@@ -61,6 +79,27 @@ export default function EasyTapHub({
         setCategories(data.filter((c) => c.isActive));
       });
   }, [roomId]);
+
+  // Show toast for payment results
+  useEffect(() => {
+    const payment = searchParams.get("payment");
+    if (!payment) return;
+
+    const messages: Record<string, { message: string; type: "success" | "error" | "warning" }> = {
+      success: { message: "결제가 완료되었습니다", type: "success" },
+      cancel: { message: "결제가 취소되었습니다", type: "warning" },
+      fail: { message: "결제에 실패했습니다", type: "error" },
+    };
+
+    const toastInfo = messages[payment];
+    if (toastInfo) {
+      setToast(toastInfo);
+      // Remove query param from URL without reload
+      router.replace(`/room/${roomId}`, { scroll: false });
+      const timer = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams, roomId, router]);
 
   if (error) {
     return (
@@ -83,6 +122,23 @@ export default function EasyTapHub({
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+      {/* Payment Toast */}
+      {toast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-slide-down">
+          <div
+            className={`px-5 py-3 rounded-xl shadow-lg text-white text-sm font-medium ${
+              toast.type === "success"
+                ? "bg-emerald-500"
+                : toast.type === "warning"
+                ? "bg-amber-500"
+                : "bg-red-500"
+            }`}
+          >
+            {toast.message}
+          </div>
+        </div>
+      )}
+
       <div className="max-w-lg mx-auto px-5 py-6">
         {/* Header */}
         <div className="mb-6 -mx-5 -mt-6">
