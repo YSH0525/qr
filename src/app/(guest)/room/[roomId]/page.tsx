@@ -121,7 +121,7 @@ function EasyTapHubContent({
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+    <div className="bg-gradient-to-b from-gray-50 to-white">
       {/* Payment Toast */}
       {toast && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-slide-down">
@@ -139,10 +139,10 @@ function EasyTapHubContent({
         </div>
       )}
 
-      <div className="max-w-lg mx-auto px-5 py-6">
+      <div className="max-w-lg mx-auto px-5 py-4">
         {/* Header */}
-        <div className="mb-6 -mx-5 -mt-6">
-          <div className="px-5 pt-8 pb-5 bg-gradient-to-br from-emerald-500 via-emerald-600 to-emerald-700">
+        <div className="mb-4 -mx-5 -mt-4">
+          <div className="px-5 pt-6 pb-4 bg-gradient-to-br from-emerald-500 via-emerald-600 to-emerald-700">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-light tracking-[0.2em] text-white">더반스테이</p>
@@ -155,7 +155,7 @@ function EasyTapHubContent({
         </div>
 
         {/* Service Grid */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3">
           {categories.map((cat) => {
             const IconComponent = ICON_MAP[cat.icon] || Package;
             const colorClass = TYPE_COLORS[cat.type] || "from-gray-400 to-gray-600";
@@ -166,12 +166,12 @@ function EasyTapHubContent({
                 onClick={() =>
                   router.push(`/room/${roomId}/service/${cat.id}`)
                 }
-                className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col items-center gap-3 shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-95 transition-all duration-200"
+                className="bg-white rounded-2xl border border-gray-100 p-4 flex flex-col items-center gap-2 shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-95 transition-all duration-200"
               >
                 <div
-                  className={`w-14 h-14 rounded-xl bg-gradient-to-br ${colorClass} flex items-center justify-center shadow-sm`}
+                  className={`w-12 h-12 rounded-xl bg-gradient-to-br ${colorClass} flex items-center justify-center shadow-sm`}
                 >
-                  <IconComponent className="w-7 h-7 text-white" />
+                  <IconComponent className="w-6 h-6 text-white" />
                 </div>
                 <div className="text-center">
                   <p className="font-semibold text-gray-900">{cat.name}</p>
@@ -190,8 +190,8 @@ function EasyTapHubContent({
             onClick={() => router.push(`/room/${roomId}/menu`)}
             className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col items-center gap-3 shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-95 transition-all duration-200"
           >
-            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center shadow-sm">
-              <ConciergeBell className="w-7 h-7 text-white" />
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center shadow-sm">
+              <ConciergeBell className="w-6 h-6 text-white" />
             </div>
             <div className="text-center">
               <p className="font-semibold text-gray-900">룸 오더</p>
@@ -206,8 +206,8 @@ function EasyTapHubContent({
             onClick={() => router.push(`/room/${roomId}/orders`)}
             className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col items-center gap-3 shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-95 transition-all duration-200"
           >
-            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center shadow-sm">
-              <ClipboardList className="w-7 h-7 text-white" />
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center shadow-sm">
+              <ClipboardList className="w-6 h-6 text-white" />
             </div>
             <div className="text-center">
               <p className="font-semibold text-gray-900">주문현황</p>
@@ -219,7 +219,7 @@ function EasyTapHubContent({
         </div>
 
         {/* Footer */}
-        <div className="text-center mt-10">
+        <div className="text-center mt-6">
           <p className="text-xs text-black">
             더반스테이 · Easy Tap
           </p>
