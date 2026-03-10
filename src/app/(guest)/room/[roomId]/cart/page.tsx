@@ -6,7 +6,7 @@ import { useCartStore } from "@/stores/cart-store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, CreditCard, Clock } from "lucide-react";
+import { ArrowLeft, CreditCard, Clock, ChevronDown, ChevronUp, Check } from "lucide-react";
 import { toast } from "sonner";
 import type { PaymentMethod } from "@/types";
 
@@ -20,6 +20,8 @@ export default function CartPage({
   const { items, totalAmount, clearCart } = useCartStore();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
   const [loading, setLoading] = useState(false);
+  const [agreedTerms, setAgreedTerms] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
 
   const formatPrice = (price: number) => price.toLocaleString("ko-KR");
 
@@ -41,6 +43,11 @@ export default function CartPage({
 
     if (!effectivePaymentMethod) {
       toast.error("결제 방식을 선택해주세요");
+      return;
+    }
+
+    if (!agreedTerms) {
+      toast.error("이용약관에 동의해주세요");
       return;
     }
 
@@ -227,6 +234,52 @@ export default function CartPage({
             </CardContent>
           </Card>
         )}
+        {/* 이용약관 동의 */}
+        <Card>
+          <CardContent className="p-5">
+            <button
+              className="flex items-center gap-3 w-full text-left"
+              onClick={() => setAgreedTerms(!agreedTerms)}
+            >
+              <div
+                className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition ${
+                  agreedTerms
+                    ? "bg-blue-500 border-blue-500"
+                    : "border-gray-300"
+                }`}
+              >
+                {agreedTerms && <Check className="w-3.5 h-3.5 text-white" />}
+              </div>
+              <span className="font-semibold text-sm flex-1">
+                주문 및 결제 이용약관에 동의합니다
+              </span>
+              <button
+                className="text-gray-400 p-1"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowTerms(!showTerms);
+                }}
+              >
+                {showTerms ? (
+                  <ChevronUp className="w-4 h-4" />
+                ) : (
+                  <ChevronDown className="w-4 h-4" />
+                )}
+              </button>
+            </button>
+            {showTerms && (
+              <div className="mt-3 p-3 bg-gray-50 rounded-lg text-xs text-gray-500 space-y-2 max-h-48 overflow-y-auto">
+                <p className="font-semibold text-gray-700">이용약관</p>
+                <p>1. 주문한 상품은 객실로 제공되며, 주문 접수 후 취소가 불가할 수 있습니다.</p>
+                <p>2. 카카오페이 결제 시 결제 완료 후 환불은 호텔 정책에 따릅니다.</p>
+                <p>3. 후불결제 선택 시 퇴실 시 프런트에서 정산합니다.</p>
+                <p>4. 상품 제공 시간은 호텔 운영 상황에 따라 변동될 수 있습니다.</p>
+                <p>5. 개인정보는 주문 처리 목적으로만 사용되며, 결제 정보는 카카오페이를 통해 안전하게 처리됩니다.</p>
+                <p>6. 기타 문의사항은 프런트 데스크로 연락해주세요.</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Order Button */}
@@ -235,7 +288,7 @@ export default function CartPage({
           <Button
             className="w-full h-12 text-lg"
             onClick={handleOrder}
-            disabled={loading || (!isFreeOrder && !paymentMethod)}
+            disabled={loading || (!isFreeOrder && !paymentMethod) || !agreedTerms}
           >
             {loading
               ? "주문 처리 중..."
