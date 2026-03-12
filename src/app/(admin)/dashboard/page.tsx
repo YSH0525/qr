@@ -40,20 +40,18 @@ interface DeferredPayment {
   orderCount: number;
 }
 
-const DASHBOARD_ORDER_STATUSES = ["pending", "accepted", "preparing", "completed"];
-const DASHBOARD_SERVICE_STATUSES = ["requested", "accepted", "completed"];
+const DASHBOARD_ORDER_STATUSES = ["pending", "accepted", "preparing"];
+const DASHBOARD_SERVICE_STATUSES = ["requested", "accepted"];
 
 /* ── 상태별 행 배경색 ── */
 const ORDER_ROW_BG: Record<string, string> = {
   pending: "bg-red-50",
   accepted: "bg-blue-50",
   preparing: "bg-yellow-50",
-  completed: "",
 };
 const SERVICE_ROW_BG: Record<string, string> = {
   requested: "bg-red-50",
   accepted: "bg-blue-50",
-  completed: "",
 };
 
 /* ── 통합 행 타입 ── */
@@ -166,6 +164,7 @@ export default function DashboardPage() {
   };
 
   const handlePrepare = async (order: OrderWithItems) => {
+    playAcceptSound();
     optimisticOrderUpdate(order.orderId, { status: "preparing", updatedAt: new Date().toISOString() });
     const ok = await patchOrder(order.orderId, "preparing", "accepted");
     toast[ok ? "success" : "error"](ok ? `${order.roomNumber}호 처리 시작!` : "상태 변경에 실패했습니다");
@@ -246,9 +245,7 @@ export default function DashboardPage() {
 
   /* ── 통합 행 (최신순 정렬) ── */
   const activeOrders = orders.filter((o) => o.status !== "rejected" && o.status !== "cancelled");
-  const activeServices = serviceRequests.filter((r) => r.status !== "completed");
-  const completedOrders = orders.filter((o) => o.status === "completed");
-  const completedServices = serviceRequests.filter((r) => r.status === "completed");
+  const activeServices = serviceRequests;
 
   const buildRows = (
     ords: OrderWithItems[],
@@ -275,7 +272,6 @@ export default function DashboardPage() {
   };
 
   const activeRows = buildRows(activeOrders, activeServices);
-  const completedRows = buildRows(completedOrders, completedServices);
 
   const timeAgo = (dateStr: string) => {
     const diff = Date.now() - new Date(dateStr).getTime();
@@ -499,48 +495,6 @@ export default function DashboardPage() {
           <p className="text-gray-400 text-sm text-center py-12">주문 및 서비스 요청이 없습니다</p>
         )}
 
-        {/* 완료 목록 */}
-        {completedRows.length > 0 && (
-          <div className="mt-6">
-            <h2 className="text-sm font-semibold text-gray-400 mb-2">완료 ({completedRows.length})</h2>
-            <div className="hidden md:block">
-              <Table>
-                <TableBody>
-                  {completedRows.slice(0, 10).map((row, idx) => {
-                    const isOrder = row.kind === "order";
-                    return (
-                      <TableRow key={row.key} className="opacity-50">
-                        <TableCell className="font-mono text-xs text-gray-400 w-10">
-                          {(isOrder ? row.data.dailySeq : row.data.dailySeq) ?? idx + 1}
-                        </TableCell>
-                        <TableCell className="w-16">{isOrder ? row.data.roomNumber : row.data.roomNumber}호</TableCell>
-                        <TableCell className="w-16">
-                          <Badge variant="outline" className="text-[10px]">{isOrder ? "주문" : SERVICE_TYPE_LABELS[row.data.type]}</Badge>
-                        </TableCell>
-                        <TableCell className="text-sm truncate max-w-xs">{summarize(row)}</TableCell>
-                        <TableCell className="text-xs text-gray-400 w-16">{timeAgo(row.time)}</TableCell>
-                        <TableCell className="w-16">
-                          <Badge variant="outline" className="text-[10px]">완료</Badge>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-            <div className="md:hidden space-y-1">
-              {completedRows.slice(0, 10).map((row) => {
-                const isOrder = row.kind === "order";
-                return (
-                  <div key={row.key} className="flex items-center justify-between px-3 py-2 text-sm text-gray-400 border-b">
-                    <span>{isOrder ? row.data.roomNumber : row.data.roomNumber}호 — {summarize(row)}</span>
-                    <span className="text-xs">{timeAgo(row.time)}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
       </div>
 
       <SettlementModal
