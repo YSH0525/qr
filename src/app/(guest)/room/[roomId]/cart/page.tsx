@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, CreditCard, Clock, ChevronDown, ChevronUp, Check } from "lucide-react";
 import { toast } from "sonner";
 import type { PaymentMethod } from "@/types";
+import { KAKAOPAY_ENABLED } from "@/lib/constants";
 
 export default function CartPage({
   params,
@@ -18,7 +19,7 @@ export default function CartPage({
   const { roomId } = use(params);
   const router = useRouter();
   const { items, totalAmount, clearCart } = useCartStore();
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(KAKAOPAY_ENABLED ? null : "deferred");
   const [loading, setLoading] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
@@ -195,33 +196,41 @@ export default function CartPage({
           <Card>
             <CardContent className="p-5">
               <h2 className="font-semibold mb-3">결제 방식</h2>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  className={`p-4 rounded-xl border-2 text-center transition ${
-                    paymentMethod === "kakaopay"
-                      ? "border-yellow-400 bg-yellow-50"
-                      : "border-gray-200 hover:border-gray-300"
-                  }`}
-                  onClick={() => setPaymentMethod("kakaopay")}
-                >
-                  <CreditCard className="w-8 h-8 mx-auto mb-2 text-yellow-600" />
-                  <p className="font-semibold text-sm">카카오페이</p>
-                  <p className="text-xs text-gray-500 mt-1">즉시 결제</p>
-                </button>
-                <button
-                  className={`p-4 rounded-xl border-2 text-center transition ${
-                    paymentMethod === "deferred"
-                      ? "border-blue-400 bg-blue-50"
-                      : "border-gray-200 hover:border-gray-300"
-                  }`}
-                  onClick={() => setPaymentMethod("deferred")}
-                >
+              {KAKAOPAY_ENABLED ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    className={`p-4 rounded-xl border-2 text-center transition ${
+                      paymentMethod === "kakaopay"
+                        ? "border-yellow-400 bg-yellow-50"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                    onClick={() => setPaymentMethod("kakaopay")}
+                  >
+                    <CreditCard className="w-8 h-8 mx-auto mb-2 text-yellow-600" />
+                    <p className="font-semibold text-sm">카카오페이</p>
+                    <p className="text-xs text-gray-500 mt-1">즉시 결제</p>
+                  </button>
+                  <button
+                    className={`p-4 rounded-xl border-2 text-center transition ${
+                      paymentMethod === "deferred"
+                        ? "border-blue-400 bg-blue-50"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                    onClick={() => setPaymentMethod("deferred")}
+                  >
+                    <Clock className="w-8 h-8 mx-auto mb-2 text-blue-600" />
+                    <p className="font-semibold text-sm">후불결제</p>
+                    <p className="text-xs text-gray-500 mt-1">퇴실시 정산</p>
+                  </button>
+                </div>
+              ) : (
+                <div className="p-4 rounded-xl border-2 border-blue-400 bg-blue-50 text-center">
                   <Clock className="w-8 h-8 mx-auto mb-2 text-blue-600" />
                   <p className="font-semibold text-sm">후불결제</p>
-                  <p className="text-xs text-gray-500 mt-1">퇴실시 정산</p>
-                </button>
-              </div>
-              {paymentMethod && (
+                  <p className="text-xs text-gray-500 mt-1">퇴실시 프런트에서 정산합니다</p>
+                </div>
+              )}
+              {KAKAOPAY_ENABLED && paymentMethod && (
                 <Badge
                   variant="outline"
                   className="mt-3"
