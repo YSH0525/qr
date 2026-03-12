@@ -48,11 +48,8 @@ export interface CartItem {
 }
 
 export const REJECTION_REASONS = [
-  { value: "sold_out", label: "재료 소진" },
-  { value: "closing_soon", label: "영업 마감" },
-  { value: "menu_unavailable", label: "메뉴 준비 불가" },
-  { value: "too_busy", label: "주문 과다" },
-  { value: "other", label: "기타" },
+  { value: "sold_out", label: "재고소진" },
+  { value: "closing_soon", label: "영업마감(23시50분 마감)" },
 ] as const;
 
 export type RejectionReasonValue = typeof REJECTION_REASONS[number]["value"];
