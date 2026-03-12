@@ -70,6 +70,7 @@ export default function ServiceRequestPage({
   // checkout_extension
   const [extensionHours, setExtensionHours] = useState(1);
   const [isFreeExtension, setIsFreeExtension] = useState(false);
+  const [freeExtensionAgreed, setFreeExtensionAgreed] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"kakaopay" | "deferred">(KAKAOPAY_ENABLED ? "kakaopay" : "deferred");
 
   // amenity
@@ -550,6 +551,7 @@ export default function ServiceRequestPage({
                   onClick={() => {
                     setExtensionHours(1);
                     setIsFreeExtension(true);
+                    setFreeExtensionAgreed(false);
                   }}
                   className={`p-3 rounded-xl border-2 text-center transition ${
                     isFreeExtension
@@ -583,10 +585,22 @@ export default function ServiceRequestPage({
                 ))}
               </div>
               {isFreeExtension ? (
-                <div className="mt-3 bg-green-50 rounded-lg p-3 text-center">
-                  <p className="text-sm text-green-700 font-medium">
-                    리뷰작성 후 퇴실시 프런트에 확인 (일~목만 해당)
+                <div className="mt-3 bg-green-50 rounded-lg p-3 space-y-2">
+                  <p className="text-sm text-green-700 font-medium text-center">
+                    리뷰작성 후 퇴실시 프런트에 확인
                   </p>
+                  <p className="text-xs text-red-500 font-semibold text-center">
+                    ※ 공휴일, 특정일, 성수기를 제외한 일~목에만 가능합니다
+                  </p>
+                  <label className="flex items-center gap-2 justify-center pt-1 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={freeExtensionAgreed}
+                      onChange={(e) => setFreeExtensionAgreed(e.target.checked)}
+                      className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                    />
+                    <span className="text-sm text-gray-700 font-medium">위 내용을 확인했습니다</span>
+                  </label>
                 </div>
               ) : category.hourlyRate ? (
                 <>
@@ -700,7 +714,7 @@ export default function ServiceRequestPage({
           <Button
             className="w-full h-12 text-lg"
             onClick={handleSubmit}
-            disabled={loading || isClosed}
+            disabled={loading || isClosed || (category.type === "checkout_extension" && isFreeExtension && !freeExtensionAgreed)}
           >
             {loading ? "요청 처리 중..." : `${category.name} 요청하기`}
           </Button>
