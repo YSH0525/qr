@@ -402,8 +402,8 @@ export default function ServiceRequestPage({
               </Card>
             )}
 
-            {/* 카드 4: 비대면 비품 요청 (항상 표시) */}
-            <Card>
+            {/* 카드 4: 비대면 비품 요청 (DND일 때만) */}
+            {showDndOptions && (<Card>
               <CardContent className="p-5">
                 <h2 className="font-semibold mb-3">비대면 비품 요청</h2>
                 <div className="space-y-2">
@@ -485,7 +485,7 @@ export default function ServiceRequestPage({
                   </button>
                 )}
               </CardContent>
-            </Card>
+            </Card>)}
 
             {/* 카드 5: 쓰레기 수거만 (DND일 때만) */}
             {showDndOptions && (
