@@ -6,10 +6,12 @@ import { useCartStore } from "@/stores/cart-store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, CreditCard, Clock, ChevronDown, ChevronUp, Check } from "lucide-react";
+// TODO: 카카오페이 연동 시 복원 — CreditCard, Clock, ChevronDown, ChevronUp, Check
+import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import type { PaymentMethod } from "@/types";
-import { KAKAOPAY_ENABLED } from "@/lib/constants";
+// TODO: 카카오페이 연동 시 복원
+// import { KAKAOPAY_ENABLED } from "@/lib/constants";
 import { useClosingTime } from "@/hooks/use-closing-time";
 
 export default function CartPage({
@@ -20,10 +22,13 @@ export default function CartPage({
   const { roomId } = use(params);
   const router = useRouter();
   const { items, totalAmount, clearCart } = useCartStore();
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(KAKAOPAY_ENABLED ? null : "deferred");
+  // TODO: 카카오페이 연동 시 복원 — 결제방식 선택 & 이용약관
+  // const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(KAKAOPAY_ENABLED ? null : "deferred");
+  // const [agreedTerms, setAgreedTerms] = useState(false);
+  // const [showTerms, setShowTerms] = useState(false);
+  const paymentMethod: PaymentMethod = "deferred";
+  const agreedTerms = true;
   const [loading, setLoading] = useState(false);
-  const [agreedTerms, setAgreedTerms] = useState(false);
-  const [showTerms, setShowTerms] = useState(false);
   const { isClosed, closingLabel } = useClosingTime();
 
   const formatPrice = (price: number) => price.toLocaleString("ko-KR");
@@ -42,66 +47,13 @@ export default function CartPage({
   const isFreeOrder = totalAmount() === 0;
 
   const handleOrder = async () => {
-    const effectivePaymentMethod = isFreeOrder ? "deferred" : paymentMethod;
-
-    if (!effectivePaymentMethod) {
-      toast.error("결제 방식을 선택해주세요");
-      return;
-    }
-
-    if (!agreedTerms) {
-      toast.error("이용약관에 동의해주세요");
-      return;
-    }
-
     setLoading(true);
     try {
-      if (effectivePaymentMethod === "kakaopay") {
-        // KakaoPay: send order data directly to ready (no order created yet)
-        const payRes = await fetch("/api/payments/kakaopay/ready", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            roomId,
-            items: items.map((i) => ({
-              menuItemId: i.menuItemId,
-              quantity: i.quantity,
-            })),
-          }),
-        });
-
-        if (payRes.ok) {
-          const payData = await payRes.json();
-          clearCart();
-
-          // 결제 대기 페이지를 현재 탭에 먼저 표시한 뒤 카카오페이로 이동
-          // 카카오톡 앱에서 결제 후 브라우저로 돌아오면 대기 페이지가 polling으로 결과 감지
-          const waitingUrl = `/room/${roomId}/payment/waiting?orderId=${payData.orderId}`;
-          const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-          const kakaoUrl = isMobile ? payData.redirectUrl : payData.redirectPcUrl;
-
-          // 모바일: 현재 탭을 대기 페이지로 교체 후 카카오페이 열기
-          // PC: 새 탭에서 카카오페이 열고 현재 탭은 대기 페이지
-          if (isMobile) {
-            router.replace(waitingUrl);
-            // 짧은 딜레이 후 카카오페이 열기 (대기 페이지 로드 보장)
-            setTimeout(() => {
-              window.location.href = kakaoUrl;
-            }, 100);
-          } else {
-            window.open(kakaoUrl, "_blank");
-            router.replace(waitingUrl);
-          }
-          return;
-        } else {
-          const payError = await payRes.json().catch(() => null);
-          toast.error(
-            payError?.error || "카카오페이 결제 준비 중 오류가 발생했습니다"
-          );
-          setLoading(false);
-          return;
-        }
-      }
+      // TODO: 카카오페이 연동 시 복원 — effectivePaymentMethod 분기 & 이용약관 검증
+      // const effectivePaymentMethod = isFreeOrder ? "deferred" : paymentMethod;
+      // if (!effectivePaymentMethod) { toast.error("결제 방식을 선택해주세요"); return; }
+      // if (!agreedTerms) { toast.error("이용약관에 동의해주세요"); return; }
+      // if (effectivePaymentMethod === "kakaopay") { ... }
 
       // Deferred payment: create order directly
       const res = await fetch("/api/orders", {
@@ -113,7 +65,7 @@ export default function CartPage({
             menuItemId: i.menuItemId,
             quantity: i.quantity,
           })),
-          paymentMethod: effectivePaymentMethod,
+          paymentMethod: "deferred",
         }),
       });
 
@@ -193,7 +145,7 @@ export default function CartPage({
           </div>
         </div>
 
-        {/* Payment Method - 0원이면 숨김 */}
+        {/* TODO: 카카오페이 연동 시 결제방식 선택 & 이용약관 UI 복원
         {!isFreeOrder && (
           <Card>
             <CardContent className="p-5">
@@ -245,7 +197,6 @@ export default function CartPage({
             </CardContent>
           </Card>
         )}
-        {/* 이용약관 동의 */}
         <Card>
           <CardContent className="p-5">
             <button
@@ -291,6 +242,7 @@ export default function CartPage({
             )}
           </CardContent>
         </Card>
+        */}
       </div>
 
       {/* Order Button */}
@@ -304,7 +256,7 @@ export default function CartPage({
           <Button
             className="w-full h-12 text-lg"
             onClick={handleOrder}
-            disabled={loading || (!isFreeOrder && !paymentMethod) || !agreedTerms || isClosed}
+            disabled={loading || isClosed}
           >
             {loading
               ? "주문 처리 중..."
