@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useCartStore } from "@/stores/cart-store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingCart, Plus, Minus, ImageIcon, ArrowLeft } from "lucide-react";
+import { ShoppingCart, Plus, Minus, ImageIcon, ArrowLeft, Clock } from "lucide-react";
+import { useClosingTime } from "@/hooks/use-closing-time";
 
 interface Category {
   id: string;
@@ -42,6 +43,7 @@ export default function RoomMenuPage({
 
   const { items, addItem, updateQuantity, totalAmount, totalItems, setRoomId } =
     useCartStore();
+  const { isClosed, closingLabel } = useClosingTime();
 
   useEffect(() => {
     setRoomId(roomId);
@@ -130,6 +132,20 @@ export default function RoomMenuPage({
         </div>
       </div>
 
+      {/* Closing Notice */}
+      <div className="max-w-lg mx-auto px-4 pt-3">
+        {isClosed ? (
+          <div className="bg-red-500 text-white text-center py-2 px-3 rounded-lg text-sm font-semibold">
+            영업이 마감되었습니다 ({closingLabel} 마감)
+          </div>
+        ) : (
+          <div className="bg-amber-50 border border-amber-200 text-amber-700 text-center py-2 px-3 rounded-lg text-xs font-medium flex items-center justify-center gap-1">
+            <Clock className="w-3.5 h-3.5" />
+            주문마감 {closingLabel}
+          </div>
+        )}
+      </div>
+
       {/* Menu Grid */}
       <div className="max-w-lg mx-auto px-4 py-4">
         <div className="grid grid-cols-2 gap-3">
@@ -166,6 +182,7 @@ export default function RoomMenuPage({
                     <Button
                       size="sm"
                       className="w-full mt-2"
+                      disabled={isClosed}
                       onClick={() =>
                         addItem({
                           menuItemId: item.id,
@@ -208,7 +225,7 @@ export default function RoomMenuPage({
       </div>
 
       {/* Floating Cart Bar */}
-      {totalItems() > 0 && (
+      {totalItems() > 0 && !isClosed && (
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-20">
           <div className="max-w-lg mx-auto px-4 py-3">
             <button

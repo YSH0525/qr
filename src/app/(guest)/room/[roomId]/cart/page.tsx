@@ -10,6 +10,7 @@ import { ArrowLeft, CreditCard, Clock, ChevronDown, ChevronUp, Check } from "luc
 import { toast } from "sonner";
 import type { PaymentMethod } from "@/types";
 import { KAKAOPAY_ENABLED } from "@/lib/constants";
+import { useClosingTime } from "@/hooks/use-closing-time";
 
 export default function CartPage({
   params,
@@ -23,6 +24,7 @@ export default function CartPage({
   const [loading, setLoading] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
+  const { isClosed, closingLabel } = useClosingTime();
 
   const formatPrice = (price: number) => price.toLocaleString("ko-KR");
 
@@ -294,10 +296,15 @@ export default function CartPage({
       {/* Order Button */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg">
         <div className="max-w-lg mx-auto px-5 py-3">
+          {isClosed && (
+            <p className="text-center text-red-500 text-sm font-semibold mb-2">
+              영업이 마감되었습니다 ({closingLabel} 마감)
+            </p>
+          )}
           <Button
             className="w-full h-12 text-lg"
             onClick={handleOrder}
-            disabled={loading || (!isFreeOrder && !paymentMethod) || !agreedTerms}
+            disabled={loading || (!isFreeOrder && !paymentMethod) || !agreedTerms || isClosed}
           >
             {loading
               ? "주문 처리 중..."

@@ -11,6 +11,7 @@ import {
   SprayCan,
 } from "lucide-react";
 import type { ServiceCategory } from "@/types/service";
+import { useClosingTime } from "@/hooks/use-closing-time";
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Sparkles,
@@ -63,6 +64,7 @@ function EasyTapHubContent({
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "warning" } | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { isClosed, closingLabel } = useClosingTime();
 
   useEffect(() => {
     fetch(`/api/rooms/${roomId}`)
@@ -154,6 +156,13 @@ function EasyTapHubContent({
           </div>
         </div>
 
+        {/* Closing Banner */}
+        {isClosed && (
+          <div className="bg-red-500 text-white text-center py-3 px-4 rounded-xl mb-4 text-sm font-semibold">
+            영업이 마감되었습니다 ({closingLabel} 마감)
+          </div>
+        )}
+
         {/* Service Grid */}
         <div className="grid grid-cols-2 gap-3">
           {categories.map((cat) => {
@@ -163,10 +172,15 @@ function EasyTapHubContent({
             return (
               <button
                 key={cat.id}
-                onClick={() =>
-                  router.push(`/room/${roomId}/service/${cat.id}`)
-                }
-                className="bg-white rounded-2xl border border-gray-100 p-4 flex flex-col items-center gap-2 shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-95 transition-all duration-200"
+                onClick={() => {
+                  if (!isClosed) router.push(`/room/${roomId}/service/${cat.id}`);
+                }}
+                disabled={isClosed}
+                className={`bg-white rounded-2xl border border-gray-100 p-4 flex flex-col items-center gap-2 shadow-sm transition-all duration-200 ${
+                  isClosed
+                    ? "opacity-50 cursor-not-allowed"
+                    : "hover:shadow-md hover:scale-[1.02] active:scale-95"
+                }`}
               >
                 <div
                   className={`w-12 h-12 rounded-xl bg-gradient-to-br ${colorClass} flex items-center justify-center shadow-sm`}
@@ -187,8 +201,13 @@ function EasyTapHubContent({
 
           {/* 룸 오더 (고정) */}
           <button
-            onClick={() => router.push(`/room/${roomId}/menu`)}
-            className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col items-center gap-3 shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-95 transition-all duration-200"
+            onClick={() => { if (!isClosed) router.push(`/room/${roomId}/menu`); }}
+            disabled={isClosed}
+            className={`bg-white rounded-2xl border border-gray-100 p-6 flex flex-col items-center gap-3 shadow-sm transition-all duration-200 ${
+              isClosed
+                ? "opacity-50 cursor-not-allowed"
+                : "hover:shadow-md hover:scale-[1.02] active:scale-95"
+            }`}
           >
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center shadow-sm">
               <ConciergeBell className="w-6 h-6 text-white" />
