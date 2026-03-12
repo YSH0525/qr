@@ -9,6 +9,8 @@ import {
   ConciergeBell,
   ClipboardList,
   SprayCan,
+  Droplets,
+  Loader2,
 } from "lucide-react";
 import type { ServiceCategory } from "@/types/service";
 import { useClosingTime } from "@/hooks/use-closing-time";
@@ -65,6 +67,30 @@ function EasyTapHubContent({
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isClosed, closingLabel } = useClosingTime();
+  const [towelLoading, setTowelLoading] = useState(false);
+
+  const handleTowelRequest = async () => {
+    if (isClosed || towelLoading) return;
+    setTowelLoading(true);
+    try {
+      const res = await fetch("/api/service-requests/quick", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomId, type: "towel" }),
+      });
+      if (res.ok) {
+        setToast({ message: "수건 요청이 접수되었습니다", type: "success" });
+      } else {
+        const data = await res.json().catch(() => null);
+        setToast({ message: data?.error || "요청 실패", type: "error" });
+      }
+    } catch {
+      setToast({ message: "네트워크 오류가 발생했습니다", type: "error" });
+    } finally {
+      setTowelLoading(false);
+      setTimeout(() => setToast(null), 3000);
+    }
+  };
 
   useEffect(() => {
     fetch(`/api/rooms/${roomId}`)
@@ -198,6 +224,33 @@ function EasyTapHubContent({
               </button>
             );
           })}
+
+          {/* 수건 요청 (고정) */}
+          <button
+            onClick={handleTowelRequest}
+            disabled={isClosed || towelLoading}
+            className={`bg-white rounded-2xl border border-gray-100 p-4 flex flex-col items-center gap-2 shadow-sm transition-all duration-200 ${
+              isClosed
+                ? "opacity-50 cursor-not-allowed"
+                : towelLoading
+                ? "opacity-70 cursor-wait"
+                : "hover:shadow-md hover:scale-[1.02] active:scale-95"
+            }`}
+          >
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-400 to-cyan-600 flex items-center justify-center shadow-sm">
+              {towelLoading ? (
+                <Loader2 className="w-6 h-6 text-white animate-spin" />
+              ) : (
+                <Droplets className="w-6 h-6 text-white" />
+              )}
+            </div>
+            <div className="text-center">
+              <p className="font-semibold text-gray-900">수건 요청</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                원탭으로 수건을 요청합니다
+              </p>
+            </div>
+          </button>
 
           {/* 룸 오더 (고정) */}
           <button
