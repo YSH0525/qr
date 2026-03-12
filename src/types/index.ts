@@ -47,6 +47,20 @@ export interface CartItem {
   imageUrl?: string | null;
 }
 
+export const REJECTION_REASONS = [
+  { value: "sold_out", label: "재료 소진" },
+  { value: "closing_soon", label: "영업 마감" },
+  { value: "menu_unavailable", label: "메뉴 준비 불가" },
+  { value: "too_busy", label: "주문 과다" },
+  { value: "other", label: "기타" },
+] as const;
+
+export type RejectionReasonValue = typeof REJECTION_REASONS[number]["value"];
+
+export const REJECTION_REASON_LABELS: Record<RejectionReasonValue, string> = Object.fromEntries(
+  REJECTION_REASONS.map((r) => [r.value, r.label])
+) as Record<RejectionReasonValue, string>;
+
 export interface OrderWithItems {
   id: string;
   orderId: string;
@@ -57,6 +71,7 @@ export interface OrderWithItems {
   paymentStatus: PaymentStatus;
   totalAmount: number;
   note: string | null;
+  rejectionReason?: string;
   dailySeq?: number;
   createdAt: string;
   updatedAt: string;

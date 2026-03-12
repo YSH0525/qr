@@ -13,7 +13,7 @@ export async function PATCH(
   { params }: { params: Promise<{ orderId: string }> }
 ) {
   const { orderId } = await params;
-  const { status } = await req.json();
+  const { status, rejectionReason } = await req.json();
 
   const validStatuses = [
     "pending",
@@ -48,9 +48,14 @@ export async function PATCH(
   const orderDoc = orderSnap.docs[0];
   const updatedAt = new Date().toISOString();
 
-  await updateDoc(orderDoc.ref, { status, updatedAt });
+  const updateData: Record<string, unknown> = { status, updatedAt };
+  if (status === "rejected" && rejectionReason) {
+    updateData.rejectionReason = rejectionReason;
+  }
 
-  const updated = { id: orderDoc.id, ...orderDoc.data(), status, updatedAt };
+  await updateDoc(orderDoc.ref, updateData);
+
+  const updated = { id: orderDoc.id, ...orderDoc.data(), ...updateData };
 
   return NextResponse.json(updated);
 }

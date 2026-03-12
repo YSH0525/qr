@@ -15,7 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Volume2 } from "lucide-react";
+import { Volume2, X } from "lucide-react";
 import type { OrderWithItems } from "@/types";
 import type { ServiceRequest } from "@/types/service";
 import {
@@ -23,6 +23,7 @@ import {
   PAYMENT_METHOD_LABELS,
   SERVICE_TYPE_LABELS,
   SERVICE_STATUS_LABELS,
+  REJECTION_REASONS,
 } from "@/types";
 import {
   CLEANING_LEVEL_LABELS,
@@ -135,12 +136,12 @@ export default function DashboardPage() {
   }, [fetchDeferred]);
 
   /* ── 핸들러 ── */
-  const patchOrder = async (orderId: string, status: string, rollback: string) => {
+  const patchOrder = async (orderId: string, status: string, rollback: string, extra?: Record<string, unknown>) => {
     try {
       const res = await fetch(`/api/orders/${orderId}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, ...extra }),
       });
       if (res.ok) {
         releaseOrderLock(orderId);
@@ -177,9 +178,9 @@ export default function DashboardPage() {
     toast[ok ? "success" : "error"](ok ? `${order.roomNumber}호 주문 완료!` : "주문 완료 처리에 실패했습니다");
   };
 
-  const handleReject = async (orderId: string) => {
+  const handleReject = async (orderId: string, rejectionReason: string) => {
     optimisticOrderUpdate(orderId, { status: "rejected" as OrderWithItems["status"], updatedAt: new Date().toISOString() });
-    const ok = await patchOrder(orderId, "rejected", "pending");
+    const ok = await patchOrder(orderId, "rejected", "pending", { rejectionReason });
     if (ok) toast.error("주문이 거절되었습니다");
     else toast.error("주문 거절에 실패했습니다");
   };
@@ -240,6 +241,32 @@ export default function DashboardPage() {
       fetchDeferred();
     } else {
       toast.error("정산 처리 실패");
+    }
+  };
+
+  const handleDeleteOrder = async (order: OrderWithItems) => {
+    optimisticOrderUpdate(order.orderId, { status: "rejected" as OrderWithItems["status"] });
+    const res = await fetch(`/api/orders/${order.orderId}`, { method: "DELETE" });
+    if (res.ok) {
+      releaseOrderLock(order.orderId);
+      toast.success(`${order.roomNumber}호 주문 삭제됨`);
+    } else {
+      optimisticOrderUpdate(order.orderId, { status: order.status });
+      releaseOrderLock(order.orderId);
+      toast.error("주문 삭제에 실패했습니다");
+    }
+  };
+
+  const handleDeleteService = async (req: ServiceRequest) => {
+    optimisticServiceUpdate(req.requestId, { status: "completed" });
+    const res = await fetch(`/api/service-requests/${req.requestId}`, { method: "DELETE" });
+    if (res.ok) {
+      releaseServiceLock(req.requestId);
+      toast.success(`${req.roomNumber}호 ${req.categoryName} 삭제됨`);
+    } else {
+      optimisticServiceUpdate(req.requestId, { status: req.status });
+      releaseServiceLock(req.requestId);
+      toast.error("서비스 요청 삭제에 실패했습니다");
     }
   };
 
@@ -424,9 +451,9 @@ export default function DashboardPage() {
                         <TableCell className="text-right">
                           <div className="flex gap-1 justify-end">
                             {isOrder ? (
-                              <OrderActions order={row.data} onAccept={handleAccept} onPrepare={handlePrepare} onComplete={handleComplete} onReject={handleReject} />
+                              <OrderActions order={row.data} onAccept={handleAccept} onPrepare={handlePrepare} onComplete={handleComplete} onReject={handleReject} onDelete={handleDeleteOrder} />
                             ) : (
-                              <ServiceActions request={row.data} onAccept={handleServiceAccept} onComplete={handleServiceComplete} />
+                              <ServiceActions request={row.data} onAccept={handleServiceAccept} onComplete={handleServiceComplete} onDelete={handleDeleteService} />
                             )}
                           </div>
                         </TableCell>
@@ -480,9 +507,9 @@ export default function DashboardPage() {
                       </div>
                       <div className="flex gap-1">
                         {isOrder ? (
-                          <OrderActions order={row.data} onAccept={handleAccept} onPrepare={handlePrepare} onComplete={handleComplete} onReject={handleReject} />
+                          <OrderActions order={row.data} onAccept={handleAccept} onPrepare={handlePrepare} onComplete={handleComplete} onReject={handleReject} onDelete={handleDeleteOrder} />
                         ) : (
-                          <ServiceActions request={row.data} onAccept={handleServiceAccept} onComplete={handleServiceComplete} />
+                          <ServiceActions request={row.data} onAccept={handleServiceAccept} onComplete={handleServiceComplete} onDelete={handleDeleteService} />
                         )}
                       </div>
                     </div>
@@ -514,28 +541,65 @@ function OrderActions({
   onPrepare,
   onComplete,
   onReject,
+  onDelete,
 }: {
   order: OrderWithItems;
   onAccept: (o: OrderWithItems) => void;
   onPrepare: (o: OrderWithItems) => void;
   onComplete: (o: OrderWithItems) => void;
-  onReject: (id: string) => void;
+  onReject: (id: string, reason: string) => void;
+  onDelete: (o: OrderWithItems) => void;
 }) {
-  if (order.status === "pending") {
+  const [showRejectReasons, setShowRejectReasons] = useState(false);
+
+  if (showRejectReasons) {
     return (
-      <>
-        <Button size="sm" onClick={() => onAccept(order)}>접수</Button>
-        <Button size="sm" variant="destructive" onClick={() => onReject(order.orderId)}>거절</Button>
-      </>
+      <div className="flex flex-wrap gap-1">
+        {REJECTION_REASONS.map((r) => (
+          <Button
+            key={r.value}
+            size="sm"
+            variant="destructive"
+            className="text-xs px-2 py-1 h-7"
+            onClick={() => {
+              onReject(order.orderId, r.value);
+              setShowRejectReasons(false);
+            }}
+          >
+            {r.label}
+          </Button>
+        ))}
+        <Button
+          size="sm"
+          variant="outline"
+          className="text-xs px-2 py-1 h-7"
+          onClick={() => setShowRejectReasons(false)}
+        >
+          취소
+        </Button>
+      </div>
     );
   }
-  if (order.status === "accepted") {
-    return <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={() => onPrepare(order)}>처리</Button>;
-  }
-  if (order.status === "preparing") {
-    return <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => onComplete(order)}>완료</Button>;
-  }
-  return null;
+
+  return (
+    <>
+      {order.status === "pending" && (
+        <>
+          <Button size="sm" onClick={() => onAccept(order)}>접수</Button>
+          <Button size="sm" variant="destructive" onClick={() => setShowRejectReasons(true)}>거절</Button>
+        </>
+      )}
+      {order.status === "accepted" && (
+        <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={() => onPrepare(order)}>처리</Button>
+      )}
+      {order.status === "preparing" && (
+        <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => onComplete(order)}>완료</Button>
+      )}
+      <Button size="sm" variant="ghost" className="text-gray-400 hover:text-red-500 px-1" onClick={() => onDelete(order)}>
+        <X className="w-4 h-4" />
+      </Button>
+    </>
+  );
 }
 
 /* ── 서비스 액션 버튼 ── */
@@ -543,16 +607,24 @@ function ServiceActions({
   request: req,
   onAccept,
   onComplete,
+  onDelete,
 }: {
   request: ServiceRequest;
   onAccept: (r: ServiceRequest) => void;
   onComplete: (r: ServiceRequest) => void;
+  onDelete: (r: ServiceRequest) => void;
 }) {
-  if (req.status === "requested") {
-    return <Button size="sm" onClick={() => onAccept(req)}>접수</Button>;
-  }
-  if (req.status === "accepted") {
-    return <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => onComplete(req)}>완료</Button>;
-  }
-  return null;
+  return (
+    <>
+      {req.status === "requested" && (
+        <Button size="sm" onClick={() => onAccept(req)}>접수</Button>
+      )}
+      {req.status === "accepted" && (
+        <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => onComplete(req)}>완료</Button>
+      )}
+      <Button size="sm" variant="ghost" className="text-gray-400 hover:text-red-500 px-1" onClick={() => onDelete(req)}>
+        <X className="w-4 h-4" />
+      </Button>
+    </>
+  );
 }

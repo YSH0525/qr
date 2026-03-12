@@ -9,8 +9,9 @@ import { ArrowLeft, UtensilsCrossed, Clock, Sparkles, Package } from "lucide-rea
 import {
   ORDER_STATUS_LABELS,
   PAYMENT_METHOD_LABELS,
+  REJECTION_REASON_LABELS,
 } from "@/types";
-import type { OrderStatus, OrderWithItems } from "@/types";
+import type { OrderStatus, OrderWithItems, RejectionReasonValue } from "@/types";
 import type { ServiceRequest, ServiceRequestStatus } from "@/types/service";
 import { SERVICE_TYPE_LABELS, CLEANING_LEVEL_LABELS } from "@/types/service";
 
@@ -41,12 +42,19 @@ const ORDER_STEP_LABELS = ["대기중", "접수", "준비중", "완료"];
 const SERVICE_STEPS = ["requested", "accepted", "completed"] as const;
 const SERVICE_STEP_LABELS = ["접수", "처리중", "완료"];
 
-function OrderStepper({ status }: { status: OrderStatus }) {
+function OrderStepper({ status, rejectionReason }: { status: OrderStatus; rejectionReason?: string }) {
   if (status === "rejected" || status === "cancelled") {
     return (
-      <Badge variant="destructive" className="text-xs">
-        {ORDER_STATUS_LABELS[status]}
-      </Badge>
+      <div className="space-y-1">
+        <Badge variant="destructive" className="text-xs">
+          {ORDER_STATUS_LABELS[status]}
+        </Badge>
+        {status === "rejected" && rejectionReason && (
+          <p className="text-xs text-red-600">
+            사유: {REJECTION_REASON_LABELS[rejectionReason as RejectionReasonValue] || rejectionReason}
+          </p>
+        )}
+      </div>
     );
   }
   const currentIdx = ORDER_STEPS.indexOf(status as typeof ORDER_STEPS[number]);
@@ -156,7 +164,7 @@ export default function GuestOrdersPage({
   }, [fetchData]);
 
   const activeOrders = orders.filter(
-    (o) => !["completed", "rejected", "cancelled"].includes(o.status)
+    (o) => !["completed", "cancelled"].includes(o.status)
   );
   const activeServices = services.filter((s) => s.status !== "completed");
 
@@ -217,7 +225,7 @@ export default function GuestOrdersPage({
                 if (item.type === "order") {
                   const order = item.data;
                   return (
-                    <Card key={`order-${order.id}`}>
+                    <Card key={`order-${order.id}`} className={order.status === "rejected" ? "border-red-300 bg-red-50" : ""}>
                       <CardContent className="p-4 space-y-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
@@ -231,7 +239,7 @@ export default function GuestOrdersPage({
                           </span>
                         </div>
 
-                        <OrderStepper status={order.status} />
+                        <OrderStepper status={order.status} rejectionReason={order.rejectionReason} />
 
                         <div className="text-sm text-gray-600">
                           {order.items.map((mi, i) => (
