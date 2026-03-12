@@ -11,6 +11,8 @@ import {
   SprayCan,
   Droplets,
   Loader2,
+  MessageCircle,
+  X,
 } from "lucide-react";
 import type { ServiceCategory } from "@/types/service";
 import { useClosingTime } from "@/hooks/use-closing-time";
@@ -68,6 +70,9 @@ function EasyTapHubContent({
   const searchParams = useSearchParams();
   const { isClosed, closingLabel } = useClosingTime();
   const [towelLoading, setTowelLoading] = useState(false);
+  const [showInquiry, setShowInquiry] = useState(false);
+  const [inquiryText, setInquiryText] = useState("");
+  const [inquiryLoading, setInquiryLoading] = useState(false);
 
   const handleTowelRequest = async () => {
     if (isClosed || towelLoading) return;
@@ -88,6 +93,31 @@ function EasyTapHubContent({
       setToast({ message: "네트워크 오류가 발생했습니다", type: "error" });
     } finally {
       setTowelLoading(false);
+      setTimeout(() => setToast(null), 3000);
+    }
+  };
+
+  const handleInquirySubmit = async () => {
+    if (!inquiryText.trim() || inquiryLoading) return;
+    setInquiryLoading(true);
+    try {
+      const res = await fetch("/api/service-requests/quick", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomId, type: "inquiry", note: inquiryText.trim() }),
+      });
+      if (res.ok) {
+        setToast({ message: "문의가 접수되었습니다", type: "success" });
+        setShowInquiry(false);
+        setInquiryText("");
+      } else {
+        const data = await res.json().catch(() => null);
+        setToast({ message: data?.error || "요청 실패", type: "error" });
+      }
+    } catch {
+      setToast({ message: "네트워크 오류가 발생했습니다", type: "error" });
+    } finally {
+      setInquiryLoading(false);
       setTimeout(() => setToast(null), 3000);
     }
   };
@@ -273,6 +303,22 @@ function EasyTapHubContent({
             </div>
           </button>
 
+          {/* 기타문의 */}
+          <button
+            onClick={() => setShowInquiry(true)}
+            className="bg-white rounded-2xl border border-gray-100 p-4 flex flex-col items-center gap-2 shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-95 transition-all duration-200"
+          >
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-400 to-violet-600 flex items-center justify-center shadow-sm">
+              <MessageCircle className="w-6 h-6 text-white" />
+            </div>
+            <div className="text-center">
+              <p className="font-semibold text-gray-900">기타문의</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                프런트에 문의합니다
+              </p>
+            </div>
+          </button>
+
           {/* 주문현황 */}
           <button
             onClick={() => router.push(`/room/${roomId}/orders`)}
@@ -297,6 +343,38 @@ function EasyTapHubContent({
           </p>
         </div>
       </div>
+
+      {/* 기타문의 모달 */}
+      {showInquiry && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-5">
+          <div className="bg-white rounded-2xl w-full max-w-md p-5 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold">기타문의</h2>
+              <button
+                onClick={() => { setShowInquiry(false); setInquiryText(""); }}
+                className="p-1 rounded-lg hover:bg-gray-100"
+              >
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+            <textarea
+              value={inquiryText}
+              onChange={(e) => setInquiryText(e.target.value)}
+              placeholder="문의 내용을 입력해주세요"
+              className="w-full border rounded-xl p-3 text-sm resize-none h-32 focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent"
+              maxLength={500}
+            />
+            <p className="text-right text-xs text-gray-400 mt-1">{inquiryText.length}/500</p>
+            <button
+              onClick={handleInquirySubmit}
+              disabled={!inquiryText.trim() || inquiryLoading}
+              className="w-full mt-3 py-3 rounded-xl text-white font-semibold text-sm bg-violet-500 hover:bg-violet-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            >
+              {inquiryLoading ? "전송 중..." : "전송"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

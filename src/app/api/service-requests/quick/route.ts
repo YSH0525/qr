@@ -25,11 +25,17 @@ const QUICK_TYPES = {
     type: "amenity" as const,
     items: [{ itemId: "towel", name: "수건", quantity: 1 }],
   },
+  inquiry: {
+    categoryName: "기타문의",
+    categoryIcon: "MessageCircle",
+    type: "amenity" as const,
+    items: [],
+  },
 } as const;
 
 export async function POST(req: NextRequest) {
   try {
-    const { roomId: roomUuid, type } = await req.json();
+    const { roomId: roomUuid, type, note } = await req.json();
 
     if (!roomUuid || !type) {
       return NextResponse.json({ error: "roomId와 type이 필요합니다" }, { status: 400 });
@@ -64,7 +70,7 @@ export async function POST(req: NextRequest) {
       roomUuid: roomData.roomId,
       roomNumber: roomData.roomNumber,
       status: "accepted",
-      note: null,
+      note: note || null,
       items: quickType.items,
       cleaningOptions: null,
       extensionHours: null,
