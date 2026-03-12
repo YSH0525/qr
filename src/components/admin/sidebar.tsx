@@ -9,7 +9,6 @@ import {
   UtensilsCrossed,
   CreditCard,
   BarChart3,
-  ConciergeBell,
   Settings,
   Bluetooth,
   BluetoothConnected,
@@ -21,8 +20,7 @@ import { useBluetoothPrinterContext } from "./bluetooth-printer-provider";
 
 const navItems = [
   { href: "/dashboard", label: "대시보드", icon: LayoutDashboard },
-  { href: "/orders", label: "주문 내역", icon: ClipboardList },
-  { href: "/services", label: "서비스 요청", icon: ConciergeBell },
+  { href: "/orders", label: "주문/서비스 내역", icon: ClipboardList },
   { href: "/rooms", label: "객실 관리", icon: DoorOpen },
   { href: "/menu", label: "메뉴 관리", icon: UtensilsCrossed },
   { href: "/service-settings", label: "서비스 설정", icon: Settings },

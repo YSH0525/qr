@@ -33,6 +33,7 @@ import {
   PREFERRED_TIME_LABELS,
   SUPPLY_ITEM_LABELS,
 } from "@/types/service";
+import { KAKAOPAY_ENABLED } from "@/lib/constants";
 
 interface Room {
   id: string;
@@ -67,7 +68,7 @@ export default function ServiceRequestPage({
   // checkout_extension
   const [extensionHours, setExtensionHours] = useState(1);
   const [isFreeExtension, setIsFreeExtension] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"kakaopay" | "deferred">("kakaopay");
+  const [paymentMethod, setPaymentMethod] = useState<"kakaopay" | "deferred">(KAKAOPAY_ENABLED ? "kakaopay" : "deferred");
 
   // amenity
   const [selectedItems, setSelectedItems] = useState<
@@ -597,30 +598,37 @@ export default function ServiceRequestPage({
                   </div>
                   <div className="mt-4">
                     <p className="text-sm font-semibold text-gray-700 mb-2">결제 방법</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        onClick={() => setPaymentMethod("kakaopay")}
-                        className={`p-3 rounded-xl border-2 text-center transition ${
-                          paymentMethod === "kakaopay"
-                            ? "border-yellow-400 bg-yellow-50"
-                            : "border-gray-200 hover:border-gray-300"
-                        }`}
-                      >
-                        <p className="text-sm font-bold">카카오페이</p>
-                        <p className="text-xs text-gray-500 mt-0.5">즉시 결제</p>
-                      </button>
-                      <button
-                        onClick={() => setPaymentMethod("deferred")}
-                        className={`p-3 rounded-xl border-2 text-center transition ${
-                          paymentMethod === "deferred"
-                            ? "border-blue-400 bg-blue-50"
-                            : "border-gray-200 hover:border-gray-300"
-                        }`}
-                      >
+                    {KAKAOPAY_ENABLED ? (
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => setPaymentMethod("kakaopay")}
+                          className={`p-3 rounded-xl border-2 text-center transition ${
+                            paymentMethod === "kakaopay"
+                              ? "border-yellow-400 bg-yellow-50"
+                              : "border-gray-200 hover:border-gray-300"
+                          }`}
+                        >
+                          <p className="text-sm font-bold">카카오페이</p>
+                          <p className="text-xs text-gray-500 mt-0.5">즉시 결제</p>
+                        </button>
+                        <button
+                          onClick={() => setPaymentMethod("deferred")}
+                          className={`p-3 rounded-xl border-2 text-center transition ${
+                            paymentMethod === "deferred"
+                              ? "border-blue-400 bg-blue-50"
+                              : "border-gray-200 hover:border-gray-300"
+                          }`}
+                        >
+                          <p className="text-sm font-bold">퇴실 시 정산</p>
+                          <p className="text-xs text-gray-500 mt-0.5">후불 결제</p>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="p-3 rounded-xl border-2 border-blue-400 bg-blue-50 text-center">
                         <p className="text-sm font-bold">퇴실 시 정산</p>
                         <p className="text-xs text-gray-500 mt-0.5">후불 결제</p>
-                      </button>
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </>
               ) : null}

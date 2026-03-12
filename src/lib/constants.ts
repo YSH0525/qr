@@ -2,6 +2,9 @@ import { type NextRequest } from "next/server";
 
 export const HOTEL_NAME = process.env.NEXT_PUBLIC_HOTEL_NAME || "Easy Tap";
 
+/** 카카오페이 활성화 여부 — true로 바꾸면 카카오페이 결제 옵션이 다시 노출됩니다 */
+export const KAKAOPAY_ENABLED = false;
+
 function getBaseUrl(): string {
   if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL;
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
