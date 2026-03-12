@@ -23,6 +23,7 @@ import {
   PAYMENT_METHOD_LABELS,
   SERVICE_TYPE_LABELS,
   SERVICE_STATUS_LABELS,
+  REJECTION_REASONS,
 } from "@/types";
 import {
   CLEANING_LEVEL_LABELS,
@@ -135,12 +136,12 @@ export default function DashboardPage() {
   }, [fetchDeferred]);
 
   /* ── 핸들러 ── */
-  const patchOrder = async (orderId: string, status: string, rollback: string) => {
+  const patchOrder = async (orderId: string, status: string, rollback: string, extra?: Record<string, unknown>) => {
     try {
       const res = await fetch(`/api/orders/${orderId}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, ...extra }),
       });
       if (res.ok) {
         releaseOrderLock(orderId);
@@ -177,9 +178,9 @@ export default function DashboardPage() {
     toast[ok ? "success" : "error"](ok ? `${order.roomNumber}호 주문 완료!` : "주문 완료 처리에 실패했습니다");
   };
 
-  const handleReject = async (orderId: string) => {
+  const handleReject = async (orderId: string, rejectionReason: string) => {
     optimisticOrderUpdate(orderId, { status: "rejected" as OrderWithItems["status"], updatedAt: new Date().toISOString() });
-    const ok = await patchOrder(orderId, "rejected", "pending");
+    const ok = await patchOrder(orderId, "rejected", "pending", { rejectionReason });
     if (ok) toast.error("주문이 거절되었습니다");
     else toast.error("주문 거절에 실패했습니다");
   };
@@ -546,15 +547,46 @@ function OrderActions({
   onAccept: (o: OrderWithItems) => void;
   onPrepare: (o: OrderWithItems) => void;
   onComplete: (o: OrderWithItems) => void;
-  onReject: (id: string) => void;
+  onReject: (id: string, reason: string) => void;
   onDelete: (o: OrderWithItems) => void;
 }) {
+  const [showRejectReasons, setShowRejectReasons] = useState(false);
+
+  if (showRejectReasons) {
+    return (
+      <div className="flex flex-wrap gap-1">
+        {REJECTION_REASONS.map((r) => (
+          <Button
+            key={r.value}
+            size="sm"
+            variant="destructive"
+            className="text-xs px-2 py-1 h-7"
+            onClick={() => {
+              onReject(order.orderId, r.value);
+              setShowRejectReasons(false);
+            }}
+          >
+            {r.label}
+          </Button>
+        ))}
+        <Button
+          size="sm"
+          variant="outline"
+          className="text-xs px-2 py-1 h-7"
+          onClick={() => setShowRejectReasons(false)}
+        >
+          취소
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <>
       {order.status === "pending" && (
         <>
           <Button size="sm" onClick={() => onAccept(order)}>접수</Button>
-          <Button size="sm" variant="destructive" onClick={() => onReject(order.orderId)}>거절</Button>
+          <Button size="sm" variant="destructive" onClick={() => setShowRejectReasons(true)}>거절</Button>
         </>
       )}
       {order.status === "accepted" && (
