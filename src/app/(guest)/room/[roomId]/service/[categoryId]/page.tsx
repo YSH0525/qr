@@ -34,6 +34,7 @@ import {
   SUPPLY_ITEM_LABELS,
 } from "@/types/service";
 import { KAKAOPAY_ENABLED } from "@/lib/constants";
+import { useClosingTime } from "@/hooks/use-closing-time";
 
 interface Room {
   id: string;
@@ -64,6 +65,7 @@ export default function ServiceRequestPage({
   const [category, setCategory] = useState<ServiceCategory | null>(null);
   const [serviceItems, setServiceItems] = useState<ServiceItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const { isClosed, closingLabel } = useClosingTime();
 
   // checkout_extension
   const [extensionHours, setExtensionHours] = useState(1);
@@ -400,8 +402,8 @@ export default function ServiceRequestPage({
               </Card>
             )}
 
-            {/* 카드 4: 비대면 비품 요청 (항상 표시) */}
-            <Card>
+            {/* 카드 4: 비대면 비품 요청 (DND일 때만) */}
+            {showDndOptions && (<Card>
               <CardContent className="p-5">
                 <h2 className="font-semibold mb-3">비대면 비품 요청</h2>
                 <div className="space-y-2">
@@ -483,7 +485,7 @@ export default function ServiceRequestPage({
                   </button>
                 )}
               </CardContent>
-            </Card>
+            </Card>)}
 
             {/* 카드 5: 쓰레기 수거만 (DND일 때만) */}
             {showDndOptions && (
@@ -690,10 +692,15 @@ export default function ServiceRequestPage({
       {/* Submit Button */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg">
         <div className="max-w-lg mx-auto px-5 py-3">
+          {isClosed && (
+            <p className="text-center text-red-500 text-sm font-semibold mb-2">
+              영업이 마감되었습니다 ({closingLabel} 마감)
+            </p>
+          )}
           <Button
             className="w-full h-12 text-lg"
             onClick={handleSubmit}
-            disabled={loading}
+            disabled={loading || isClosed}
           >
             {loading ? "요청 처리 중..." : `${category.name} 요청하기`}
           </Button>
