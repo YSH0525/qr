@@ -104,7 +104,7 @@ export default function RoomMenuPage({
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>
-              <h1 className="text-lg font-bold">룸 오더</h1>
+              <h1 className="text-lg font-bold">룸 오더 <span className="text-xs font-normal text-gray-400">Room Order</span></h1>
               <Badge variant="secondary" className="mt-1">
                 {room.roomNumber}호
               </Badge>
@@ -135,13 +135,14 @@ export default function RoomMenuPage({
       {/* Closing Notice */}
       <div className="max-w-lg mx-auto px-4 pt-3">
         {isClosed ? (
-          <div className="bg-red-500 text-white text-center py-2 px-3 rounded-lg text-sm font-semibold">
-            영업이 마감되었습니다 ({closingLabel} 마감)
+          <div className="bg-red-500 text-white text-center py-2 px-3 rounded-lg">
+            <p className="text-sm font-semibold">영업이 마감되었습니다 ({closingLabel} 마감)</p>
+            <p className="text-xs text-white/80">Service is currently closed</p>
           </div>
         ) : (
           <div className="bg-amber-50 border border-amber-200 text-amber-700 text-center py-2 px-3 rounded-lg text-xs font-medium flex items-center justify-center gap-1">
             <Clock className="w-3.5 h-3.5" />
-            주문마감 {closingLabel}
+            주문마감 {closingLabel} · Order Deadline
           </div>
         )}
       </div>
@@ -192,7 +193,7 @@ export default function RoomMenuPage({
                         })
                       }
                     >
-                      담기
+                      담기 Add
                     </Button>
                   ) : (
                     <div className="flex items-center justify-center gap-3 mt-2">
@@ -239,7 +240,7 @@ export default function RoomMenuPage({
                 </Badge>
               </div>
               <span className="font-semibold">
-                {formatPrice(totalAmount())}원 주문하기
+                {formatPrice(totalAmount())}원 주문하기 Order
               </span>
             </button>
           </div>

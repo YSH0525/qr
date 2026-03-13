@@ -44,25 +44,27 @@ export default function OrderConfirmPage({
         <div className="text-center mb-6">
           <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-3" />
           <h1 className="text-2xl font-bold">주문 완료</h1>
+          <p className="text-sm text-gray-400">Order Confirmed</p>
           <p className="text-gray-500 mt-1">주문이 접수되었습니다</p>
+          <p className="text-xs text-gray-400">Your order has been received</p>
         </div>
 
         <Card>
           <CardContent className="p-4 space-y-4">
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-500">주문번호</span>
+              <span className="text-sm text-gray-500">주문번호 <span className="text-gray-400">Order No.</span></span>
               <span className="font-mono text-sm">{order.orderId}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-500">객실</span>
+              <span className="text-sm text-gray-500">객실 <span className="text-gray-400">Room</span></span>
               <span className="font-semibold">{order.roomNumber}호</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-500">상태</span>
+              <span className="text-sm text-gray-500">상태 <span className="text-gray-400">Status</span></span>
               <Badge>{ORDER_STATUS_LABELS[order.status]}</Badge>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-500">결제</span>
+              <span className="text-sm text-gray-500">결제 <span className="text-gray-400">Payment</span></span>
               <Badge variant="secondary">
                 {PAYMENT_METHOD_LABELS[order.paymentMethod]} -{" "}
                 {PAYMENT_STATUS_LABELS[order.paymentStatus]}
@@ -81,7 +83,7 @@ export default function OrderConfirmPage({
             </div>
 
             <div className="border-t pt-3 flex justify-between">
-              <span className="font-semibold">총 금액</span>
+              <span className="font-semibold">총 금액 <span className="font-normal text-gray-400 text-xs">Total</span></span>
               <span className="text-lg font-bold text-blue-600">
                 {formatPrice(order.totalAmount)}원
               </span>
@@ -91,11 +93,11 @@ export default function OrderConfirmPage({
 
         <div className="mt-6 space-y-2">
           <Link href={`/room/${roomId}/orders`}>
-            <Button className="w-full">주문현황 보기</Button>
+            <Button className="w-full">주문현황 보기 View Orders</Button>
           </Link>
           <Link href={`/room/${roomId}`}>
             <Button variant="outline" className="w-full">
-              홈으로 돌아가기
+              홈으로 돌아가기 Back to Home
             </Button>
           </Link>
         </div>

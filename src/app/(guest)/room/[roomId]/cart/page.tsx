@@ -98,7 +98,7 @@ export default function CartPage({
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <h1 className="text-lg font-bold">주문내역서</h1>
+          <h1 className="text-lg font-bold">주문내역서 <span className="text-xs font-normal text-gray-400">Order Receipt</span></h1>
         </div>
       </div>
 
@@ -133,7 +133,7 @@ export default function CartPage({
           {/* 합계 */}
           <div className="border-t-2 border-dashed border-gray-300 pt-3 mt-1">
             <div className="flex justify-between text-base font-bold">
-              <span>합계</span>
+              <span>합계 Total</span>
               <span>{formatPrice(totalAmount())}원</span>
             </div>
           </div>
@@ -141,7 +141,9 @@ export default function CartPage({
           {/* 서비스 제공기간 안내 */}
           <div className="border-t border-dashed border-gray-300 pt-3 mt-3 text-xs text-gray-400">
             <p>* 주문 접수 후 약 15~30분 내 객실로 제공됩니다.</p>
+            <p className="text-gray-300">  Delivered to your room in approx. 15-30 min.</p>
             <p>* 호텔 운영 상황에 따라 제공 시간이 변동될 수 있습니다.</p>
+            <p className="text-gray-300">  Delivery time may vary depending on hotel operations.</p>
           </div>
         </div>
 
@@ -249,9 +251,12 @@ export default function CartPage({
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg">
         <div className="max-w-lg mx-auto px-5 py-3">
           {isClosed && (
-            <p className="text-center text-red-500 text-sm font-semibold mb-2">
-              영업이 마감되었습니다 ({closingLabel} 마감)
-            </p>
+            <>
+              <p className="text-center text-red-500 text-sm font-semibold mb-1">
+                영업이 마감되었습니다 ({closingLabel} 마감)
+              </p>
+              <p className="text-center text-red-400 text-xs mb-2">Service is currently closed</p>
+            </>
           )}
           <Button
             className="w-full h-12 text-lg"

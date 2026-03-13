@@ -25,6 +25,7 @@ function ConfirmContent({ roomId }: { roomId: string }) {
                 <XCircle className="w-10 h-10 text-red-500" />
               </div>
               <h1 className="text-xl font-bold">결제 실패</h1>
+              <p className="text-sm text-gray-400">Payment Failed</p>
               <p className="text-gray-500">
                 카카오페이 결제가 완료되지 않았습니다.
                 <br />
@@ -34,7 +35,7 @@ function ConfirmContent({ roomId }: { roomId: string }) {
                 <p className="text-xs text-gray-400 font-mono">{requestId}</p>
               )}
               <Link href={`/room/${roomId}`}>
-                <Button className="w-full mt-4">서비스 홈으로</Button>
+                <Button className="w-full mt-4">서비스 홈으로 Back to Home</Button>
               </Link>
             </CardContent>
           </Card>
@@ -54,22 +55,25 @@ function ConfirmContent({ roomId }: { roomId: string }) {
             <h1 className="text-xl font-bold">
               {paid ? "결제 완료" : "요청 완료"}
             </h1>
+            <p className="text-sm text-gray-400">
+              {paid ? "Payment Complete" : "Request Confirmed"}
+            </p>
             <p className="text-gray-500">
               {paid
                 ? "카카오페이 결제가 완료되었습니다."
                 : `${name || "서비스"} 요청이 접수되었습니다.`}
               <br />
-              잠시만 기다려 주세요.
+              잠시만 기다려 주세요. Please wait a moment.
             </p>
             {requestId && (
               <p className="text-xs text-gray-400 font-mono">{requestId}</p>
             )}
             <Link href={`/room/${roomId}/orders`}>
-              <Button className="w-full mt-4">주문현황 보기</Button>
+              <Button className="w-full mt-4">주문현황 보기 View Orders</Button>
             </Link>
             <Link href={`/room/${roomId}`}>
               <Button variant="outline" className="w-full mt-2">
-                서비스 홈으로
+                서비스 홈으로 Back to Home
               </Button>
             </Link>
           </CardContent>
