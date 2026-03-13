@@ -74,6 +74,7 @@ export default function DashboardPage() {
   } = useFirestoreServiceRequests(DASHBOARD_SERVICE_STATUSES);
 
   const [audioEnabled, setAudioEnabled] = useState(false);
+  const [flashScreen, setFlashScreen] = useState(false);
   const [deferredPayments, setDeferredPayments] = useState<DeferredPayment[]>([]);
   const [settlementPreview, setSettlementPreview] = useState<SettlementPreviewData | null>(null);
   const [settlementModalOpen, setSettlementModalOpen] = useState(false);
@@ -94,10 +95,16 @@ export default function DashboardPage() {
       isFirstLoadRef.current = false;
       return;
     }
+    let hasNew = false;
     for (const order of orders) {
       if (!prevOrderIdsRef.current.has(order.orderId)) {
         playNewOrderAlert();
+        hasNew = true;
       }
+    }
+    if (hasNew) {
+      setFlashScreen(true);
+      setTimeout(() => setFlashScreen(false), 2000);
     }
     prevOrderIdsRef.current = currentIds;
   }, [orders, playNewOrderAlert]);
@@ -110,10 +117,16 @@ export default function DashboardPage() {
       isFirstServiceLoadRef.current = false;
       return;
     }
+    let hasNew = false;
     for (const req of serviceRequests) {
       if (!prevServiceIdsRef.current.has(req.requestId)) {
         playServiceRequestAlert();
+        hasNew = true;
       }
+    }
+    if (hasNew) {
+      setFlashScreen(true);
+      setTimeout(() => setFlashScreen(false), 2000);
     }
     prevServiceIdsRef.current = currentIds;
   }, [serviceRequests, playServiceRequestAlert]);
@@ -341,7 +354,10 @@ export default function DashboardPage() {
 
   /* ── 렌더 ── */
   return (
-    <div className="p-3 md:p-6 h-full min-h-0 flex flex-col overflow-auto md:overflow-hidden">
+    <div className="relative p-3 md:p-6 h-full min-h-0 flex flex-col overflow-auto md:overflow-hidden">
+      {flashScreen && (
+        <div className="absolute inset-0 z-50 pointer-events-none animate-flash-overlay rounded-lg" />
+      )}
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-3 shrink-0 flex-wrap gap-2">
         <div className="flex items-center gap-3">
