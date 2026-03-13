@@ -1,53 +1,19 @@
 /**
  * 경량 ESC/POS 명령 생성기
  * 80mm 열감지 프린터용 (BLE 블루투스 프린터 대응)
- * EUC-KR 인코딩 지원 (한글 출력용)
+ * UTF-8 인코딩 지원 (한글 출력용)
  */
 
 // ESC/POS 명령 상수
 const ESC = 0x1b;
 const GS = 0x1d;
-const FS = 0x1c;
 const LF = 0x0a;
 
-// --- EUC-KR 인코딩 테이블 ---
-// Unicode → EUC-KR 매핑 (한글 음절 + 자모 + 기호)
-// Base64로 압축된 바이너리: 각 엔트리 = [유니코드 2바이트 BE][EUC-KR 2바이트 BE]
-import { EUCKR_TABLE_B64 } from "./euckr-table";
+const utf8Encoder = new TextEncoder();
 
-let eucKrMap: Map<number, number> | null = null;
-
-function getEucKrMap(): Map<number, number> {
-  if (eucKrMap) return eucKrMap;
-  eucKrMap = new Map();
-  const bin = Uint8Array.from(atob(EUCKR_TABLE_B64), (c) => c.charCodeAt(0));
-  for (let i = 0; i < bin.length; i += 4) {
-    const unicode = (bin[i] << 8) | bin[i + 1];
-    const euckr = (bin[i + 2] << 8) | bin[i + 3];
-    eucKrMap.set(unicode, euckr);
-  }
-  return eucKrMap;
-}
-
-/** 문자열을 EUC-KR 바이트 배열로 인코딩 */
-function encodeEucKr(text: string): Uint8Array {
-  const map = getEucKrMap();
-  const bytes: number[] = [];
-  for (const ch of text) {
-    const cp = ch.codePointAt(0)!;
-    if (cp <= 0x7f) {
-      bytes.push(cp);
-    } else {
-      const euckr = map.get(cp);
-      if (euckr) {
-        bytes.push((euckr >> 8) & 0xff, euckr & 0xff);
-      } else {
-        // 매핑 없는 문자는 '?' 로 대체
-        bytes.push(0x3f);
-      }
-    }
-  }
-  return new Uint8Array(bytes);
+/** 문자열을 UTF-8 바이트 배열로 인코딩 */
+function encodeText(text: string): Uint8Array {
+  return utf8Encoder.encode(text);
 }
 
 // --- 기본 명령 ---
@@ -57,12 +23,10 @@ export function cmdInit(): Uint8Array {
   return new Uint8Array([ESC, 0x40]);
 }
 
-/** 한국어 코드페이지 설정 (ESC R 13 + FS & + FS C 3) */
+/** 한국어 문자셋 설정 (ESC R 13) */
 export function cmdSetKorean(): Uint8Array {
   return new Uint8Array([
     ESC, 0x52, 0x0d, // ESC R 13 : 한국어 국제 문자셋 선택
-    FS, 0x26,        // FS & : 멀티바이트(CJK) 문자 모드 활성화
-    FS, 0x43, 0x03,  // FS C 3 : 한국어(KS C 5601) 코드페이지 선택
   ]);
 }
 
@@ -93,14 +57,14 @@ export function cmdCut(): Uint8Array {
   return new Uint8Array([GS, 0x56, 0x01]);
 }
 
-/** EUC-KR 인코딩된 텍스트를 바이트 배열로 변환 */
+/** UTF-8 인코딩된 텍스트를 바이트 배열로 변환 */
 export function cmdText(text: string): Uint8Array {
-  return encodeEucKr(text);
+  return encodeText(text);
 }
 
 /** 구분선 (80mm 프린터 기준 32자 폭) */
 export function cmdDashLine(char = "-", width = 32): Uint8Array {
-  return encodeEucKr(char.repeat(width) + "\n");
+  return encodeText(char.repeat(width) + "\n");
 }
 
 /** 좌우 분할 텍스트 (key를 왼쪽, value를 오른쪽에 배치) */
@@ -112,7 +76,7 @@ export function cmdKeyValue(
   const keyLen = getStringWidth(key);
   const valLen = getStringWidth(value);
   const spaceCount = Math.max(1, width - keyLen - valLen);
-  return encodeEucKr(key + " ".repeat(spaceCount) + value + "\n");
+  return encodeText(key + " ".repeat(spaceCount) + value + "\n");
 }
 
 // --- 헬퍼 ---
