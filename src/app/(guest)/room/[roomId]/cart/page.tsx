@@ -76,7 +76,7 @@ export default function CartPage({
 
       const order = await res.json();
       clearCart();
-      router.push(`/room/${roomId}/order/${order.orderId}`);
+      router.push(`/room/${roomId}/orders`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "주문 처리 중 오류가 발생했습니다");
     } finally {

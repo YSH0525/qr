@@ -163,3 +163,19 @@ html {
 .animate-slide-down {
   animation: slide-down 0.3s ease-out;
 }
+
+/* 새 주문 알림 화면 반짝임 */
+@keyframes flash-overlay {
+  0%   { opacity: 0; }
+  15%  { opacity: 0.5; }
+  30%  { opacity: 0; }
+  45%  { opacity: 0.4; }
+  60%  { opacity: 0; }
+  75%  { opacity: 0.25; }
+  100% { opacity: 0; }
+}
+
+.animate-flash-overlay {
+  background: rgba(239, 68, 68, 0.35);
+  animation: flash-overlay 2s ease-out forwards;
+}
