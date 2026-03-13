@@ -34,6 +34,12 @@ const TYPE_COLORS: Record<string, string> = {
   amenity: "from-sky-400 to-sky-600",
 };
 
+const TYPE_EN_DESC: Record<string, string> = {
+  cleaning: "Request room cleaning service",
+  checkout_extension: "Extend your checkout time",
+  amenity: "Request additional amenities",
+};
+
 interface Room {
   id: string;
   roomNumber: string;
@@ -249,6 +255,11 @@ function EasyTapHubContent({
                   {cat.description && (
                     <p className="text-xs text-gray-400 mt-0.5">
                       {cat.description}
+                    </p>
+                  )}
+                  {TYPE_EN_DESC[cat.type] && (
+                    <p className="text-xs text-gray-300 mt-0.5">
+                      {TYPE_EN_DESC[cat.type]}
                     </p>
                   )}
                 </div>
