@@ -1,7 +1,7 @@
 /**
  * 경량 ESC/POS 명령 생성기
  * 80mm 열감지 프린터용 (BLE 블루투스 프린터 대응)
- * UTF-8 인코딩 지원 (한글 출력용)
+ * EUC-KR 인코딩 지원 (한글 출력용)
  */
 
 // ESC/POS 명령 상수
@@ -9,11 +9,41 @@ const ESC = 0x1b;
 const GS = 0x1d;
 const LF = 0x0a;
 
-const utf8Encoder = new TextEncoder();
+// --- EUC-KR 인코딩 테이블 ---
+import { EUCKR_TABLE_B64 } from "./euckr-table";
 
-/** 문자열을 UTF-8 바이트 배열로 인코딩 */
-function encodeText(text: string): Uint8Array {
-  return utf8Encoder.encode(text);
+let eucKrMap: Map<number, number> | null = null;
+
+function getEucKrMap(): Map<number, number> {
+  if (eucKrMap) return eucKrMap;
+  eucKrMap = new Map();
+  const bin = Uint8Array.from(atob(EUCKR_TABLE_B64), (c) => c.charCodeAt(0));
+  for (let i = 0; i < bin.length; i += 4) {
+    const unicode = (bin[i] << 8) | bin[i + 1];
+    const euckr = (bin[i + 2] << 8) | bin[i + 3];
+    eucKrMap.set(unicode, euckr);
+  }
+  return eucKrMap;
+}
+
+/** 문자열을 EUC-KR 바이트 배열로 인코딩 */
+function encodeEucKr(text: string): Uint8Array {
+  const map = getEucKrMap();
+  const bytes: number[] = [];
+  for (const ch of text) {
+    const cp = ch.codePointAt(0)!;
+    if (cp <= 0x7f) {
+      bytes.push(cp);
+    } else {
+      const euckr = map.get(cp);
+      if (euckr) {
+        bytes.push((euckr >> 8) & 0xff, euckr & 0xff);
+      } else {
+        bytes.push(0x3f);
+      }
+    }
+  }
+  return new Uint8Array(bytes);
 }
 
 // --- 기본 명령 ---
@@ -57,14 +87,14 @@ export function cmdCut(): Uint8Array {
   return new Uint8Array([GS, 0x56, 0x01]);
 }
 
-/** UTF-8 인코딩된 텍스트를 바이트 배열로 변환 */
+/** EUC-KR 인코딩된 텍스트를 바이트 배열로 변환 */
 export function cmdText(text: string): Uint8Array {
-  return encodeText(text);
+  return encodeEucKr(text);
 }
 
 /** 구분선 (80mm 프린터 기준 32자 폭) */
 export function cmdDashLine(char = "-", width = 32): Uint8Array {
-  return encodeText(char.repeat(width) + "\n");
+  return encodeEucKr(char.repeat(width) + "\n");
 }
 
 /** 좌우 분할 텍스트 (key를 왼쪽, value를 오른쪽에 배치) */
@@ -76,7 +106,7 @@ export function cmdKeyValue(
   const keyLen = getStringWidth(key);
   const valLen = getStringWidth(value);
   const spaceCount = Math.max(1, width - keyLen - valLen);
-  return encodeText(key + " ".repeat(spaceCount) + value + "\n");
+  return encodeEucKr(key + " ".repeat(spaceCount) + value + "\n");
 }
 
 // --- 헬퍼 ---
@@ -86,13 +116,12 @@ function getStringWidth(str: string): number {
   let width = 0;
   for (const ch of str) {
     const code = ch.charCodeAt(0);
-    // CJK 범위: 한글, 한자, 일본어 등
     if (
-      (code >= 0x1100 && code <= 0x11ff) || // 한글 자모
-      (code >= 0x3000 && code <= 0x9fff) || // CJK
-      (code >= 0xac00 && code <= 0xd7af) || // 한글 음절
-      (code >= 0xf900 && code <= 0xfaff) || // CJK 호환
-      (code >= 0xff00 && code <= 0xff60) // 전각
+      (code >= 0x1100 && code <= 0x11ff) ||
+      (code >= 0x3000 && code <= 0x9fff) ||
+      (code >= 0xac00 && code <= 0xd7af) ||
+      (code >= 0xf900 && code <= 0xfaff) ||
+      (code >= 0xff00 && code <= 0xff60)
     ) {
       width += 2;
     } else {
@@ -165,7 +194,7 @@ export function buildSettlementReceipt(data: SettlementData): Uint8Array {
 
   const parts: Uint8Array[] = [];
 
-  // 초기화 + 한국어 코드페이지 설정
+  // 초기화 + 한국어 문자셋 설정
   parts.push(cmdInit());
   parts.push(cmdSetKorean());
 
