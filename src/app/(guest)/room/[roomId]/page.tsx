@@ -82,8 +82,8 @@ function EasyTapHubContent({
   const [inquiryText, setInquiryText] = useState("");
   const [inquiryLoading, setInquiryLoading] = useState(false);
 
-  const TOWEL_PICKER_ROOMS = ["101", "601"];
-  const canPickTowelQty = room ? TOWEL_PICKER_ROOMS.includes(room.roomNumber) : false;
+  const UNLIMITED_TOWEL_ROOMS = ["101", "601"];
+  const maxTowelQty = room && UNLIMITED_TOWEL_ROOMS.includes(room.roomNumber) ? 10 : 2;
 
   const submitTowelRequest = async (qty: number) => {
     if (isClosed || towelLoading) return;
@@ -112,12 +112,8 @@ function EasyTapHubContent({
 
   const handleTowelRequest = () => {
     if (isClosed || towelLoading) return;
-    if (canPickTowelQty) {
-      setTowelQty(2);
-      setShowTowelPicker(true);
-    } else {
-      submitTowelRequest(2);
-    }
+    setTowelQty(1);
+    setShowTowelPicker(true);
   };
 
   const handleInquirySubmit = async () => {
@@ -399,7 +395,7 @@ function EasyTapHubContent({
               </button>
               <span className="text-3xl font-bold w-12 text-center">{towelQty}</span>
               <button
-                onClick={() => setTowelQty(Math.min(10, towelQty + 1))}
+                onClick={() => setTowelQty(Math.min(maxTowelQty, towelQty + 1))}
                 className="w-10 h-10 rounded-full border-2 border-gray-300 text-lg font-bold text-gray-600 hover:bg-gray-100 transition"
               >
                 +
