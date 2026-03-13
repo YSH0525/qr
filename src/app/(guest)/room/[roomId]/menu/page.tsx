@@ -21,6 +21,7 @@ interface MenuItem {
   price: number;
   imageUrl: string | null;
   isAvailable: boolean;
+  isBest?: boolean;
 }
 
 interface Room {
@@ -157,17 +158,22 @@ export default function RoomMenuPage({
                 key={item.id}
                 className="bg-white rounded-xl border overflow-hidden"
               >
-                {item.imageUrl ? (
-                  <img
-                    src={item.imageUrl}
-                    alt={item.name}
-                    className="w-full h-32 object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-32 bg-gray-100 flex items-center justify-center">
-                    <ImageIcon className="w-8 h-8 text-gray-300" />
-                  </div>
-                )}
+                <div className="relative">
+                  {item.imageUrl ? (
+                    <img
+                      src={item.imageUrl}
+                      alt={item.name}
+                      className="w-full h-32 object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-32 bg-gray-100 flex items-center justify-center">
+                      <ImageIcon className="w-8 h-8 text-gray-300" />
+                    </div>
+                  )}
+                  {item.isBest && (
+                    <span className="absolute top-2 left-2 bg-yellow-400 text-yellow-900 text-[10px] font-bold px-1.5 py-0.5 rounded">BEST</span>
+                  )}
+                </div>
                 <div className="p-3">
                   <h3 className="font-medium text-sm">{item.name}</h3>
                   {item.description && (

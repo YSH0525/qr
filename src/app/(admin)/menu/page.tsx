@@ -29,6 +29,7 @@ import {
   Trash2,
   FolderPlus,
   Settings,
+  Star,
 } from "lucide-react";
 
 interface Category {
@@ -46,6 +47,7 @@ interface MenuItem {
   price: number;
   imageUrl: string | null;
   isAvailable: boolean;
+  isBest: boolean;
   displayOrder: number;
 }
 
@@ -154,6 +156,18 @@ export default function MenuPage() {
     }
   };
 
+  const toggleBest = async (item: MenuItem) => {
+    const res = await fetch(`/api/menu/${item.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isBest: !item.isBest }),
+    });
+    if (res.ok) {
+      fetchMenu();
+      toast.success(item.isBest ? "베스트 해제" : "베스트 설정");
+    }
+  };
+
   const openEditCategory = (cat: Category) => {
     setEditCategory(cat);
     setNewCatName(cat.name);
@@ -248,6 +262,9 @@ export default function MenuPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{item.name}</span>
+                      {item.isBest && (
+                        <Badge className="bg-yellow-400 text-yellow-900 text-[10px] px-1.5 py-0">BEST</Badge>
+                      )}
                       {!item.isAvailable && (
                         <Badge variant="destructive">품절</Badge>
                       )}
@@ -259,6 +276,15 @@ export default function MenuPage() {
                       </span>
                     </p>
                     <div className="flex gap-1 mt-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className={item.isBest ? "text-yellow-600" : "text-gray-400"}
+                        onClick={() => toggleBest(item)}
+                      >
+                        <Star className={`w-3 h-3 mr-1 ${item.isBest ? "fill-yellow-400" : ""}`} />
+                        베스트
+                      </Button>
                       <Button
                         size="sm"
                         variant="ghost"
@@ -483,6 +509,7 @@ function MenuForm({
   const [description, setDescription] = useState(item?.description || "");
   const [imageUrl, setImageUrl] = useState(item?.imageUrl || "");
   const [isAvailable, setIsAvailable] = useState(item?.isAvailable ?? true);
+  const [isBest, setIsBest] = useState(item?.isBest ?? false);
   const [displayOrder, setDisplayOrder] = useState(item?.displayOrder?.toString() || "0");
   const [uploading, setUploading] = useState(false);
 
@@ -521,6 +548,7 @@ function MenuForm({
       description: description || null,
       imageUrl: imageUrl || null,
       isAvailable,
+      isBest,
       displayOrder: parseInt(displayOrder) || 0,
     };
 
@@ -620,16 +648,29 @@ function MenuForm({
           숫자가 작을수록 먼저 표시됩니다.
         </p>
       </div>
-      <div className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          checked={isAvailable}
-          onChange={(e) => setIsAvailable(e.target.checked)}
-          id="available"
-        />
-        <label htmlFor="available" className="text-sm">
-          판매 가능
-        </label>
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={isAvailable}
+            onChange={(e) => setIsAvailable(e.target.checked)}
+            id="available"
+          />
+          <label htmlFor="available" className="text-sm">
+            판매 가능
+          </label>
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={isBest}
+            onChange={(e) => setIsBest(e.target.checked)}
+            id="isBest"
+          />
+          <label htmlFor="isBest" className="text-sm">
+            베스트 메뉴
+          </label>
+        </div>
       </div>
       <Button type="submit" className="w-full" disabled={categories.length === 0 || uploading}>
         {uploading ? "이미지 업로드 중..." : item ? "수정" : "추가"}
