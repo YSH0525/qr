@@ -54,6 +54,30 @@ const SUPPLY_ICONS: Record<SupplyItem, React.ElementType> = {
   amenity: Package,
 };
 
+const CLEANING_LEVEL_EN: Record<CleaningLevel, string> = {
+  full: "Full Cleaning",
+  light: "Light Cleaning",
+  dnd: "Do Not Disturb",
+};
+
+const CLEANING_DESC_EN: Record<CleaningLevel, string> = {
+  full: "Includes linen change",
+  light: "Towel change, trash, floor tidy",
+  dnd: "Do not disturb",
+};
+
+const PREFERRED_TIME_EN: Record<PreferredTime, string> = {
+  morning: "AM (10-12)",
+  afternoon: "PM (12-14)",
+  anytime: "Anytime",
+};
+
+const SUPPLY_ITEM_EN: Record<SupplyItem, string> = {
+  towel: "Extra Towels",
+  water: "Bottled Water",
+  amenity: "Amenity Refill",
+};
+
 export default function ServiceRequestPage({
   params,
 }: {
@@ -298,8 +322,11 @@ export default function ServiceRequestPage({
                           <p className="font-semibold text-sm">
                             {CLEANING_LEVEL_LABELS[level]}
                           </p>
-                          <p className="text-xs text-gray-500">
-                            {CLEANING_LEVEL_DESCRIPTIONS[level]}
+                          <p className="text-xs text-gray-400">
+                            {CLEANING_LEVEL_EN[level]}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {CLEANING_LEVEL_DESCRIPTIONS[level]} · {CLEANING_DESC_EN[level]}
                           </p>
                         </div>
                         {selected && (
@@ -330,13 +357,14 @@ export default function ServiceRequestPage({
                                 preferredTime: time,
                               }))
                             }
-                            className={`p-3 rounded-xl border-2 text-center transition text-sm ${
+                            className={`p-3 rounded-xl border-2 text-center transition ${
                               selected
                                 ? "border-blue-400 bg-blue-50 font-semibold text-blue-700"
                                 : "border-gray-200 hover:border-gray-300 text-gray-600"
                             }`}
                           >
-                            {PREFERRED_TIME_LABELS[time]}
+                            <p className="text-sm">{PREFERRED_TIME_LABELS[time]}</p>
+                            <p className="text-[10px] text-gray-400 mt-0.5">{PREFERRED_TIME_EN[time]}</p>
                           </button>
                         );
                       }
@@ -426,13 +454,14 @@ export default function ServiceRequestPage({
                         <SupplyIcon
                           className={`w-4 h-4 ${selected ? "text-sky-600" : "text-gray-400"}`}
                         />
-                        <span
-                          className={`text-sm font-medium ${
-                            selected ? "text-sky-700" : "text-gray-600"
-                          }`}
-                        >
-                          {SUPPLY_ITEM_LABELS[item]}
-                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-medium ${selected ? "text-sky-700" : "text-gray-600"}`}>
+                            {SUPPLY_ITEM_LABELS[item]}
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            {SUPPLY_ITEM_EN[item]}
+                          </p>
+                        </div>
                       </button>
                     );
                   })}
