@@ -35,7 +35,7 @@ const QUICK_TYPES = {
 
 export async function POST(req: NextRequest) {
   try {
-    const { roomId: roomUuid, type, note } = await req.json();
+    const { roomId: roomUuid, type, note, quantity } = await req.json();
 
     if (!roomUuid || !type) {
       return NextResponse.json({ error: "roomId와 type이 필요합니다" }, { status: 400 });
@@ -71,7 +71,9 @@ export async function POST(req: NextRequest) {
       roomNumber: roomData.roomNumber,
       status: "accepted",
       note: note || null,
-      items: quickType.items,
+      items: type === "towel"
+        ? [{ itemId: "towel", name: "수건", quantity: Number(quantity) || 2 }]
+        : quickType.items,
       cleaningOptions: null,
       extensionHours: null,
       extensionAmount: null,

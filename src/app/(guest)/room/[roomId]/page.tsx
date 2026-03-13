@@ -76,21 +76,26 @@ function EasyTapHubContent({
   const searchParams = useSearchParams();
   const { isClosed, closingLabel } = useClosingTime();
   const [towelLoading, setTowelLoading] = useState(false);
+  const [showTowelPicker, setShowTowelPicker] = useState(false);
+  const [towelQty, setTowelQty] = useState(2);
   const [showInquiry, setShowInquiry] = useState(false);
   const [inquiryText, setInquiryText] = useState("");
   const [inquiryLoading, setInquiryLoading] = useState(false);
 
-  const handleTowelRequest = async () => {
+  const TOWEL_PICKER_ROOMS = ["101", "601"];
+  const canPickTowelQty = room ? TOWEL_PICKER_ROOMS.includes(room.roomNumber) : false;
+
+  const submitTowelRequest = async (qty: number) => {
     if (isClosed || towelLoading) return;
     setTowelLoading(true);
     try {
       const res = await fetch("/api/service-requests/quick", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ roomId, type: "towel" }),
+        body: JSON.stringify({ roomId, type: "towel", quantity: qty }),
       });
       if (res.ok) {
-        setToast({ message: "수건 요청이 접수되었습니다", type: "success" });
+        setToast({ message: `수건 ${qty}장 요청이 접수되었습니다`, type: "success" });
       } else {
         const data = await res.json().catch(() => null);
         setToast({ message: data?.error || "요청 실패", type: "error" });
@@ -99,7 +104,18 @@ function EasyTapHubContent({
       setToast({ message: "네트워크 오류가 발생했습니다", type: "error" });
     } finally {
       setTowelLoading(false);
+      setShowTowelPicker(false);
       setTimeout(() => setToast(null), 3000);
+    }
+  };
+
+  const handleTowelRequest = () => {
+    if (isClosed || towelLoading) return;
+    if (canPickTowelQty) {
+      setTowelQty(2);
+      setShowTowelPicker(true);
+    } else {
+      submitTowelRequest(2);
     }
   };
 
@@ -355,6 +371,49 @@ function EasyTapHubContent({
           </p>
         </div>
       </div>
+
+      {/* 수건 장수 선택 모달 */}
+      {showTowelPicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-5">
+          <div className="bg-white rounded-2xl w-full max-w-xs p-5 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-bold">수건 요청</h2>
+                <p className="text-xs text-gray-400">Towel Request</p>
+              </div>
+              <button
+                onClick={() => setShowTowelPicker(false)}
+                className="p-1 rounded-lg hover:bg-gray-100"
+              >
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">수건 장수를 선택해주세요</p>
+            <div className="flex items-center justify-center gap-4 mb-5">
+              <button
+                onClick={() => setTowelQty(Math.max(1, towelQty - 1))}
+                className="w-10 h-10 rounded-full border-2 border-gray-300 text-lg font-bold text-gray-600 hover:bg-gray-100 transition"
+              >
+                −
+              </button>
+              <span className="text-3xl font-bold w-12 text-center">{towelQty}</span>
+              <button
+                onClick={() => setTowelQty(Math.min(10, towelQty + 1))}
+                className="w-10 h-10 rounded-full border-2 border-gray-300 text-lg font-bold text-gray-600 hover:bg-gray-100 transition"
+              >
+                +
+              </button>
+            </div>
+            <button
+              onClick={() => submitTowelRequest(towelQty)}
+              disabled={towelLoading}
+              className="w-full py-3 rounded-xl text-white font-semibold text-sm bg-cyan-500 hover:bg-cyan-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            >
+              {towelLoading ? "요청 중..." : `수건 ${towelQty}장 요청`}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 기타문의 모달 */}
       {showInquiry && (
