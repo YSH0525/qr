@@ -8,6 +8,7 @@ import {
   getDoc,
   query,
   where,
+  runTransaction,
 } from "firebase/firestore";
 import { orderSchema } from "@/lib/validations";
 import { getNextDailySeq } from "@/lib/daily-seq";
@@ -114,34 +115,69 @@ export async function POST(req: NextRequest) {
       roomNumber: string;
     };
 
-    // Get menu items and calculate total
+    // Get menu items, validate stock, and deduct via transaction
     let totalAmount = 0;
-    const itemDetails = [];
-    for (const item of items) {
-      const menuItemDoc = await getDoc(
-        doc(firestore, "menuItems", item.menuItemId)
-      );
+    const itemDetails: {
+      menuItemId: string;
+      menuItemName: string;
+      menuItemPrice: number;
+      quantity: number;
+      subtotal: number;
+    }[] = [];
 
-      if (!menuItemDoc.exists()) {
-        return NextResponse.json(
-          { error: `메뉴를 찾을 수 없습니다 (ID: ${item.menuItemId})` },
-          { status: 404 }
-        );
-      }
+    try {
+      await runTransaction(firestore, async (transaction) => {
+        // Phase 1: Read all menu items within the transaction
+        const menuDocs = [];
+        for (const item of items) {
+          const menuRef = doc(firestore, "menuItems", item.menuItemId);
+          const menuSnap = await transaction.get(menuRef);
+          if (!menuSnap.exists()) {
+            throw new Error(`메뉴를 찾을 수 없습니다 (ID: ${item.menuItemId})`);
+          }
+          menuDocs.push({ ref: menuRef, snap: menuSnap, orderItem: item });
+        }
 
-      const menuItem = menuItemDoc.data() as {
-        name: string;
-        price: number;
-      };
-      const subtotal = menuItem.price * item.quantity;
-      totalAmount += subtotal;
-      itemDetails.push({
-        menuItemId: menuItemDoc.id,
-        menuItemName: menuItem.name,
-        menuItemPrice: menuItem.price,
-        quantity: item.quantity,
-        subtotal,
+        // Phase 2: Validate stock and calculate totals
+        for (const { snap, orderItem } of menuDocs) {
+          const data = snap.data() as {
+            name: string;
+            price: number;
+            stock?: number | null;
+            stockUsed?: number;
+          };
+          if (data.stock !== null && data.stock !== undefined) {
+            const remaining = data.stock - (data.stockUsed || 0);
+            if (remaining < orderItem.quantity) {
+              throw new Error(
+                `"${data.name}" 재고가 부족합니다 (잔여: ${remaining}개)`
+              );
+            }
+          }
+          const subtotal = data.price * orderItem.quantity;
+          totalAmount += subtotal;
+          itemDetails.push({
+            menuItemId: snap.id,
+            menuItemName: data.name,
+            menuItemPrice: data.price,
+            quantity: orderItem.quantity,
+            subtotal,
+          });
+        }
+
+        // Phase 3: Deduct stock
+        for (const { ref, snap, orderItem } of menuDocs) {
+          const data = snap.data() as { stock?: number | null; stockUsed?: number };
+          if (data.stock !== null && data.stock !== undefined) {
+            transaction.update(ref, {
+              stockUsed: (data.stockUsed || 0) + orderItem.quantity,
+            });
+          }
+        }
       });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "재고 확인 실패";
+      return NextResponse.json({ error: message }, { status: 409 });
     }
 
     const orderId = generateOrderId();

@@ -72,6 +72,8 @@ export async function POST(req: NextRequest) {
       imageUrl: body.imageUrl || null,
       isAvailable: body.isAvailable ?? true,
       isBest: body.isBest ?? false,
+      stock: body.stock !== undefined ? (body.stock === null ? null : Number(body.stock)) : null,
+      stockUsed: 0,
       displayOrder: body.displayOrder || 0,
       createdAt: new Date().toISOString(),
     };

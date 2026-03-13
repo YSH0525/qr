@@ -20,6 +20,8 @@ export async function PUT(
     if (body.categoryId !== undefined) updateData.categoryId = body.categoryId;
     if (body.displayOrder !== undefined) updateData.displayOrder = body.displayOrder;
     if (body.isBest !== undefined) updateData.isBest = body.isBest;
+    if (body.stock !== undefined) updateData.stock = body.stock;
+    if (body.stockUsed !== undefined) updateData.stockUsed = body.stockUsed;
 
     await setDoc(ref, updateData, { merge: true });
 

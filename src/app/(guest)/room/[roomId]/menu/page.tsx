@@ -22,6 +22,8 @@ interface MenuItem {
   imageUrl: string | null;
   isAvailable: boolean;
   isBest?: boolean;
+  stock?: number | null;
+  stockUsed?: number;
 }
 
 interface Room {
@@ -88,7 +90,14 @@ export default function RoomMenuPage({
   }
 
   const activeItems =
-    categories.find((c) => c.id === activeCategory)?.items.filter((i) => i.isAvailable) || [];
+    categories.find((c) => c.id === activeCategory)?.items.filter((i) => {
+      if (!i.isAvailable) return false;
+      if (i.stock !== null && i.stock !== undefined && (i.stock - (i.stockUsed || 0)) <= 0) return false;
+      return true;
+    }) || [];
+
+  const getRemaining = (item: MenuItem) =>
+    item.stock !== null && item.stock !== undefined ? item.stock - (item.stockUsed || 0) : null;
 
   return (
     <div className="pb-24">
@@ -181,49 +190,67 @@ export default function RoomMenuPage({
                       {item.description}
                     </p>
                   )}
-                  <p className="text-sm font-semibold mt-1 text-blue-600">
-                    {formatPrice(item.price)}원
-                  </p>
-
-                  {qty === 0 ? (
-                    <Button
-                      size="sm"
-                      className="w-full mt-2"
-                      disabled={isClosed}
-                      onClick={() =>
-                        addItem({
-                          menuItemId: item.id,
-                          name: item.name,
-                          price: item.price,
-                          imageUrl: item.imageUrl,
-                        })
+                  <div className="flex items-center gap-1 mt-1">
+                    <p className="text-sm font-semibold text-blue-600">
+                      {formatPrice(item.price)}원
+                    </p>
+                    {(() => {
+                      const remaining = getRemaining(item);
+                      if (remaining !== null && remaining <= 3) {
+                        return (
+                          <span className="text-xs text-red-500 font-semibold">
+                            {remaining}개 남음
+                          </span>
+                        );
                       }
-                    >
-                      담기 Add
-                    </Button>
-                  ) : (
-                    <div className="flex items-center justify-center gap-3 mt-2">
+                      return null;
+                    })()}
+                  </div>
+
+                  {(() => {
+                    const remaining = getRemaining(item);
+                    const maxQty = remaining !== null ? remaining : 99;
+                    return qty === 0 ? (
                       <Button
                         size="sm"
-                        variant="outline"
-                        className="h-8 w-8 p-0"
-                        onClick={() => updateQuantity(item.id, qty - 1)}
+                        className="w-full mt-2"
+                        disabled={isClosed}
+                        onClick={() =>
+                          addItem({
+                            menuItemId: item.id,
+                            name: item.name,
+                            price: item.price,
+                            imageUrl: item.imageUrl,
+                          })
+                        }
                       >
-                        <Minus className="w-3 h-3" />
+                        담기 Add
                       </Button>
-                      <span className="font-semibold text-sm w-6 text-center">
-                        {qty}
-                      </span>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 w-8 p-0"
-                        onClick={() => updateQuantity(item.id, qty + 1)}
-                      >
-                        <Plus className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  )}
+                    ) : (
+                      <div className="flex items-center justify-center gap-3 mt-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={() => updateQuantity(item.id, qty - 1)}
+                        >
+                          <Minus className="w-3 h-3" />
+                        </Button>
+                        <span className="font-semibold text-sm w-6 text-center">
+                          {qty}
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          disabled={qty >= maxQty}
+                          onClick={() => updateQuantity(item.id, qty + 1)}
+                        >
+                          <Plus className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             );
