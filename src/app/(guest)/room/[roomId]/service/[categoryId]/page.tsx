@@ -54,6 +54,30 @@ const SUPPLY_ICONS: Record<SupplyItem, React.ElementType> = {
   amenity: Package,
 };
 
+const CLEANING_LEVEL_EN: Record<CleaningLevel, string> = {
+  full: "Full Cleaning",
+  light: "Light Cleaning",
+  dnd: "Do Not Disturb",
+};
+
+const CLEANING_DESC_EN: Record<CleaningLevel, string> = {
+  full: "Includes linen change",
+  light: "Towel change, trash, floor tidy",
+  dnd: "Do not disturb",
+};
+
+const PREFERRED_TIME_EN: Record<PreferredTime, string> = {
+  morning: "AM (10-12)",
+  afternoon: "PM (12-14)",
+  anytime: "Anytime",
+};
+
+const SUPPLY_ITEM_EN: Record<SupplyItem, string> = {
+  towel: "Extra Towels",
+  water: "Bottled Water",
+  amenity: "Amenity Refill",
+};
+
 export default function ServiceRequestPage({
   params,
 }: {
@@ -69,8 +93,6 @@ export default function ServiceRequestPage({
 
   // checkout_extension
   const [extensionHours, setExtensionHours] = useState(1);
-  const [isFreeExtension, setIsFreeExtension] = useState(false);
-  const [freeExtensionAgreed, setFreeExtensionAgreed] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"kakaopay" | "deferred">(KAKAOPAY_ENABLED ? "kakaopay" : "deferred");
 
   // amenity
@@ -147,11 +169,7 @@ export default function ServiceRequestPage({
 
       if (category.type === "checkout_extension") {
         body.extensionHours = extensionHours;
-        if (isFreeExtension) {
-          body.freeExtension = true;
-        } else {
-          body.paymentMethod = paymentMethod;
-        }
+        body.paymentMethod = paymentMethod;
       }
 
       if (category.type === "cleaning") {
@@ -174,7 +192,6 @@ export default function ServiceRequestPage({
       // 카카오페이: 결제 먼저 → 승인 후 서비스 요청 생성
       if (
         category.type === "checkout_extension" &&
-        !isFreeExtension &&
         paymentMethod === "kakaopay"
       ) {
         const payRes = await fetch("/api/payments/kakaopay/service-ready", {
@@ -211,9 +228,7 @@ export default function ServiceRequestPage({
 
       const data = await res.json();
 
-      router.push(
-        `/room/${roomId}/service/confirm?requestId=${data.requestId}&type=${category.type}&name=${encodeURIComponent(category.name)}`
-      );
+      router.push(`/room/${roomId}/orders`);
     } catch {
       toast.error("서비스 요청 중 오류가 발생했습니다");
     } finally {
@@ -305,8 +320,11 @@ export default function ServiceRequestPage({
                           <p className="font-semibold text-sm">
                             {CLEANING_LEVEL_LABELS[level]}
                           </p>
-                          <p className="text-xs text-gray-500">
-                            {CLEANING_LEVEL_DESCRIPTIONS[level]}
+                          <p className="text-xs text-gray-400">
+                            {CLEANING_LEVEL_EN[level]}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {CLEANING_LEVEL_DESCRIPTIONS[level]} · {CLEANING_DESC_EN[level]}
                           </p>
                         </div>
                         {selected && (
@@ -337,13 +355,14 @@ export default function ServiceRequestPage({
                                 preferredTime: time,
                               }))
                             }
-                            className={`p-3 rounded-xl border-2 text-center transition text-sm ${
+                            className={`p-3 rounded-xl border-2 text-center transition ${
                               selected
                                 ? "border-blue-400 bg-blue-50 font-semibold text-blue-700"
                                 : "border-gray-200 hover:border-gray-300 text-gray-600"
                             }`}
                           >
-                            {PREFERRED_TIME_LABELS[time]}
+                            <p className="text-sm">{PREFERRED_TIME_LABELS[time]}</p>
+                            <p className="text-[10px] text-gray-400 mt-0.5">{PREFERRED_TIME_EN[time]}</p>
                           </button>
                         );
                       }
@@ -433,13 +452,14 @@ export default function ServiceRequestPage({
                         <SupplyIcon
                           className={`w-4 h-4 ${selected ? "text-sky-600" : "text-gray-400"}`}
                         />
-                        <span
-                          className={`text-sm font-medium ${
-                            selected ? "text-sky-700" : "text-gray-600"
-                          }`}
-                        >
-                          {SUPPLY_ITEM_LABELS[item]}
-                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-medium ${selected ? "text-sky-700" : "text-gray-600"}`}>
+                            {SUPPLY_ITEM_LABELS[item]}
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            {SUPPLY_ITEM_EN[item]}
+                          </p>
+                        </div>
                       </button>
                     );
                   })}
@@ -546,36 +566,18 @@ export default function ServiceRequestPage({
           <Card>
             <CardContent className="p-5">
               <h2 className="font-semibold mb-3">연장 시간 선택 <span className="text-xs font-normal text-gray-400">Select Extension</span></h2>
-              <div className="grid grid-cols-4 gap-2">
-                <button
-                  onClick={() => {
-                    setExtensionHours(1);
-                    setIsFreeExtension(true);
-                    setFreeExtensionAgreed(false);
-                  }}
-                  className={`p-3 rounded-xl border-2 text-center transition ${
-                    isFreeExtension
-                      ? "border-green-400 bg-green-50"
-                      : "border-gray-200 hover:border-gray-300"
-                  }`}
-                >
-                  <p className="text-lg font-bold">1시간</p>
-                  <p className="text-xs text-green-600 font-semibold mt-1">무료 Free</p>
-                </button>
+              <div className="grid grid-cols-3 gap-2">
                 {[1, 2, 3].map((h) => (
                   <button
                     key={h}
-                    onClick={() => {
-                      setExtensionHours(h);
-                      setIsFreeExtension(false);
-                    }}
+                    onClick={() => setExtensionHours(h)}
                     className={`p-3 rounded-xl border-2 text-center transition ${
-                      extensionHours === h && !isFreeExtension
+                      extensionHours === h
                         ? "border-amber-400 bg-amber-50"
                         : "border-gray-200 hover:border-gray-300"
                     }`}
                   >
-                    <p className="text-lg font-bold">{h}시간</p>
+                    <p className="text-lg font-bold">{h}hr</p>
                     {category.hourlyRate ? (
                       <p className="text-xs text-gray-500 mt-1">
                         {formatPrice(category.hourlyRate * h)}원
@@ -584,25 +586,7 @@ export default function ServiceRequestPage({
                   </button>
                 ))}
               </div>
-              {isFreeExtension ? (
-                <div className="mt-3 bg-green-50 rounded-lg p-3 space-y-2">
-                  <p className="text-sm text-green-700 font-medium text-center">
-                    리뷰작성 후 퇴실시 프런트에 확인
-                  </p>
-                  <p className="text-xs text-red-500 font-semibold text-center">
-                    ※ 공휴일, 특정일, 성수기를 제외한 일~목에만 가능합니다
-                  </p>
-                  <label className="flex items-center gap-2 justify-center pt-1 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={freeExtensionAgreed}
-                      onChange={(e) => setFreeExtensionAgreed(e.target.checked)}
-                      className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
-                    />
-                    <span className="text-sm text-gray-700 font-medium">위 내용을 확인했습니다</span>
-                  </label>
-                </div>
-              ) : category.hourlyRate ? (
+              {category.hourlyRate ? (
                 <>
                   <div className="mt-3 bg-amber-50 rounded-lg p-3 text-center">
                     <p className="text-sm text-amber-700">
@@ -717,7 +701,7 @@ export default function ServiceRequestPage({
           <Button
             className="w-full h-12 text-lg"
             onClick={handleSubmit}
-            disabled={loading || isClosed || (category.type === "checkout_extension" && isFreeExtension && !freeExtensionAgreed)}
+            disabled={loading || isClosed}
           >
             {loading ? "요청 처리 중..." : `${category.name} 요청하기`}
           </Button>

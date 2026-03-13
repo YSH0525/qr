@@ -95,7 +95,8 @@ function EasyTapHubContent({
         body: JSON.stringify({ roomId, type: "towel", quantity: qty }),
       });
       if (res.ok) {
-        setToast({ message: `수건 ${qty}장 요청이 접수되었습니다`, type: "success" });
+        router.push(`/room/${roomId}/orders`);
+        return;
       } else {
         const data = await res.json().catch(() => null);
         setToast({ message: data?.error || "요청 실패", type: "error" });

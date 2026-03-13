@@ -138,6 +138,14 @@ export default function CartPage({
             </div>
           </div>
 
+          {/* 결제 안내 */}
+          <div className="border-t-2 border-dashed border-gray-300 pt-3 mt-3 text-center">
+            <p className="text-sm font-semibold text-gray-700">후불결제</p>
+            <p className="text-xs text-gray-400 mt-0.5">Deferred Payment</p>
+            <p className="text-xs text-gray-500 mt-1">퇴실 시 프런트에서 정산합니다</p>
+            <p className="text-xs text-gray-300">Payment will be settled at the front desk upon checkout.</p>
+          </div>
+
           {/* 서비스 제공기간 안내 */}
           <div className="border-t border-dashed border-gray-300 pt-3 mt-3 text-xs text-gray-400">
             <p>* 주문 접수 후 약 15~30분 내 객실로 제공됩니다.</p>
