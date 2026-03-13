@@ -228,9 +228,7 @@ export default function ServiceRequestPage({
 
       const data = await res.json();
 
-      router.push(
-        `/room/${roomId}/service/confirm?requestId=${data.requestId}&type=${category.type}&name=${encodeURIComponent(category.name)}`
-      );
+      router.push(`/room/${roomId}/orders`);
     } catch {
       toast.error("서비스 요청 중 오류가 발생했습니다");
     } finally {

@@ -164,7 +164,7 @@ export default function GuestOrdersPage({
   }, [fetchData]);
 
   const activeOrders = orders.filter(
-    (o) => !["completed", "cancelled"].includes(o.status)
+    (o) => !["completed", "cancelled", "rejected"].includes(o.status)
   );
   const activeServices = services.filter((s) => s.status !== "completed");
 
