@@ -68,7 +68,8 @@ function WaitingContent({ roomId }: { roomId: string }) {
         {result === "pending" && (
           <>
             <Loader2 className="w-16 h-16 text-yellow-500 mx-auto mb-4 animate-spin" />
-            <h1 className="text-xl font-bold mb-2">결제 진행 중</h1>
+            <h1 className="text-xl font-bold mb-1">결제 진행 중</h1>
+            <p className="text-sm text-gray-400 mb-2">Processing Payment</p>
             <p className="text-gray-500 mb-6 text-sm">
               카카오페이에서 결제를 완료해주세요.<br />
               결제가 완료되면 자동으로 이동합니다.
@@ -86,17 +87,21 @@ function WaitingContent({ roomId }: { roomId: string }) {
         {result === "completed" && (
           <>
             <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-            <h1 className="text-xl font-bold mb-2">결제 완료</h1>
-            <p className="text-gray-500 text-sm">잠시 후 이동합니다...</p>
+            <h1 className="text-xl font-bold mb-1">결제 완료</h1>
+            <p className="text-sm text-gray-400 mb-1">Payment Complete</p>
+            <p className="text-gray-500 text-sm">잠시 후 이동합니다... Redirecting...</p>
           </>
         )}
 
         {(result === "not_found" || result === "timeout") && (
           <>
             <XCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
-            <h1 className="text-xl font-bold mb-2">
+            <h1 className="text-xl font-bold mb-1">
               {result === "timeout" ? "결제 시간 초과" : "결제를 찾을 수 없습니다"}
             </h1>
+            <p className="text-sm text-gray-400 mb-1">
+              {result === "timeout" ? "Payment Timed Out" : "Payment Not Found"}
+            </p>
             <p className="text-gray-500 mb-6 text-sm">
               {result === "timeout"
                 ? "2분 내에 결제가 완료되지 않았습니다."
@@ -104,10 +109,10 @@ function WaitingContent({ roomId }: { roomId: string }) {
             </p>
             <div className="space-y-3">
               <Link href={`/room/${roomId}/cart`}>
-                <Button className="w-full">다시 시도하기</Button>
+                <Button className="w-full">다시 시도하기 Try Again</Button>
               </Link>
               <Link href={`/room/${roomId}`}>
-                <Button variant="outline" className="w-full">메뉴로 돌아가기</Button>
+                <Button variant="outline" className="w-full">메뉴로 돌아가기 Back to Menu</Button>
               </Link>
             </div>
           </>

@@ -12,10 +12,10 @@ export function GuestFooter() {
         </div>
         <div className="flex gap-3 pt-2 border-t border-gray-200">
           <Link href="/terms" className="underline hover:text-gray-700">
-            이용약관
+            이용약관 Terms
           </Link>
           <Link href="/refund-policy" className="underline hover:text-gray-700">
-            환불/취소 규정
+            환불/취소 규정 Refund Policy
           </Link>
         </div>
         <p className="text-gray-400">&copy; {new Date().getFullYear()} 더반스테이. All rights reserved.</p>

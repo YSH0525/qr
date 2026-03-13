@@ -261,7 +261,7 @@ export default function ServiceRequestPage({
             {/* 카드 1: 청소 모드 선택 */}
             <Card>
               <CardContent className="p-5">
-                <h2 className="font-semibold mb-3">청소 모드 선택</h2>
+                <h2 className="font-semibold mb-3">청소 모드 선택 <span className="text-xs font-normal text-gray-400">Cleaning Mode</span></h2>
                 <div className="space-y-2">
                   {(["full", "light", "dnd"] as CleaningLevel[]).map((level) => {
                     const selected = cleaningOptions.serviceLevel === level;
@@ -323,7 +323,7 @@ export default function ServiceRequestPage({
             {showFullLightOptions && (
               <Card>
                 <CardContent className="p-5">
-                  <h2 className="font-semibold mb-3">정비 희망 시간</h2>
+                  <h2 className="font-semibold mb-3">정비 희망 시간 <span className="text-xs font-normal text-gray-400">Preferred Time</span></h2>
                   <div className="grid grid-cols-3 gap-2">
                     {(["morning", "afternoon", "anytime"] as PreferredTime[]).map(
                       (time) => {
@@ -357,7 +357,7 @@ export default function ServiceRequestPage({
             {showFullLightOptions && (
               <Card>
                 <CardContent className="p-5">
-                  <h2 className="font-semibold mb-3">침구 시트 교체</h2>
+                  <h2 className="font-semibold mb-3">침구 시트 교체 <span className="text-xs font-normal text-gray-400">Linen Change</span></h2>
                   <button
                     onClick={() =>
                       setCleaningOptions((prev) => ({
@@ -387,7 +387,7 @@ export default function ServiceRequestPage({
                         시트 교체 없이 정리만 요청
                       </p>
                       <p className="text-xs text-gray-500">
-                        환경 보호를 위해 시트 교체를 생략합니다
+                        Tidy up without linen change
                       </p>
                     </div>
                     <Leaf className="w-5 h-5 text-green-500 shrink-0" />
@@ -406,7 +406,7 @@ export default function ServiceRequestPage({
             {/* 카드 4: 비대면 비품 요청 (DND일 때만) */}
             {showDndOptions && (<Card>
               <CardContent className="p-5">
-                <h2 className="font-semibold mb-3">비대면 비품 요청</h2>
+                <h2 className="font-semibold mb-3">비대면 비품 요청 <span className="text-xs font-normal text-gray-400">Contactless Supply</span></h2>
                 <div className="space-y-2">
                   {(["towel", "water", "amenity"] as SupplyItem[]).map((item) => {
                     const selected = cleaningOptions.contactlessSupplies.includes(item);
@@ -481,7 +481,7 @@ export default function ServiceRequestPage({
                         cleaningOptions.leaveAtDoor ? "text-violet-700" : "text-gray-600"
                       }`}
                     >
-                      문 앞에 놓아주세요
+                      문 앞에 놓아주세요 Please leave at the door
                     </span>
                   </button>
                 )}
@@ -492,7 +492,7 @@ export default function ServiceRequestPage({
             {showDndOptions && (
               <Card>
                 <CardContent className="p-5">
-                  <h2 className="font-semibold mb-3">쓰레기 수거 요청</h2>
+                  <h2 className="font-semibold mb-3">쓰레기 수거 요청 <span className="text-xs font-normal text-gray-400">Trash Collection</span></h2>
                   <button
                     onClick={() =>
                       setCleaningOptions((prev) => ({
@@ -531,7 +531,7 @@ export default function ServiceRequestPage({
                         쓰레기통만 비워주세요
                       </p>
                       <p className="text-xs text-gray-500">
-                        다른 정비는 필요 없으니 쓰레기 수거만 요청합니다
+                        Please empty the trash only
                       </p>
                     </div>
                   </button>
@@ -545,7 +545,7 @@ export default function ServiceRequestPage({
         {category.type === "checkout_extension" && (
           <Card>
             <CardContent className="p-5">
-              <h2 className="font-semibold mb-3">연장 시간 선택</h2>
+              <h2 className="font-semibold mb-3">연장 시간 선택 <span className="text-xs font-normal text-gray-400">Select Extension</span></h2>
               <div className="grid grid-cols-4 gap-2">
                 <button
                   onClick={() => {
@@ -560,7 +560,7 @@ export default function ServiceRequestPage({
                   }`}
                 >
                   <p className="text-lg font-bold">1시간</p>
-                  <p className="text-xs text-green-600 font-semibold mt-1">무료</p>
+                  <p className="text-xs text-green-600 font-semibold mt-1">무료 Free</p>
                 </button>
                 {[1, 2, 3].map((h) => (
                   <button
@@ -657,7 +657,7 @@ export default function ServiceRequestPage({
           <Card>
             <CardContent className="p-5">
               <h2 className="font-semibold mb-3">
-                {category.type === "amenity" ? "필요한 비품 선택" : "옵션 선택"}
+                {category.type === "amenity" ? <>필요한 비품 선택 <span className="text-xs font-normal text-gray-400">Select Amenities</span></> : "옵션 선택"}
               </h2>
               <div className="space-y-3">
                 {serviceItems.map((item) => {
@@ -707,9 +707,12 @@ export default function ServiceRequestPage({
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg">
         <div className="max-w-lg mx-auto px-5 py-3">
           {isClosed && (
-            <p className="text-center text-red-500 text-sm font-semibold mb-2">
-              영업이 마감되었습니다 ({closingLabel} 마감)
-            </p>
+            <>
+              <p className="text-center text-red-500 text-sm font-semibold mb-1">
+                영업이 마감되었습니다 ({closingLabel} 마감)
+              </p>
+              <p className="text-center text-red-400 text-xs mb-2">Service is currently closed</p>
+            </>
           )}
           <Button
             className="w-full h-12 text-lg"

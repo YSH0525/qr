@@ -214,8 +214,9 @@ function EasyTapHubContent({
 
         {/* Closing Banner */}
         {isClosed && (
-          <div className="bg-red-500 text-white text-center py-3 px-4 rounded-xl mb-4 text-sm font-semibold">
-            영업이 마감되었습니다 ({closingLabel} 마감)
+          <div className="bg-red-500 text-white text-center py-3 px-4 rounded-xl mb-4">
+            <p className="text-sm font-semibold">영업이 마감되었습니다 ({closingLabel} 마감)</p>
+            <p className="text-xs text-white/80">Service is currently closed</p>
           </div>
         )}
 
@@ -277,7 +278,7 @@ function EasyTapHubContent({
             <div className="text-center">
               <p className="font-semibold text-gray-900">수건 요청</p>
               <p className="text-xs text-gray-400 mt-0.5">
-                원탭으로 수건을 요청합니다
+                Towel Request
               </p>
             </div>
           </button>
@@ -298,7 +299,7 @@ function EasyTapHubContent({
             <div className="text-center">
               <p className="font-semibold text-gray-900">룸 오더</p>
               <p className="text-xs text-gray-400 mt-0.5">
-                물품구매 및 물품요청을 할 수 있습니다.
+                Room Order
               </p>
             </div>
           </button>
@@ -314,7 +315,7 @@ function EasyTapHubContent({
             <div className="text-center">
               <p className="font-semibold text-gray-900">기타문의</p>
               <p className="text-xs text-gray-400 mt-0.5">
-                프런트에 문의합니다
+                General Inquiry
               </p>
             </div>
           </button>
@@ -330,7 +331,7 @@ function EasyTapHubContent({
             <div className="text-center">
               <p className="font-semibold text-gray-900">주문현황</p>
               <p className="text-xs text-gray-400 mt-0.5">
-                주문 및 서비스 요청 상태 확인
+                Order Status
               </p>
             </div>
           </button>
@@ -349,7 +350,10 @@ function EasyTapHubContent({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-5">
           <div className="bg-white rounded-2xl w-full max-w-md p-5 shadow-xl">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold">기타문의</h2>
+              <div>
+                <h2 className="text-lg font-bold">기타문의</h2>
+                <p className="text-xs text-gray-400">General Inquiry</p>
+              </div>
               <button
                 onClick={() => { setShowInquiry(false); setInquiryText(""); }}
                 className="p-1 rounded-lg hover:bg-gray-100"
@@ -360,7 +364,7 @@ function EasyTapHubContent({
             <textarea
               value={inquiryText}
               onChange={(e) => setInquiryText(e.target.value)}
-              placeholder="문의 내용을 입력해주세요"
+              placeholder="문의 내용을 입력해주세요 / Please enter your inquiry"
               className="w-full border rounded-xl p-3 text-sm resize-none h-32 focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent"
               maxLength={500}
             />
@@ -370,7 +374,7 @@ function EasyTapHubContent({
               disabled={!inquiryText.trim() || inquiryLoading}
               className="w-full mt-3 py-3 rounded-xl text-white font-semibold text-sm bg-violet-500 hover:bg-violet-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
-              {inquiryLoading ? "전송 중..." : "전송"}
+              {inquiryLoading ? "전송 중... Sending..." : "전송 Send"}
             </button>
           </div>
         </div>

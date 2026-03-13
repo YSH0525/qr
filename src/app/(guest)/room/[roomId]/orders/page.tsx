@@ -36,11 +36,11 @@ function timeAgo(dateStr: string): string {
 
 // Order stepper: 대기중 → 접수 → 준비중 → 완료
 const ORDER_STEPS = ["pending", "accepted", "preparing", "completed"] as const;
-const ORDER_STEP_LABELS = ["대기중", "접수", "준비중", "완료"];
+const ORDER_STEP_LABELS = ["대기중\nPending", "접수\nAccepted", "준비중\nPreparing", "완료\nDone"];
 
 // Service stepper: 접수 → 처리중 → 완료
 const SERVICE_STEPS = ["requested", "accepted", "completed"] as const;
-const SERVICE_STEP_LABELS = ["접수", "처리중", "완료"];
+const SERVICE_STEP_LABELS = ["접수\nReceived", "처리중\nProcessing", "완료\nDone"];
 
 function OrderStepper({ status, rejectionReason }: { status: OrderStatus; rejectionReason?: string }) {
   if (status === "rejected" || status === "cancelled") {
@@ -82,7 +82,7 @@ function OrderStepper({ status, rejectionReason }: { status: OrderStatus; reject
                 }`}
               />
               <span
-                className={`text-[10px] mt-0.5 ${
+                className={`text-[10px] mt-0.5 whitespace-pre-line text-center ${
                   isActive ? "text-blue-600 font-semibold" : "text-gray-400"
                 }`}
               >
@@ -122,7 +122,7 @@ function ServiceStepper({ status }: { status: ServiceRequestStatus }) {
                 }`}
               />
               <span
-                className={`text-[10px] mt-0.5 ${
+                className={`text-[10px] mt-0.5 whitespace-pre-line text-center ${
                   isActive ? "text-blue-600 font-semibold" : "text-gray-400"
                 }`}
               >
@@ -205,7 +205,7 @@ export default function GuestOrdersPage({
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <h1 className="text-lg font-bold">주문현황</h1>
+          <h1 className="text-lg font-bold">주문현황 <span className="text-xs font-normal text-gray-400">Order Status</span></h1>
         </div>
       </div>
 
@@ -213,13 +213,14 @@ export default function GuestOrdersPage({
         {!hasActive && (
           <div className="text-center py-16">
             <p className="text-gray-400">진행중인 주문이 없습니다</p>
+            <p className="text-gray-300 text-sm mt-1">No active orders</p>
           </div>
         )}
 
         {/* 진행중 */}
         {hasActive && (
           <div>
-            <h2 className="text-sm font-semibold text-gray-500 mb-3">진행중</h2>
+            <h2 className="text-sm font-semibold text-gray-500 mb-3">진행중 <span className="font-normal text-gray-400">In Progress</span></h2>
             <div className="space-y-3">
               {activeItems.map((item) => {
                 if (item.type === "order") {
