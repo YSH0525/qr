@@ -172,16 +172,9 @@ export default function DashboardPage() {
 
   const handleAccept = async (order: OrderWithItems) => {
     playAcceptSound();
-    optimisticOrderUpdate(order.orderId, { status: "accepted", updatedAt: new Date().toISOString() });
-    const ok = await patchOrder(order.orderId, "accepted", "pending");
-    toast[ok ? "success" : "error"](ok ? `${order.roomNumber}호 주문 접수!` : "주문 접수에 실패했습니다");
-  };
-
-  const handlePrepare = async (order: OrderWithItems) => {
-    playAcceptSound();
     optimisticOrderUpdate(order.orderId, { status: "preparing", updatedAt: new Date().toISOString() });
-    const ok = await patchOrder(order.orderId, "preparing", "accepted");
-    toast[ok ? "success" : "error"](ok ? `${order.roomNumber}호 처리 시작!` : "상태 변경에 실패했습니다");
+    const ok = await patchOrder(order.orderId, "preparing", "pending");
+    toast[ok ? "success" : "error"](ok ? `${order.roomNumber}호 주문 접수!` : "주문 접수에 실패했습니다");
   };
 
   const handleComplete = async (order: OrderWithItems) => {
@@ -467,7 +460,7 @@ export default function DashboardPage() {
                         <TableCell className="text-right">
                           <div className="flex gap-1 justify-end">
                             {isOrder ? (
-                              <OrderActions order={row.data} onAccept={handleAccept} onPrepare={handlePrepare} onComplete={handleComplete} onReject={handleReject} onDelete={handleDeleteOrder} />
+                              <OrderActions order={row.data} onAccept={handleAccept} onComplete={handleComplete} onReject={handleReject} onDelete={handleDeleteOrder} />
                             ) : (
                               <ServiceActions request={row.data} onAccept={handleServiceAccept} onComplete={handleServiceComplete} onDelete={handleDeleteService} />
                             )}
@@ -523,7 +516,7 @@ export default function DashboardPage() {
                       </div>
                       <div className="flex gap-1">
                         {isOrder ? (
-                          <OrderActions order={row.data} onAccept={handleAccept} onPrepare={handlePrepare} onComplete={handleComplete} onReject={handleReject} onDelete={handleDeleteOrder} />
+                          <OrderActions order={row.data} onAccept={handleAccept} onComplete={handleComplete} onReject={handleReject} onDelete={handleDeleteOrder} />
                         ) : (
                           <ServiceActions request={row.data} onAccept={handleServiceAccept} onComplete={handleServiceComplete} onDelete={handleDeleteService} />
                         )}
@@ -554,14 +547,12 @@ export default function DashboardPage() {
 function OrderActions({
   order,
   onAccept,
-  onPrepare,
   onComplete,
   onReject,
   onDelete,
 }: {
   order: OrderWithItems;
   onAccept: (o: OrderWithItems) => void;
-  onPrepare: (o: OrderWithItems) => void;
   onComplete: (o: OrderWithItems) => void;
   onReject: (id: string, reason: string) => void;
   onDelete: (o: OrderWithItems) => void;
@@ -605,10 +596,7 @@ function OrderActions({
           <Button size="sm" variant="destructive" onClick={() => setShowRejectReasons(true)}>거절</Button>
         </>
       )}
-      {order.status === "accepted" && (
-        <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={() => onPrepare(order)}>처리</Button>
-      )}
-      {order.status === "preparing" && (
+      {(order.status === "accepted" || order.status === "preparing") && (
         <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => onComplete(order)}>완료</Button>
       )}
       <Button size="sm" variant="ghost" className="text-gray-400 hover:text-red-500 px-1" onClick={() => onDelete(order)}>
