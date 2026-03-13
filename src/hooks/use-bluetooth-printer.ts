@@ -17,8 +17,9 @@ const PRINTER_CHAR_UUIDS = [
 ];
 
 // BLE 전송 시 청크 크기 (MTU 제한 대응)
-const CHUNK_SIZE = 100;
-const CHUNK_DELAY_MS = 30;
+// MTP-II 등 ISSC 기반 BLE 프린터는 512바이트 청크 지원
+const CHUNK_SIZE = 512;
+const CHUNK_DELAY_MS = 10;
 
 interface BluetoothPrinterState {
   isSupported: boolean;

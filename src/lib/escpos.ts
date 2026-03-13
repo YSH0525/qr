@@ -53,10 +53,12 @@ export function cmdInit(): Uint8Array {
   return new Uint8Array([ESC, 0x40]);
 }
 
-/** 한국어 문자셋 설정 (ESC R 13) */
+/** 한국어 코드페이지 설정 (FS & + FS C 3) */
 export function cmdSetKorean(): Uint8Array {
+  const FS = 0x1c;
   return new Uint8Array([
-    ESC, 0x52, 0x0d, // ESC R 13 : 한국어 국제 문자셋 선택
+    FS, 0x26,       // FS & : 멀티바이트(CJK) 문자 모드 활성화
+    FS, 0x43, 0x03, // FS C 3 : 한국어(KS C 5601) 코드페이지 선택
   ]);
 }
 
