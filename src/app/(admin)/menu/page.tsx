@@ -48,6 +48,8 @@ interface MenuItem {
   imageUrl: string | null;
   isAvailable: boolean;
   isBest: boolean;
+  stock: number | null;
+  stockUsed: number;
   displayOrder: number;
 }
 
@@ -153,6 +155,18 @@ export default function MenuPage() {
     } else {
       const data = await res.json();
       toast.error(data.error || "메뉴 삭제 실패");
+    }
+  };
+
+  const resetStock = async (item: MenuItem) => {
+    const res = await fetch(`/api/menu/${item.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ stockUsed: 0 }),
+    });
+    if (res.ok) {
+      fetchMenu();
+      toast.success("판매 수량이 초기화되었습니다");
     }
   };
 
@@ -275,6 +289,26 @@ export default function MenuPage() {
                         순서: {item.displayOrder}
                       </span>
                     </p>
+                    {item.stock !== null && item.stock !== undefined ? (
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <span className="text-xs text-gray-500">
+                          입고: {item.stock} · 판매: {item.stockUsed || 0} · 잔여: {item.stock - (item.stockUsed || 0)}개
+                        </span>
+                        {item.stock - (item.stockUsed || 0) <= 0 && (
+                          <Badge variant="destructive" className="text-[10px] px-1 py-0">재고소진</Badge>
+                        )}
+                        {(item.stockUsed || 0) > 0 && (
+                          <button
+                            className="text-[10px] text-blue-500 underline ml-1"
+                            onClick={() => resetStock(item)}
+                          >
+                            리셋
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400 mt-0.5">재고: 무제한</span>
+                    )}
                     <div className="flex gap-1 mt-1">
                       <Button
                         size="sm"
@@ -510,6 +544,7 @@ function MenuForm({
   const [imageUrl, setImageUrl] = useState(item?.imageUrl || "");
   const [isAvailable, setIsAvailable] = useState(item?.isAvailable ?? true);
   const [isBest, setIsBest] = useState(item?.isBest ?? false);
+  const [stock, setStock] = useState(item?.stock?.toString() ?? "");
   const [displayOrder, setDisplayOrder] = useState(item?.displayOrder?.toString() || "0");
   const [uploading, setUploading] = useState(false);
 
@@ -549,6 +584,7 @@ function MenuForm({
       imageUrl: imageUrl || null,
       isAvailable,
       isBest,
+      stock: stock === "" ? null : parseInt(stock),
       displayOrder: parseInt(displayOrder) || 0,
     };
 
@@ -647,6 +683,24 @@ function MenuForm({
         <p className="text-xs text-gray-400 mt-1">
           숫자가 작을수록 먼저 표시됩니다.
         </p>
+      </div>
+      <div>
+        <label className="text-sm font-medium">입고 수량 (재고 관리)</label>
+        <Input
+          type="number"
+          value={stock}
+          onChange={(e) => setStock(e.target.value)}
+          placeholder="비워두면 무제한"
+          min="0"
+        />
+        <p className="text-xs text-gray-400 mt-1">
+          비워두면 재고 제한 없이 판매됩니다.
+        </p>
+        {item && item.stock !== null && item.stock !== undefined && (
+          <p className="text-xs text-gray-500 mt-1">
+            현재 판매: {item.stockUsed || 0}개 · 잔여: {item.stock - (item.stockUsed || 0)}개
+          </p>
+        )}
       </div>
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">

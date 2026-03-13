@@ -6,6 +6,7 @@ import {
   deleteDoc,
   doc,
   writeBatch,
+  updateDoc,
 } from "firebase/firestore";
 
 const COLLECTIONS_TO_RESET = [
@@ -57,6 +58,18 @@ export async function POST() {
     for (const col of COLLECTIONS_TO_RESET) {
       results[col] = await deleteCollection(col);
     }
+
+    // 모든 menuItems의 stockUsed를 0으로 리셋
+    const menuSnap = await getDocs(collection(firestore, "menuItems"));
+    let stockResetCount = 0;
+    for (const menuDoc of menuSnap.docs) {
+      const data = menuDoc.data() as { stockUsed?: number };
+      if ((data.stockUsed || 0) > 0) {
+        await updateDoc(menuDoc.ref, { stockUsed: 0 });
+        stockResetCount++;
+      }
+    }
+    results["menuItems_stockReset"] = stockResetCount;
 
     const total = Object.values(results).reduce((a, b) => a + b, 0);
 

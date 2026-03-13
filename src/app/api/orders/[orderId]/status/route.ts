@@ -6,6 +6,9 @@ import {
   query,
   where,
   updateDoc,
+  doc,
+  getDoc,
+  increment,
 } from "firebase/firestore";
 
 export async function PATCH(
@@ -51,6 +54,29 @@ export async function PATCH(
   const updateData: Record<string, unknown> = { status, updatedAt };
   if (status === "rejected" && rejectionReason) {
     updateData.rejectionReason = rejectionReason;
+  }
+
+  // Restore stock when rejecting/cancelling (only if not already rejected/cancelled)
+  const currentStatus = (orderDoc.data() as { status: string }).status;
+  if (
+    (status === "rejected" || status === "cancelled") &&
+    currentStatus !== "rejected" &&
+    currentStatus !== "cancelled"
+  ) {
+    const itemsSnap = await getDocs(
+      collection(firestore, "orders", orderDoc.id, "items")
+    );
+    for (const itemDoc of itemsSnap.docs) {
+      const itemData = itemDoc.data() as { menuItemId: string; quantity: number };
+      const menuRef = doc(firestore, "menuItems", itemData.menuItemId);
+      const menuSnap = await getDoc(menuRef);
+      if (menuSnap.exists()) {
+        const menuData = menuSnap.data() as { stock?: number | null };
+        if (menuData.stock !== null && menuData.stock !== undefined) {
+          await updateDoc(menuRef, { stockUsed: increment(-itemData.quantity) });
+        }
+      }
+    }
   }
 
   await updateDoc(orderDoc.ref, updateData);
