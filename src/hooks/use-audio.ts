@@ -5,12 +5,12 @@ import { useCallback, useRef } from "react";
 export function useNotificationSound() {
   const audioContextRef = useRef<AudioContext | null>(null);
 
-  const getContext = useCallback(() => {
+  const getContext = useCallback(async (): Promise<AudioContext> => {
     if (!audioContextRef.current) {
       audioContextRef.current = new AudioContext();
     }
     if (audioContextRef.current.state === "suspended") {
-      audioContextRef.current.resume();
+      await audioContextRef.current.resume();
     }
     return audioContextRef.current;
   }, []);
@@ -18,10 +18,7 @@ export function useNotificationSound() {
   // 딩동 알림음 (G5 → C6)
   const playDingDong = useCallback(async () => {
     try {
-      const ctx = getContext();
-      if (ctx.state === "suspended") {
-        await ctx.resume();
-      }
+      const ctx = await getContext();
       const t = ctx.currentTime;
 
       // 딩 (G5)
@@ -55,9 +52,9 @@ export function useNotificationSound() {
   }, [getContext]);
 
   // 완료 효과음
-  const playCompleteSound = useCallback(() => {
+  const playCompleteSound = useCallback(async () => {
     try {
-      const ctx = getContext();
+      const ctx = await getContext();
       const t = ctx.currentTime;
       const notes = [523, 659, 784, 1047]; // C5, E5, G5, C6
 
