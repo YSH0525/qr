@@ -15,7 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Volume2, X } from "lucide-react";
+import { Volume2, X, Trash2 } from "lucide-react";
 import type { OrderWithItems } from "@/types";
 import type { ServiceRequest } from "@/types/service";
 import {
@@ -599,8 +599,17 @@ function OrderActions({
       {(order.status === "accepted" || order.status === "preparing") && (
         <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => onComplete(order)}>완료</Button>
       )}
-      <Button size="sm" variant="ghost" className="text-gray-400 hover:text-red-500 px-1" onClick={() => onDelete(order)}>
-        <X className="w-4 h-4" />
+      <Button
+        size="sm"
+        variant="ghost"
+        className="text-gray-400 hover:text-red-500 px-1"
+        onClick={() => {
+          if (window.confirm(`${order.roomNumber}호 주문을 삭제하시겠습니까?`)) {
+            onDelete(order);
+          }
+        }}
+      >
+        <Trash2 className="w-4 h-4" />
       </Button>
     </>
   );
@@ -626,8 +635,17 @@ function ServiceActions({
       {req.status === "accepted" && (
         <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => onComplete(req)}>완료</Button>
       )}
-      <Button size="sm" variant="ghost" className="text-gray-400 hover:text-red-500 px-1" onClick={() => onDelete(req)}>
-        <X className="w-4 h-4" />
+      <Button
+        size="sm"
+        variant="ghost"
+        className="text-gray-400 hover:text-red-500 px-1"
+        onClick={() => {
+          if (window.confirm(`${req.roomNumber}호 ${req.categoryName}을(를) 삭제하시겠습니까?`)) {
+            onDelete(req);
+          }
+        }}
+      >
+        <Trash2 className="w-4 h-4" />
       </Button>
     </>
   );
