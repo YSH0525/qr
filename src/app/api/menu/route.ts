@@ -71,6 +71,7 @@ export async function POST(req: NextRequest) {
       price: Number(body.price),
       imageUrl: body.imageUrl || null,
       isAvailable: body.isAvailable ?? true,
+      isBest: body.isBest ?? false,
       displayOrder: body.displayOrder || 0,
       createdAt: new Date().toISOString(),
     };
