@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { AdminSidebar } from "@/components/admin/sidebar";
 import { BluetoothPrinterProvider } from "@/components/admin/bluetooth-printer-provider";
 import { Menu, LogIn } from "lucide-react";
@@ -20,16 +20,14 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [authed, setAuthed] = useState(false);
+  const [authed, setAuthed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return sessionStorage.getItem(AUTH_KEY) === "1";
+  });
   const [id, setId] = useState("");
   const [pw, setPw] = useState("");
   const [error, setError] = useState("");
-  const [checking, setChecking] = useState(true);
-
-  useEffect(() => {
-    setAuthed(sessionStorage.getItem(AUTH_KEY) === "1");
-    setChecking(false);
-  }, []);
+  const [checking] = useState(() => typeof window === "undefined");
 
   const handleLogin = () => {
     if (id === "admin" && pw === "1234") {

@@ -263,6 +263,7 @@ export default function MenuPage() {
                   className="border rounded-lg p-4 flex gap-4"
                 >
                   {item.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={item.imageUrl}
                       alt={item.name}
@@ -661,6 +662,7 @@ function MenuForm({
             disabled={uploading}
           />
           {imageUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={imageUrl}
               alt="미리보기"

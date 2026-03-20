@@ -4,8 +4,8 @@ import { useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { useCartStore } from "@/stores/cart-store";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO: 카카오페이 연동 시 복원
+import { CardContent } from "@/components/ui/card";
 // TODO: 카카오페이 연동 시 복원 — CreditCard, Clock, ChevronDown, ChevronUp, Check
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
@@ -26,8 +26,8 @@ export default function CartPage({
   // const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(KAKAOPAY_ENABLED ? null : "deferred");
   // const [agreedTerms, setAgreedTerms] = useState(false);
   // const [showTerms, setShowTerms] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO: 카카오페이 연동 시 복원
   const paymentMethod: PaymentMethod = "deferred";
-  const agreedTerms = true;
   const [loading, setLoading] = useState(false);
   const { isClosed, closingLabel } = useClosingTime();
 
@@ -44,6 +44,7 @@ export default function CartPage({
     );
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO: 카카오페이 연동 시 복원
   const isFreeOrder = totalAmount() === 0;
 
   const handleOrder = async () => {
@@ -74,7 +75,7 @@ export default function CartPage({
         throw new Error(data.error || "주문 실패");
       }
 
-      const order = await res.json();
+      await res.json();
       clearCart();
       router.push(`/room/${roomId}/orders`);
     } catch (e) {

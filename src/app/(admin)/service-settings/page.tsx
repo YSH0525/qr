@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,23 +44,25 @@ export default function ServiceSettingsPage() {
   // New item form
   const [newItem, setNewItem] = useState({ name: "", icon: "package" });
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     const res = await fetch("/api/service-categories");
     if (res.ok) setCategories(await res.json());
-  };
+  }, []);
 
-  const fetchItems = async (categoryId: string) => {
+  const fetchItems = useCallback(async (categoryId: string) => {
     const res = await fetch(`/api/service-items?categoryId=${categoryId}`);
     if (res.ok) setItems(await res.json());
-  };
-
-  useEffect(() => {
-    fetchCategories();
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data fetch
+    fetchCategories();
+  }, [fetchCategories]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch items when category changes
     if (selectedCatId) fetchItems(selectedCatId);
-  }, [selectedCatId]);
+  }, [selectedCatId, fetchItems]);
 
   const addCategory = async () => {
     const res = await fetch("/api/service-categories", {

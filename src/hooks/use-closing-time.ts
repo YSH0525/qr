@@ -13,10 +13,9 @@ function checkClosed(): boolean {
 }
 
 export function useClosingTime() {
-  const [isClosed, setIsClosed] = useState(false);
+  const [isClosed, setIsClosed] = useState(checkClosed);
 
   useEffect(() => {
-    setIsClosed(checkClosed());
     const interval = setInterval(() => {
       setIsClosed(checkClosed());
     }, 60_000);

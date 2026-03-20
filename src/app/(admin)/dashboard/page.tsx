@@ -70,6 +70,12 @@ export default function DashboardPage() {
 
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [flashScreen, setFlashScreen] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(interval);
+  }, []);
   const { deferredPayments, fetchDeferred } = useSocketDeferred();
   const [settlementPreview, setSettlementPreview] = useState<SettlementPreviewData | null>(null);
   const [settlementModalOpen, setSettlementModalOpen] = useState(false);
@@ -98,6 +104,7 @@ export default function DashboardPage() {
       }
     }
     if (hasNew) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- flash screen on new order notification
       setFlashScreen(true);
       setTimeout(() => setFlashScreen(false), 2000);
     }
@@ -120,6 +127,7 @@ export default function DashboardPage() {
       }
     }
     if (hasNew) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- flash screen on new service notification
       setFlashScreen(true);
       setTimeout(() => setFlashScreen(false), 2000);
     }
@@ -291,13 +299,13 @@ export default function DashboardPage() {
 
   const activeRows = buildRows(activeOrders, activeServices);
 
-  const timeAgo = (dateStr: string) => {
-    const diff = Date.now() - new Date(dateStr).getTime();
+  const timeAgo = useCallback((dateStr: string) => {
+    const diff = now - new Date(dateStr).getTime();
     const mins = Math.floor(diff / 60000);
     if (mins < 1) return "방금 전";
     if (mins < 60) return `${mins}분 전`;
     return `${Math.floor(mins / 60)}시간 전`;
-  };
+  }, [now]);
 
   const formatPrice = (n: number) => n.toLocaleString("ko-KR") + "원";
 

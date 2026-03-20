@@ -11,7 +11,7 @@ import {
   PAYMENT_METHOD_LABELS,
   REJECTION_REASON_LABELS,
 } from "@/types";
-import type { OrderStatus, OrderWithItems, RejectionReasonValue } from "@/types";
+import type { OrderStatus, RejectionReasonValue } from "@/types";
 import type { ServiceRequest, ServiceRequestStatus } from "@/types/service";
 import { SERVICE_TYPE_LABELS, CLEANING_LEVEL_LABELS } from "@/types/service";
 import { useSocketGuestOrders } from "@/hooks/use-socket-guest-orders";
