@@ -1,23 +1,23 @@
 import type { Server } from "socket.io";
 
-let io: Server | null = null;
+const g = globalThis as unknown as { __socketIO?: Server };
 
 export function setIO(server: Server): void {
-  io = server;
+  g.__socketIO = server;
 }
 
 export function getIO(): Server | null {
-  return io;
+  return g.__socketIO ?? null;
 }
 
 export function emitToAdmin(event: string, data: unknown): void {
-  io?.to("admin").emit(event, data);
+  g.__socketIO?.to("admin").emit(event, data);
 }
 
 export function emitToRoom(roomId: string, event: string, data: unknown): void {
-  io?.to(`room:${roomId}`).emit(event, data);
+  g.__socketIO?.to(`room:${roomId}`).emit(event, data);
 }
 
 export function emitToPayment(orderId: string, event: string, data: unknown): void {
-  io?.to(`payment:${orderId}`).emit(event, data);
+  g.__socketIO?.to(`payment:${orderId}`).emit(event, data);
 }
