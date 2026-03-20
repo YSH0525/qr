@@ -226,7 +226,7 @@ export default function GuestOrdersPage({
                 if (item.type === "order") {
                   const order = item.data;
                   return (
-                    <Card key={`order-${order.id}`} className={order.status === "rejected" ? "border-red-300 bg-red-50" : ""}>
+                    <Card key={`order-${order.orderId}`} className={order.status === "rejected" ? "border-red-300 bg-red-50" : ""}>
                       <CardContent className="p-4 space-y-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
@@ -267,7 +267,7 @@ export default function GuestOrdersPage({
                   const SvcIcon = SERVICE_ICON_MAP[svc.categoryIcon] || Package;
                   const detail = getServiceDetail(svc);
                   return (
-                    <Card key={`svc-${svc.id}`}>
+                    <Card key={`svc-${svc.requestId}`}>
                       <CardContent className="p-4 space-y-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">

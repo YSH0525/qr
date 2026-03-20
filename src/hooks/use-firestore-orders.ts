@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { firestore } from "@/lib/firebase";
 import {
   collection,
@@ -59,10 +59,17 @@ export function useFirestoreOrders(
     }
   }, []);
 
+  // statusFilter 배열을 안정적인 문자열로 변환하여 useEffect 의존성 안정화
+  const filterKey = useMemo(
+    () => (statusFilter ? JSON.stringify(statusFilter) : ""),
+    [statusFilter]
+  );
+
   useEffect(() => {
+    const parsedFilter = filterKey ? (JSON.parse(filterKey) as string[]) : undefined;
     const constraints = [];
-    if (statusFilter && statusFilter.length > 0) {
-      constraints.push(where("status", "in", statusFilter));
+    if (parsedFilter && parsedFilter.length > 0) {
+      constraints.push(where("status", "in", parsedFilter));
     }
 
     const q = query(
@@ -140,6 +147,9 @@ export function useFirestoreOrders(
       }
 
       setLoading(false);
+    }, (error) => {
+      console.error("Orders onSnapshot error:", error);
+      setLoading(false);
     });
 
     return () => {
@@ -148,7 +158,7 @@ export function useFirestoreOrders(
       for (const timer of retryTimers.values()) clearTimeout(timer);
       retryTimers.clear();
     };
-  }, [statusFilter]);
+  }, [filterKey]);
 
   return { orders, loading, optimisticUpdate, releaseOptimisticLock };
 }
@@ -193,10 +203,17 @@ export function useFirestoreServiceRequests(
     }
   }, []);
 
+  // statusFilter 배열을 안정적인 문자열로 변환
+  const filterKey = useMemo(
+    () => (statusFilter ? JSON.stringify(statusFilter) : ""),
+    [statusFilter]
+  );
+
   useEffect(() => {
+    const parsedFilter = filterKey ? (JSON.parse(filterKey) as string[]) : undefined;
     const constraints = [];
-    if (statusFilter && statusFilter.length > 0) {
-      constraints.push(where("status", "in", statusFilter));
+    if (parsedFilter && parsedFilter.length > 0) {
+      constraints.push(where("status", "in", parsedFilter));
     }
 
     const q = query(
@@ -228,6 +245,9 @@ export function useFirestoreServiceRequests(
       });
 
       setLoading(false);
+    }, (error) => {
+      console.error("ServiceRequests onSnapshot error:", error);
+      setLoading(false);
     });
 
     return () => {
@@ -236,7 +256,7 @@ export function useFirestoreServiceRequests(
         clearTimeout(timer);
       }
     };
-  }, [statusFilter]);
+  }, [filterKey]);
 
   return { serviceRequests, loading, optimisticUpdate, releaseOptimisticLock };
 }

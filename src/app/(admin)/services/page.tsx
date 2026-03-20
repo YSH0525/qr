@@ -63,13 +63,19 @@ export default function ServicesPage() {
     if (status === "accepted") playAcceptSound();
     if (status === "completed") playCompleteSound();
 
-    const res = await fetch(`/api/service-requests/${requestId}/status`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-    if (res.ok) {
-      toast.success(`요청 상태가 "${SERVICE_STATUS_LABELS[status as keyof typeof SERVICE_STATUS_LABELS]}"(으)로 변경되었습니다`);
+    try {
+      const res = await fetch(`/api/service-requests/${requestId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (res.ok) {
+        toast.success(`요청 상태가 "${SERVICE_STATUS_LABELS[status as keyof typeof SERVICE_STATUS_LABELS]}"(으)로 변경되었습니다`);
+      } else {
+        toast.error("상태 변경에 실패했습니다");
+      }
+    } catch {
+      toast.error("네트워크 오류가 발생했습니다");
     }
   };
 
