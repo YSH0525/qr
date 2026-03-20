@@ -25,11 +25,12 @@ function generateRequestId(): string {
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const status = searchParams.get("status");
+    const statuses = searchParams.getAll("status");
     const roomId = searchParams.get("roomId");
 
     const constraints: ReturnType<typeof where>[] = [];
-    if (status) constraints.push(where("status", "==", status));
+    if (statuses.length === 1) constraints.push(where("status", "==", statuses[0]));
+    else if (statuses.length > 1) constraints.push(where("status", "in", statuses));
     if (roomId) constraints.push(where("roomUuid", "==", roomId));
 
     const snap = await getDocs(
