@@ -11,14 +11,9 @@ export type OrderStatus =
   | "completed"
   | "cancelled";
 
-export type PaymentMethod = "kakaopay" | "deferred";
+export type PaymentMethod = "deferred";
 
-export type PaymentStatus =
-  | "pending"
-  | "paid"
-  | "failed"
-  | "cancelled"
-  | "deferred";
+export type PaymentStatus = "deferred";
 
 export const ORDER_TYPE_LABELS: Record<OrderType, string> = {
   product: "주문",
@@ -37,15 +32,10 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
 };
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
-  kakaopay: "카카오페이",
   deferred: "후불결제",
 };
 
 export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
-  pending: "결제대기",
-  paid: "결제완료",
-  failed: "결제실패",
-  cancelled: "결제취소",
   deferred: "후불",
 };
 
@@ -101,7 +91,6 @@ export interface OrderWithItems {
   extensionHours?: number | null;
   extensionAmount?: number | null;
   freeExtension?: boolean;
-  kakaoTid?: string | null;
 }
 
 export interface OrderItem {

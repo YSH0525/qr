@@ -4,14 +4,8 @@ import { useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { useCartStore } from "@/stores/cart-store";
 import { Button } from "@/components/ui/button";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO: 카카오페이 연동 시 복원
-import { CardContent } from "@/components/ui/card";
-// TODO: 카카오페이 연동 시 복원 — CreditCard, Clock, ChevronDown, ChevronUp, Check
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
-import type { PaymentMethod } from "@/types";
-// TODO: 카카오페이 연동 시 복원
-// import { KAKAOPAY_ENABLED } from "@/lib/constants";
 import { useClosingTime } from "@/hooks/use-closing-time";
 
 export default function CartPage({
@@ -22,12 +16,6 @@ export default function CartPage({
   const { roomId } = use(params);
   const router = useRouter();
   const { items, totalAmount, clearCart } = useCartStore();
-  // TODO: 카카오페이 연동 시 복원 — 결제방식 선택 & 이용약관
-  // const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(KAKAOPAY_ENABLED ? null : "deferred");
-  // const [agreedTerms, setAgreedTerms] = useState(false);
-  // const [showTerms, setShowTerms] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO: 카카오페이 연동 시 복원
-  const paymentMethod: PaymentMethod = "deferred";
   const [loading, setLoading] = useState(false);
   const { isClosed, closingLabel } = useClosingTime();
 
@@ -44,19 +32,9 @@ export default function CartPage({
     );
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- TODO: 카카오페이 연동 시 복원
-  const isFreeOrder = totalAmount() === 0;
-
   const handleOrder = async () => {
     setLoading(true);
     try {
-      // TODO: 카카오페이 연동 시 복원 — effectivePaymentMethod 분기 & 이용약관 검증
-      // const effectivePaymentMethod = isFreeOrder ? "deferred" : paymentMethod;
-      // if (!effectivePaymentMethod) { toast.error("결제 방식을 선택해주세요"); return; }
-      // if (!agreedTerms) { toast.error("이용약관에 동의해주세요"); return; }
-      // if (effectivePaymentMethod === "kakaopay") { ... }
-
-      // Deferred payment: create order directly
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -155,105 +133,6 @@ export default function CartPage({
             <p className="text-gray-300">  Delivery time may vary depending on hotel operations.</p>
           </div>
         </div>
-
-        {/* TODO: 카카오페이 연동 시 결제방식 선택 & 이용약관 UI 복원
-        {!isFreeOrder && (
-          <Card>
-            <CardContent className="p-5">
-              <h2 className="font-semibold mb-3">결제 방식</h2>
-              {KAKAOPAY_ENABLED ? (
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    className={`p-4 rounded-xl border-2 text-center transition ${
-                      paymentMethod === "kakaopay"
-                        ? "border-yellow-400 bg-yellow-50"
-                        : "border-gray-200 hover:border-gray-300"
-                    }`}
-                    onClick={() => setPaymentMethod("kakaopay")}
-                  >
-                    <CreditCard className="w-8 h-8 mx-auto mb-2 text-yellow-600" />
-                    <p className="font-semibold text-sm">카카오페이</p>
-                    <p className="text-xs text-gray-500 mt-1">즉시 결제</p>
-                  </button>
-                  <button
-                    className={`p-4 rounded-xl border-2 text-center transition ${
-                      paymentMethod === "deferred"
-                        ? "border-blue-400 bg-blue-50"
-                        : "border-gray-200 hover:border-gray-300"
-                    }`}
-                    onClick={() => setPaymentMethod("deferred")}
-                  >
-                    <Clock className="w-8 h-8 mx-auto mb-2 text-blue-600" />
-                    <p className="font-semibold text-sm">후불결제</p>
-                    <p className="text-xs text-gray-500 mt-1">퇴실시 정산</p>
-                  </button>
-                </div>
-              ) : (
-                <div className="p-4 rounded-xl border-2 border-blue-400 bg-blue-50 text-center">
-                  <Clock className="w-8 h-8 mx-auto mb-2 text-blue-600" />
-                  <p className="font-semibold text-sm">후불결제</p>
-                  <p className="text-xs text-gray-500 mt-1">퇴실시 프런트에서 정산합니다</p>
-                </div>
-              )}
-              {KAKAOPAY_ENABLED && paymentMethod && (
-                <Badge
-                  variant="outline"
-                  className="mt-3"
-                >
-                  {paymentMethod === "kakaopay"
-                    ? "카카오페이로 바로 결제합니다"
-                    : "퇴실 시 프런트에서 정산합니다"}
-                </Badge>
-              )}
-            </CardContent>
-          </Card>
-        )}
-        <Card>
-          <CardContent className="p-5">
-            <button
-              className="flex items-center gap-3 w-full text-left"
-              onClick={() => setAgreedTerms(!agreedTerms)}
-            >
-              <div
-                className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition ${
-                  agreedTerms
-                    ? "bg-blue-500 border-blue-500"
-                    : "border-gray-300"
-                }`}
-              >
-                {agreedTerms && <Check className="w-3.5 h-3.5 text-white" />}
-              </div>
-              <span className="font-semibold text-sm flex-1">
-                주문 및 결제 이용약관에 동의합니다
-              </span>
-              <button
-                className="text-gray-400 p-1"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowTerms(!showTerms);
-                }}
-              >
-                {showTerms ? (
-                  <ChevronUp className="w-4 h-4" />
-                ) : (
-                  <ChevronDown className="w-4 h-4" />
-                )}
-              </button>
-            </button>
-            {showTerms && (
-              <div className="mt-3 p-3 bg-gray-50 rounded-lg text-xs text-gray-500 space-y-2 max-h-48 overflow-y-auto">
-                <p className="font-semibold text-gray-700">이용약관</p>
-                <p>1. 주문한 상품은 객실로 제공되며, 주문 접수 후 취소가 불가할 수 있습니다.</p>
-                <p>2. 카카오페이 결제 시 결제 완료 후 환불은 호텔 정책에 따릅니다.</p>
-                <p>3. 후불결제 선택 시 퇴실 시 프런트에서 정산합니다.</p>
-                <p>4. 상품 제공 시간은 호텔 운영 상황에 따라 변동될 수 있습니다.</p>
-                <p>5. 개인정보는 주문 처리 목적으로만 사용되며, 결제 정보는 카카오페이를 통해 안전하게 처리됩니다.</p>
-                <p>6. 기타 문의사항은 프런트 데스크로 연락해주세요.</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-        */}
       </div>
 
       {/* Order Button */}

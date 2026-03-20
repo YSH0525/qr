@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { firestore } from "@/lib/firebase";
 import { collection, getDocs, query, orderBy } from "firebase/firestore";
-import { getCallbackBaseUrl } from "@/lib/constants";
+import { BASE_URL } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  const baseUrl = getCallbackBaseUrl(req);
+  void req;
+  const baseUrl = BASE_URL;
 
   try {
     const snap = await getDocs(

@@ -26,16 +26,7 @@ export default function RefundPolicyPage() {
         </section>
 
         <section>
-          <h2 className="font-semibold text-base mb-2">2. 카카오페이 결제 취소</h2>
-          <p>
-            카카오페이로 결제한 주문의 취소는 프런트 데스크에 직접 요청해 주시기 바랍니다.
-            환불 가능한 경우, 결제 수단으로 환불이 진행되며 카카오페이 환불은 영업일 기준
-            3~5일 소요될 수 있습니다.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="font-semibold text-base mb-2">3. 후불결제 취소</h2>
+          <h2 className="font-semibold text-base mb-2">2. 후불결제 취소</h2>
           <p>
             후불결제 주문은 서비스 준비 전까지 취소가 가능합니다.
             퇴실 시 프런트 데스크에서 최종 정산 내역을 확인하실 수 있습니다.
@@ -43,7 +34,7 @@ export default function RefundPolicyPage() {
         </section>
 
         <section>
-          <h2 className="font-semibold text-base mb-2">4. 서비스 불만족 시</h2>
+          <h2 className="font-semibold text-base mb-2">3. 서비스 불만족 시</h2>
           <p>
             제공된 서비스에 문제가 있는 경우 (상품 하자, 오배송 등),
             프런트 데스크(내선 0번)로 즉시 연락해 주시면 교환 또는 환불 조치를 해드립니다.
@@ -51,7 +42,7 @@ export default function RefundPolicyPage() {
         </section>
 
         <section>
-          <h2 className="font-semibold text-base mb-2">5. 체크아웃 연장 서비스</h2>
+          <h2 className="font-semibold text-base mb-2">4. 체크아웃 연장 서비스</h2>
           <p>
             체크아웃 연장 서비스는 결제 완료 후 취소가 불가합니다.
             다만, 호텔 사정으로 연장이 불가능한 경우 전액 환불됩니다.
@@ -59,12 +50,8 @@ export default function RefundPolicyPage() {
         </section>
 
         <section>
-          <h2 className="font-semibold text-base mb-2">6. 환불 처리 기간</h2>
+          <h2 className="font-semibold text-base mb-2">5. 환불 처리</h2>
           <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-            <div className="flex justify-between">
-              <span>카카오페이</span>
-              <span>취소 후 3~5 영업일</span>
-            </div>
             <div className="flex justify-between">
               <span>후불결제</span>
               <span>퇴실 시 정산에서 제외</span>
@@ -73,7 +60,7 @@ export default function RefundPolicyPage() {
         </section>
 
         <section>
-          <h2 className="font-semibold text-base mb-2">7. 문의</h2>
+          <h2 className="font-semibold text-base mb-2">6. 문의</h2>
           <p>
             환불 및 취소 관련 문의는 프런트 데스크 또는 아래 연락처로 문의해 주시기 바랍니다.
           </p>

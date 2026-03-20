@@ -35,11 +35,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="font-semibold text-base mb-2">제4조 (결제 방법)</h2>
-          <p>서비스 이용 시 다음의 결제 방법을 제공합니다.</p>
-          <ul className="list-disc pl-5 mt-2 space-y-1">
-            <li><strong>카카오페이 결제:</strong> 주문 시 즉시 결제가 이루어집니다.</li>
-            <li><strong>후불결제:</strong> 퇴실(체크아웃) 시 프런트에서 일괄 정산합니다.</li>
-          </ul>
+          <p>서비스 이용 시 후불결제를 제공합니다. 퇴실(체크아웃) 시 프런트에서 일괄 정산합니다.</p>
         </section>
 
         <section>
@@ -66,8 +62,7 @@ export default function TermsPage() {
           <h2 className="font-semibold text-base mb-2">제7조 (개인정보 수집)</h2>
           <p>
             호텔은 서비스 제공을 위해 최소한의 정보(객실 번호, 주문 내역)만을 수집하며,
-            서비스 목적 외의 용도로 사용하지 않습니다. 결제 정보는 카카오페이를 통해
-            안전하게 처리되며, 호텔은 결제 정보를 직접 저장하지 않습니다.
+            서비스 목적 외의 용도로 사용하지 않습니다.
           </p>
         </section>
 
