@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
       roomId: roomDoc.id,
       roomUuid: roomData.roomId,
       roomNumber: roomData.roomNumber,
-      status: "accepted",
+      status: "requested",
       note: note || null,
       items: type === "towel"
         ? [{ itemId: "towel", name: "수건", quantity: Number(quantity) || 2 }]

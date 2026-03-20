@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
       roomId: roomDoc.id,
       roomUuid: roomData.roomId,
       roomNumber: roomData.roomNumber,
-      status: "accepted",
+      status: "requested",
       note: note || null,
       items: items || [],
       cleaningOptions: catData.type === "cleaning" && cleaningOptions ? cleaningOptions : null,
