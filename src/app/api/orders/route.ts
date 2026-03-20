@@ -12,7 +12,7 @@ import {
 } from "firebase/firestore";
 import { orderSchema } from "@/lib/validations";
 import { getNextDailySeq } from "@/lib/daily-seq";
-import { emitToAdmin } from "@/lib/socket-server";
+import { emitToAdmin, emitToRoom } from "@/lib/socket-server";
 import { format } from "date-fns";
 import type { ServiceType } from "@/types/service";
 
@@ -246,6 +246,7 @@ async function handleProductOrder(body: Record<string, unknown>) {
   };
 
   emitToAdmin("order:created", fullOrder);
+  emitToRoom(room.roomId, "order:created", fullOrder);
   if (paymentMethod === "deferred") {
     emitToAdmin("deferred:updated", {});
   }
@@ -375,6 +376,7 @@ async function handleServiceOrder(body: Record<string, unknown>, orderType: stri
 
   const fullOrder = { id: docRef.id, ...orderData };
   emitToAdmin("order:created", fullOrder);
+  emitToRoom(roomData.roomId, "order:created", fullOrder);
 
   if (orderData.paymentMethod === "deferred") {
     emitToAdmin("deferred:updated", {});

@@ -11,7 +11,7 @@ import {
 import { kakaoPayApprove, kakaoPayCancel } from "@/lib/kakaopay";
 import { getNextDailySeq } from "@/lib/daily-seq";
 import { getCallbackBaseUrl } from "@/lib/constants";
-import { emitToAdmin } from "@/lib/socket-server";
+import { emitToAdmin, emitToRoom } from "@/lib/socket-server";
 
 export async function GET(req: NextRequest) {
   const baseUrl = getCallbackBaseUrl(req);
@@ -131,7 +131,7 @@ export async function GET(req: NextRequest) {
         });
         await deleteDoc(pendingDoc.ref);
 
-        emitToAdmin("order:created", {
+        const fullOrder = {
           id: orderRef.id,
           orderId: data.requestId,
           type: data.type,
@@ -156,7 +156,9 @@ export async function GET(req: NextRequest) {
           kakaoTid: data.kakaoTid,
           createdAt: data.createdAt,
           updatedAt: now,
-        });
+        };
+        emitToAdmin("order:created", fullOrder);
+        emitToRoom(data.roomUuid, "order:created", fullOrder);
       } catch (err) {
         console.error("Failed to create order after approve:", err);
       }
