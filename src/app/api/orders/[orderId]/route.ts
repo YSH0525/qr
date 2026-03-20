@@ -11,6 +11,7 @@ import {
   updateDoc,
   increment,
 } from "firebase/firestore";
+import { emitToAdmin } from "@/lib/socket-server";
 
 export async function GET(
   _req: NextRequest,
@@ -91,6 +92,8 @@ export async function DELETE(
 
   // 주문 문서 삭제
   await deleteDoc(orderDoc.ref);
+
+  emitToAdmin("order:deleted", { orderId });
 
   return NextResponse.json({ success: true });
 }

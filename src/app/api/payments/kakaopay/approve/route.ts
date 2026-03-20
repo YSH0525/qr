@@ -11,6 +11,7 @@ import {
 import { kakaoPayApprove, kakaoPayCancel } from "@/lib/kakaopay";
 import { getNextDailySeq } from "@/lib/daily-seq";
 import { getCallbackBaseUrl } from "@/lib/constants";
+import { emitToAdmin, emitToPayment } from "@/lib/socket-server";
 
 interface PendingOrderData {
   orderId: string;
@@ -125,6 +126,26 @@ export async function GET(req: NextRequest) {
         );
 
         await deleteDoc(pendingDoc.ref);
+
+        const fullOrder = {
+          id: orderRef.id,
+          orderId: data.orderId,
+          dailySeq,
+          roomId: data.roomId,
+          roomUuid: data.roomUuid,
+          roomNumber: data.roomNumber,
+          status: "pending",
+          paymentMethod: "kakaopay",
+          paymentStatus: "paid",
+          totalAmount: data.totalAmount,
+          note: data.note,
+          kakaoTid: data.kakaoTid,
+          createdAt: data.createdAt,
+          updatedAt: now,
+          items: data.items,
+        };
+        emitToAdmin("order:created", fullOrder);
+        emitToPayment(data.orderId, "payment:status-changed", { orderId: data.orderId, status: "completed" });
       } catch (err) {
         console.error("Failed to create order after approve:", err);
       }

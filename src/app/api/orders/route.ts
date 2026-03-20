@@ -12,6 +12,7 @@ import {
 } from "firebase/firestore";
 import { orderSchema } from "@/lib/validations";
 import { getNextDailySeq } from "@/lib/daily-seq";
+import { emitToAdmin } from "@/lib/socket-server";
 import { format } from "date-fns";
 
 function generateOrderId(): string {
@@ -220,6 +221,11 @@ export async function POST(req: NextRequest) {
       ...orderData,
       items: itemDetails,
     };
+
+    emitToAdmin("order:created", fullOrder);
+    if (paymentMethod === "deferred") {
+      emitToAdmin("deferred:updated", {});
+    }
 
     return NextResponse.json(fullOrder, { status: 201 });
   } catch (e) {

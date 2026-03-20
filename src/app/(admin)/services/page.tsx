@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useFirestoreServiceRequests } from "@/hooks/use-firestore-orders";
+import { useSocketServiceRequests } from "@/hooks/use-socket-orders";
 import { useNotificationSound } from "@/hooks/use-audio";
 import { toast } from "sonner";
 import type { ServiceRequest } from "@/types/service";
@@ -31,7 +31,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function ServicesPage() {
-  const { serviceRequests: requests } = useFirestoreServiceRequests();
+  const { serviceRequests: requests } = useSocketServiceRequests();
   const [filter, setFilter] = useState<string>("all");
   const { playServiceRequestAlert, playAcceptSound, playCompleteSound } = useNotificationSound();
 

@@ -8,6 +8,7 @@ import {
   updateDoc,
   addDoc,
 } from "firebase/firestore";
+import { emitToAdmin } from "@/lib/socket-server";
 
 export async function POST(
   _req: NextRequest,
@@ -127,6 +128,8 @@ export async function POST(
     orderCount: deferredSnap.size + extensionSnap.size,
     settledAt,
   });
+
+  emitToAdmin("deferred:updated", {});
 
   return NextResponse.json({
     settled: deferredSnap.size + extensionSnap.size,

@@ -11,6 +11,7 @@ import {
 import { kakaoPayApprove, kakaoPayCancel } from "@/lib/kakaopay";
 import { getNextDailySeq } from "@/lib/daily-seq";
 import { getCallbackBaseUrl } from "@/lib/constants";
+import { emitToAdmin } from "@/lib/socket-server";
 
 export async function GET(req: NextRequest) {
   const baseUrl = getCallbackBaseUrl(req);
@@ -103,7 +104,7 @@ export async function GET(req: NextRequest) {
       try {
         const dailySeq = await getNextDailySeq();
         const now = new Date().toISOString();
-        await addDoc(collection(firestore, "serviceRequests"), {
+        const serviceRef = await addDoc(collection(firestore, "serviceRequests"), {
           requestId: data.requestId,
           dailySeq,
           categoryId: data.categoryId,
@@ -127,6 +128,31 @@ export async function GET(req: NextRequest) {
           updatedAt: now,
         });
         await deleteDoc(pendingDoc.ref);
+
+        emitToAdmin("service:created", {
+          id: serviceRef.id,
+          requestId: data.requestId,
+          dailySeq,
+          categoryId: data.categoryId,
+          categoryName: data.categoryName,
+          categoryIcon: data.categoryIcon,
+          type: data.type,
+          roomId: data.roomId,
+          roomUuid: data.roomUuid,
+          roomNumber: data.roomNumber,
+          status: "accepted",
+          note: data.note,
+          items: data.items,
+          cleaningOptions: null,
+          extensionHours: data.extensionHours,
+          extensionAmount: data.extensionAmount,
+          freeExtension: false,
+          paymentMethod: "kakaopay",
+          paymentStatus: "paid",
+          kakaoTid: data.kakaoTid,
+          createdAt: data.createdAt,
+          updatedAt: now,
+        });
       } catch (err) {
         console.error("Failed to create service request after approve:", err);
       }

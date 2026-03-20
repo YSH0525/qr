@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useFirestoreOrders, useFirestoreServiceRequests } from "@/hooks/use-firestore-orders";
+import { useSocketOrders, useSocketServiceRequests } from "@/hooks/use-socket-orders";
 import { useNotificationSound } from "@/hooks/use-audio";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -34,8 +34,8 @@ import { ko } from "date-fns/locale";
 type ViewFilter = "all" | "orders" | "services";
 
 export default function OrdersPage() {
-  const { orders } = useFirestoreOrders();
-  const { serviceRequests } = useFirestoreServiceRequests();
+  const { orders } = useSocketOrders();
+  const { serviceRequests } = useSocketServiceRequests();
   const { playNewOrderAlert, playServiceRequestAlert } = useNotificationSound();
   const [viewFilter, setViewFilter] = useState<ViewFilter>("all");
 

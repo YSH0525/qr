@@ -12,6 +12,7 @@ import {
 import { getNextDailySeq } from "@/lib/daily-seq";
 import { format } from "date-fns";
 import type { ServiceType } from "@/types/service";
+import { emitToAdmin } from "@/lib/socket-server";
 
 function generateRequestId(): string {
   const date = format(new Date(), "yyyyMMdd");
@@ -137,6 +138,8 @@ export async function POST(req: NextRequest) {
     );
 
     const fullRequest = { id: docRef.id, ...requestData };
+
+    emitToAdmin("service:created", fullRequest);
 
     return NextResponse.json(fullRequest, { status: 201 });
   } catch (e) {
