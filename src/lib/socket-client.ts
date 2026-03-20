@@ -8,12 +8,12 @@ export function getSocket(): Socket {
   if (!socket) {
     socket = io({
       path: "/socket.io",
-      transports: ["websocket", "polling"],
+      transports: ["websocket"],
       reconnection: true,
       reconnectionAttempts: Infinity,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 10000,
-      timeout: 20000,
+      reconnectionDelay: 500,
+      reconnectionDelayMax: 5000,
+      timeout: 10000,
     });
   }
   return socket;

@@ -75,21 +75,21 @@ function OrderStepper({ order }: { order: OrderWithItems }) {
           <div key={step} className="flex items-center gap-1">
             {i > 0 && (
               <div
-                className={`h-0.5 w-4 ${isActive ? "bg-blue-500" : "bg-gray-200"}`}
+                className={`h-0.5 w-4 transition-colors duration-500 ${isActive ? "bg-blue-500" : "bg-gray-200"}`}
               />
             )}
             <div className="flex flex-col items-center">
               <div
-                className={`w-3 h-3 rounded-full border-2 ${
+                className={`w-3 h-3 rounded-full border-2 transition-all duration-500 ${
                   isActive
                     ? isCurrent
-                      ? "bg-blue-500 border-blue-500"
+                      ? "bg-blue-500 border-blue-500 scale-125"
                       : "bg-blue-500 border-blue-500"
                     : "bg-white border-gray-300"
                 }`}
               />
               <span
-                className={`text-[10px] mt-0.5 whitespace-pre-line text-center ${
+                className={`text-[10px] mt-0.5 whitespace-pre-line text-center transition-colors duration-500 ${
                   isActive ? "text-blue-600 font-semibold" : "text-gray-400"
                 }`}
               >
