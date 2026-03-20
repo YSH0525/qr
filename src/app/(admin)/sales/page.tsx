@@ -62,7 +62,6 @@ interface RoomStat {
 }
 
 interface PaymentBreakdown {
-  kakaopay: { count: number; amount: number };
   deferred: { count: number; amount: number };
 }
 
@@ -101,7 +100,7 @@ interface AnalyticsData {
   worstDay?: DailyData;
 }
 
-const PIE_COLORS = ["#facc15", "#3b82f6"];
+const PIE_COLORS = ["#3b82f6"];
 
 function formatPrice(price: number) {
   return price.toLocaleString("ko-KR") + "원";
@@ -458,10 +457,6 @@ export default function SalesPage() {
                   <Pie
                     data={[
                       {
-                        name: "카카오페이",
-                        value: data.paymentBreakdown.kakaopay.amount,
-                      },
-                      {
                         name: "후불결제",
                         value: data.paymentBreakdown.deferred.amount,
                       },
@@ -476,25 +471,13 @@ export default function SalesPage() {
                     }
                     labelLine={false}
                   >
-                    {PIE_COLORS.map((color, i) => (
-                      <Cell key={i} fill={color} />
-                    ))}
+                    <Cell fill={PIE_COLORS[0]} />
                   </Pie>
                   <Tooltip formatter={(v) => formatPrice(Number(v))} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
             <div className="space-y-2 mt-2">
-              <div className="flex justify-between text-sm">
-                <span className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-yellow-400" />
-                  카카오페이
-                </span>
-                <span className="font-medium">
-                  {data.paymentBreakdown.kakaopay.count}건 ·{" "}
-                  {formatPrice(data.paymentBreakdown.kakaopay.amount)}
-                </span>
-              </div>
               <div className="flex justify-between text-sm">
                 <span className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded-full bg-blue-500" />

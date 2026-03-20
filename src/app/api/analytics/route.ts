@@ -146,15 +146,13 @@ async function getDailyAnalytics(params: URLSearchParams) {
 
   // Payment method breakdown
   const paymentBreakdown = {
-    kakaopay: { count: 0, amount: 0 },
     deferred: { count: 0, amount: 0 },
   };
 
   for (const order of validOrders) {
-    const method = order.paymentMethod as "kakaopay" | "deferred";
-    if (paymentBreakdown[method]) {
-      paymentBreakdown[method].count += 1;
-      paymentBreakdown[method].amount += order.totalAmount;
+    if (order.paymentMethod === "deferred") {
+      paymentBreakdown.deferred.count += 1;
+      paymentBreakdown.deferred.amount += order.totalAmount;
     }
   }
 
@@ -322,15 +320,13 @@ async function getMonthlyAnalytics(params: URLSearchParams) {
 
   // Payment breakdown
   const paymentBreakdown = {
-    kakaopay: { count: 0, amount: 0 },
     deferred: { count: 0, amount: 0 },
   };
 
   for (const order of validOrders) {
-    const method = order.paymentMethod as "kakaopay" | "deferred";
-    if (paymentBreakdown[method]) {
-      paymentBreakdown[method].count += 1;
-      paymentBreakdown[method].amount += order.totalAmount;
+    if (order.paymentMethod === "deferred") {
+      paymentBreakdown.deferred.count += 1;
+      paymentBreakdown.deferred.amount += order.totalAmount;
     }
   }
 

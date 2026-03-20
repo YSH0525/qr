@@ -33,7 +33,7 @@ export const orderSchema = z.object({
       })
     )
     .min(1, "최소 1개 이상의 상품을 주문해야 합니다"),
-  paymentMethod: z.enum(["kakaopay", "deferred"]),
+  paymentMethod: z.enum(["deferred"]),
   note: z.string().optional(),
 });
 

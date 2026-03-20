@@ -112,15 +112,7 @@ async function handleProductOrder(body: Record<string, unknown>) {
     return NextResponse.json({ error: firstError }, { status: 400 });
   }
 
-  const { roomId: roomUuid, items, paymentMethod, note } = parseResult.data;
-
-  // Block direct kakaopay order creation — must use payment ready flow
-  if (paymentMethod === "kakaopay") {
-    return NextResponse.json(
-      { error: "카카오페이 결제는 결제 준비 API를 통해 진행해야 합니다" },
-      { status: 400 }
-    );
-  }
+  const { roomId: roomUuid, items, note } = parseResult.data;
 
   // Find room by UUID
   const roomSnap = await getDocs(
@@ -206,7 +198,6 @@ async function handleProductOrder(body: Record<string, unknown>) {
   }
 
   const orderId = generateOrderId();
-  const paymentStatus = paymentMethod === "deferred" ? "deferred" : "pending";
   const now = new Date().toISOString();
   const dailySeq = await getNextDailySeq();
 
@@ -217,11 +208,10 @@ async function handleProductOrder(body: Record<string, unknown>) {
     roomUuid: room.roomId,
     roomNumber: room.roomNumber,
     status: "pending",
-    paymentMethod,
-    paymentStatus,
+    paymentMethod: "deferred",
+    paymentStatus: "deferred",
     totalAmount,
     note: note || null,
-    kakaoTid: null,
     dailySeq,
     createdAt: now,
     updatedAt: now,
@@ -247,15 +237,13 @@ async function handleProductOrder(body: Record<string, unknown>) {
 
   emitToAdmin("order:created", fullOrder);
   emitToRoom(room.roomId, "order:created", fullOrder);
-  if (paymentMethod === "deferred") {
-    emitToAdmin("deferred:updated", {});
-  }
+  emitToAdmin("deferred:updated", {});
 
   return NextResponse.json(fullOrder, { status: 201 });
 }
 
 async function handleServiceOrder(body: Record<string, unknown>, orderType: string) {
-  const { roomId: roomUuid, categoryId, note, items, extensionHours, freeExtension, cleaningOptions, paymentMethod } = body as {
+  const { roomId: roomUuid, categoryId, note, items, extensionHours, freeExtension, cleaningOptions } = body as {
     roomId: string;
     categoryId?: string;
     note?: string;
@@ -263,7 +251,6 @@ async function handleServiceOrder(body: Record<string, unknown>, orderType: stri
     extensionHours?: number;
     freeExtension?: boolean;
     cleaningOptions?: Record<string, unknown>;
-    paymentMethod?: string;
   };
 
   if (!roomUuid) {
@@ -318,14 +305,6 @@ async function handleServiceOrder(body: Record<string, unknown>, orderType: stri
     }
   }
 
-  // Block direct kakaopay service requests — must use service-ready flow
-  if (catType === "checkout_extension" && paymentMethod === "kakaopay" && !freeExtension) {
-    return NextResponse.json(
-      { error: "카카오페이 결제는 결제 준비 API를 통해 진행해야 합니다" },
-      { status: 400 }
-    );
-  }
-
   // Calculate extension amount and total
   let extensionAmount: number | null = null;
   let totalAmount = 0;
@@ -359,11 +338,11 @@ async function handleServiceOrder(body: Record<string, unknown>, orderType: stri
     totalAmount,
     paymentMethod:
       catType === "checkout_extension" && extensionHours && !freeExtension
-        ? (paymentMethod || "deferred")
+        ? "deferred"
         : null,
     paymentStatus:
       catType === "checkout_extension" && extensionHours && !freeExtension
-        ? (paymentMethod === "kakaopay" ? "pending" : "deferred")
+        ? "deferred"
         : null,
     createdAt: now,
     updatedAt: now,
