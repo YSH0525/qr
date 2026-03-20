@@ -218,11 +218,11 @@ export default function ServiceRequestPage({
         }
       }
 
-      // 후불/무료/기타: 즉시 서비스 요청 생성
-      const res = await fetch("/api/service-requests", {
+      // 후불/무료/기타: 즉시 주문 생성 (통합 API)
+      const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, type: category.type }),
       });
 
       if (!res.ok) throw new Error("요청 실패");

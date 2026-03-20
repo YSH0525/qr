@@ -20,10 +20,8 @@ export async function GET() {
     const result = await Promise.all(
       roomsSnap.docs.map(async (roomDoc) => {
         const room = { id: roomDoc.id, ...roomDoc.data() };
-        const roomData = roomDoc.data() as { roomId: string };
 
-        // Get deferred unpaid orders for this room
-        // Use single where clause to avoid composite index requirement, filter in memory
+        // Get all deferred orders for this room (unified collection)
         const orderSnap = await getDocs(
           query(
             collection(firestore, "orders"),
@@ -34,40 +32,23 @@ export async function GET() {
         const deferredOrders = orderSnap.docs
           .map((d) => ({
             id: d.id,
-            ...(d.data() as { totalAmount: number; paymentMethod: string; paymentStatus: string; [key: string]: unknown }),
+            ...(d.data() as { totalAmount: number; paymentMethod: string; paymentStatus: string; extensionAmount?: number; type?: string; [key: string]: unknown }),
           }))
           .filter((o) => o.paymentMethod === "deferred" && o.paymentStatus === "deferred");
 
-        const orderTotal = deferredOrders.reduce(
-          (sum, o) => sum + (o.totalAmount || 0),
-          0
-        );
-
-        // Get unsettled checkout extension fees from service requests
-        const serviceSnap = await getDocs(
-          query(
-            collection(firestore, "serviceRequests"),
-            where("roomUuid", "==", roomData.roomId)
-          )
-        );
-
-        const deferredExtensions = serviceSnap.docs.filter((d) => {
-          const data = d.data() as { paymentStatus?: string };
-          return data.paymentStatus === "deferred";
-        });
-
-        const extensionTotal = deferredExtensions.reduce((sum, d) => {
-          const data = d.data() as { extensionAmount?: number };
-          return sum + (data.extensionAmount || 0);
+        const totalDeferred = deferredOrders.reduce((sum, o) => {
+          // For product orders, use totalAmount; for checkout_extension, use extensionAmount
+          const amount = o.type === "checkout_extension"
+            ? (o.extensionAmount || 0)
+            : (o.totalAmount || 0);
+          return sum + amount;
         }, 0);
-
-        const totalDeferred = orderTotal + extensionTotal;
 
         return {
           room,
           deferredOrders,
           totalDeferred,
-          orderCount: deferredOrders.length + deferredExtensions.length,
+          orderCount: deferredOrders.length,
         };
       })
     );

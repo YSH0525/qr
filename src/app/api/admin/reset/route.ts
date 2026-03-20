@@ -10,7 +10,6 @@ import {
 
 const COLLECTIONS_TO_RESET = [
   "orders",
-  "serviceRequests",
   "pendingOrderPayments",
   "pendingServicePayments",
   "settlements",

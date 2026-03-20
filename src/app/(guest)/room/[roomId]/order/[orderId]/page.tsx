@@ -63,13 +63,15 @@ export default function OrderConfirmPage({
               <span className="text-sm text-gray-500">상태 <span className="text-gray-400">Status</span></span>
               <Badge>{ORDER_STATUS_LABELS[order.status]}</Badge>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-500">결제 <span className="text-gray-400">Payment</span></span>
-              <Badge variant="secondary">
-                {PAYMENT_METHOD_LABELS[order.paymentMethod]} -{" "}
-                {PAYMENT_STATUS_LABELS[order.paymentStatus]}
-              </Badge>
-            </div>
+            {order.paymentMethod && order.paymentStatus && (
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-500">결제 <span className="text-gray-400">Payment</span></span>
+                <Badge variant="secondary">
+                  {PAYMENT_METHOD_LABELS[order.paymentMethod]} -{" "}
+                  {PAYMENT_STATUS_LABELS[order.paymentStatus]}
+                </Badge>
+              </div>
+            )}
 
             <div className="border-t pt-3 space-y-2">
               {order.items.map((item, idx) => (

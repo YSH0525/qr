@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
     const requestId = generateRequestId();
     const nowIso = now.toISOString();
 
-    // Save pending payment data (NOT in serviceRequests yet)
+    // Save pending payment data (NOT in orders yet)
     const pendingData = {
       requestId,
       categoryId,

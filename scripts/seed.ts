@@ -131,6 +131,71 @@ async function seed() {
   }
   console.log(`✅ ${menuItemsData.length}개 메뉴 아이템 생성 완료`);
 
+  // Seed service categories
+  const serviceCategories = [
+    {
+      name: "연박 청소",
+      type: "cleaning",
+      icon: "Sparkles",
+      description: "객실 청소 서비스",
+      isActive: true,
+      displayOrder: 1,
+    },
+    {
+      name: "체크아웃 연장",
+      type: "checkout_extension",
+      icon: "Clock",
+      description: "체크아웃 시간 연장",
+      isActive: true,
+      displayOrder: 2,
+      hourlyRate: 10000,
+    },
+    {
+      name: "비품 요청",
+      type: "amenity",
+      icon: "Package",
+      description: "추가 비품 요청",
+      isActive: true,
+      displayOrder: 3,
+    },
+  ];
+
+  const serviceCategoryIds: string[] = [];
+  for (const cat of serviceCategories) {
+    const catId = doc(collection(db, "serviceCategories")).id;
+    serviceCategoryIds.push(catId);
+    await setDoc(doc(db, "serviceCategories", catId), {
+      ...cat,
+      id: catId,
+      createdAt: new Date().toISOString(),
+    });
+  }
+  console.log(`✅ ${serviceCategories.length}개 서비스 카테고리 생성 완료`);
+
+  // Seed service items (amenity category)
+  const amenityCatId = serviceCategoryIds[2]; // "비품 요청"
+  const serviceItems = [
+    { name: "수건", icon: "Droplets", displayOrder: 1 },
+    { name: "생수", icon: "Droplets", displayOrder: 2 },
+    { name: "어메니티 세트", icon: "Package", displayOrder: 3 },
+    { name: "베개", icon: "Package", displayOrder: 4 },
+    { name: "담요", icon: "Package", displayOrder: 5 },
+  ];
+
+  for (const item of serviceItems) {
+    const itemId = doc(collection(db, "serviceItems")).id;
+    await setDoc(doc(db, "serviceItems", itemId), {
+      id: itemId,
+      categoryId: amenityCatId,
+      name: item.name,
+      icon: item.icon,
+      isAvailable: true,
+      displayOrder: item.displayOrder,
+      createdAt: new Date().toISOString(),
+    });
+  }
+  console.log(`✅ ${serviceItems.length}개 서비스 아이템 생성 완료`);
+
   console.log("🎉 시드 데이터 생성 완료!");
 
   // Print rooms for reference

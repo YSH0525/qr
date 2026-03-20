@@ -1,4 +1,7 @@
 export * from "./service";
+import type { CleaningOptions, ServiceRequestItem } from "./service";
+
+export type OrderType = "product" | "cleaning" | "checkout_extension" | "amenity";
 
 export type OrderStatus =
   | "pending"
@@ -16,6 +19,13 @@ export type PaymentStatus =
   | "failed"
   | "cancelled"
   | "deferred";
+
+export const ORDER_TYPE_LABELS: Record<OrderType, string> = {
+  product: "주문",
+  cleaning: "연박 청소",
+  checkout_extension: "체크아웃 연장",
+  amenity: "비품 요청",
+};
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   pending: "대기중",
@@ -58,24 +68,46 @@ export const REJECTION_REASON_LABELS: Record<RejectionReasonValue, string> = Obj
   REJECTION_REASONS.map((r) => [r.value, r.label])
 ) as Record<RejectionReasonValue, string>;
 
+/**
+ * Unified order type — covers both product orders and service orders.
+ * Discriminated by the `type` field.
+ */
 export interface OrderWithItems {
   id: string;
   orderId: string;
+  type: OrderType;
   roomId: string;
+  roomUuid: string;
   roomNumber: string;
   status: OrderStatus;
-  paymentMethod: PaymentMethod;
-  paymentStatus: PaymentStatus;
+  paymentMethod: PaymentMethod | null;
+  paymentStatus: PaymentStatus | null;
   totalAmount: number;
   note: string | null;
   rejectionReason?: string;
   dailySeq?: number;
   createdAt: string;
   updatedAt: string;
-  items: {
-    menuItemName: string;
-    menuItemPrice: number;
-    quantity: number;
-    subtotal: number;
-  }[];
+
+  // Product order items
+  items: OrderItem[];
+
+  // Service-specific fields (null/undefined for product orders)
+  categoryId?: string;
+  categoryName?: string;
+  categoryIcon?: string;
+  serviceItems?: ServiceRequestItem[];
+  cleaningOptions?: CleaningOptions | null;
+  extensionHours?: number | null;
+  extensionAmount?: number | null;
+  freeExtension?: boolean;
+  kakaoTid?: string | null;
+}
+
+export interface OrderItem {
+  menuItemId?: string;
+  menuItemName: string;
+  menuItemPrice: number;
+  quantity: number;
+  subtotal: number;
 }

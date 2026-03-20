@@ -50,6 +50,7 @@ export async function PATCH(
   }
 
   const orderDoc = orderSnap.docs[0];
+  const orderData = orderDoc.data() as { status: string; type?: string; roomUuid?: string };
   const updatedAt = new Date().toISOString();
 
   const updateData: Record<string, unknown> = { status, updatedAt };
@@ -57,9 +58,12 @@ export async function PATCH(
     updateData.rejectionReason = rejectionReason;
   }
 
-  // Restore stock when rejecting/cancelling (only if not already rejected/cancelled)
-  const currentStatus = (orderDoc.data() as { status: string }).status;
+  // Restore stock when rejecting/cancelling product orders
+  const currentStatus = orderData.status;
+  const isProduct = !orderData.type || orderData.type === "product";
+
   if (
+    isProduct &&
     (status === "rejected" || status === "cancelled") &&
     currentStatus !== "rejected" &&
     currentStatus !== "cancelled"
@@ -84,11 +88,10 @@ export async function PATCH(
 
   const updated = { id: orderDoc.id, ...orderDoc.data(), ...updateData };
 
-  const orderFullData = orderDoc.data() as { roomUuid?: string };
   const statusPayload = { orderId, status, updatedAt, ...(status === "rejected" && rejectionReason ? { rejectionReason } : {}) };
   emitToAdmin("order:status-changed", statusPayload);
-  if (orderFullData.roomUuid) {
-    emitToRoom(orderFullData.roomUuid, "order:status-changed", statusPayload);
+  if (orderData.roomUuid) {
+    emitToRoom(orderData.roomUuid, "order:status-changed", statusPayload);
   }
 
   return NextResponse.json(updated);

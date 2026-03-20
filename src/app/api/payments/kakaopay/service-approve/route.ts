@@ -104,22 +104,24 @@ export async function GET(req: NextRequest) {
       try {
         const dailySeq = await getNextDailySeq();
         const now = new Date().toISOString();
-        const serviceRef = await addDoc(collection(firestore, "serviceRequests"), {
-          requestId: data.requestId,
+        const orderRef = await addDoc(collection(firestore, "orders"), {
+          orderId: data.requestId,
+          type: data.type,
           dailySeq,
           categoryId: data.categoryId,
           categoryName: data.categoryName,
           categoryIcon: data.categoryIcon,
-          type: data.type,
           roomId: data.roomId,
           roomUuid: data.roomUuid,
           roomNumber: data.roomNumber,
           status: "accepted",
           note: data.note,
-          items: data.items,
+          items: [],
+          serviceItems: data.items,
           cleaningOptions: null,
           extensionHours: data.extensionHours,
           extensionAmount: data.extensionAmount,
+          totalAmount: data.extensionAmount,
           freeExtension: false,
           paymentMethod: "kakaopay",
           paymentStatus: "paid",
@@ -129,23 +131,25 @@ export async function GET(req: NextRequest) {
         });
         await deleteDoc(pendingDoc.ref);
 
-        emitToAdmin("service:created", {
-          id: serviceRef.id,
-          requestId: data.requestId,
+        emitToAdmin("order:created", {
+          id: orderRef.id,
+          orderId: data.requestId,
+          type: data.type,
           dailySeq,
           categoryId: data.categoryId,
           categoryName: data.categoryName,
           categoryIcon: data.categoryIcon,
-          type: data.type,
           roomId: data.roomId,
           roomUuid: data.roomUuid,
           roomNumber: data.roomNumber,
           status: "accepted",
           note: data.note,
-          items: data.items,
+          items: [],
+          serviceItems: data.items,
           cleaningOptions: null,
           extensionHours: data.extensionHours,
           extensionAmount: data.extensionAmount,
+          totalAmount: data.extensionAmount,
           freeExtension: false,
           paymentMethod: "kakaopay",
           paymentStatus: "paid",
@@ -154,7 +158,7 @@ export async function GET(req: NextRequest) {
           updatedAt: now,
         });
       } catch (err) {
-        console.error("Failed to create service request after approve:", err);
+        console.error("Failed to create order after approve:", err);
       }
     });
 
