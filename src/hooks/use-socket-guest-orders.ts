@@ -21,6 +21,13 @@ export function useSocketGuestOrders(roomId: string) {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data fetch
     void fetchData();
 
+    const onOrderCreated = (order: OrderWithItems) => {
+      setOrders((prev) => {
+        if (prev.some((o) => o.orderId === order.orderId)) return prev;
+        return [order, ...prev];
+      });
+    };
+
     const onOrderStatusChanged = (data: { orderId: string; status: string; updatedAt: string; rejectionReason?: string }) => {
       setOrders((prev) =>
         prev.map((o) =>
@@ -31,17 +38,31 @@ export function useSocketGuestOrders(roomId: string) {
       );
     };
 
+    const onOrderDeleted = (data: { orderId: string }) => {
+      setOrders((prev) => prev.filter((o) => o.orderId !== data.orderId));
+    };
+
     const onReconnect = () => {
       socket.emit("join:room", { roomId });
       void fetchData();
     };
 
+    socket.on("order:created", onOrderCreated);
     socket.on("order:status-changed", onOrderStatusChanged);
+    socket.on("order:deleted", onOrderDeleted);
     socket.on("connect", onReconnect);
 
+    // Polling fallback: refresh every 15s in case socket events are missed
+    const pollInterval = setInterval(() => {
+      void fetchData();
+    }, 15_000);
+
     return () => {
+      socket.off("order:created", onOrderCreated);
       socket.off("order:status-changed", onOrderStatusChanged);
+      socket.off("order:deleted", onOrderDeleted);
       socket.off("connect", onReconnect);
+      clearInterval(pollInterval);
     };
   }, [roomId, fetchData]);
 
