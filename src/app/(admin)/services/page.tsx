@@ -15,7 +15,6 @@ import {
 import { useSocketServiceRequests } from "@/hooks/use-socket-orders";
 import { useNotificationSound } from "@/hooks/use-audio";
 import { toast } from "sonner";
-import type { ServiceRequest } from "@/types/service";
 import {
   SERVICE_TYPE_LABELS,
   SERVICE_STATUS_LABELS,

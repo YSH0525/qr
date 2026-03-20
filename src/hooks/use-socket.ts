@@ -1,16 +1,42 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { getSocket } from "@/lib/socket-client";
 import type { Socket } from "socket.io-client";
 
+let globalSocket: Socket | null = null;
+
+function subscribe(callback: () => void) {
+  const socket = getSocket();
+  globalSocket = socket;
+
+  socket.on("connect", callback);
+  socket.on("disconnect", callback);
+
+  if (!socket.connected) {
+    socket.connect();
+  }
+
+  return () => {
+    socket.off("connect", callback);
+    socket.off("disconnect", callback);
+  };
+}
+
+function getSnapshot(): Socket | null {
+  return globalSocket;
+}
+
+function getServerSnapshot(): Socket | null {
+  return null;
+}
+
 export function useSocket() {
-  const socketRef = useRef<Socket | null>(null);
+  const socket = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    const socket = getSocket();
-    socketRef.current = socket;
+    const s = getSocket();
 
     function onConnect() {
       setIsConnected(true);
@@ -19,20 +45,19 @@ export function useSocket() {
       setIsConnected(false);
     }
 
-    socket.on("connect", onConnect);
-    socket.on("disconnect", onDisconnect);
+    s.on("connect", onConnect);
+    s.on("disconnect", onDisconnect);
 
-    if (socket.connected) {
+    if (s.connected) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync initial connection state
       setIsConnected(true);
-    } else {
-      socket.connect();
     }
 
     return () => {
-      socket.off("connect", onConnect);
-      socket.off("disconnect", onDisconnect);
+      s.off("connect", onConnect);
+      s.off("disconnect", onDisconnect);
     };
   }, []);
 
-  return { socket: socketRef.current, isConnected };
+  return { socket, isConnected };
 }

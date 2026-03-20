@@ -117,12 +117,13 @@ export function useSocketOrders(statusFilter?: string[]) {
     socket.on("order:deleted", onOrderDeleted);
     socket.on("connect", onReconnect);
 
+    const timers = lockTimersRef.current;
     return () => {
       socket.off("order:created", onOrderCreated);
       socket.off("order:status-changed", onOrderStatusChanged);
       socket.off("order:deleted", onOrderDeleted);
       socket.off("connect", onReconnect);
-      for (const timer of lockTimersRef.current.values()) clearTimeout(timer);
+      for (const timer of timers.values()) clearTimeout(timer);
     };
   }, [fetchOrders]);
 
@@ -240,12 +241,13 @@ export function useSocketServiceRequests(statusFilter?: string[]) {
     socket.on("service:deleted", onServiceDeleted);
     socket.on("connect", onReconnect);
 
+    const timers = lockTimersRef.current;
     return () => {
       socket.off("service:created", onServiceCreated);
       socket.off("service:status-changed", onServiceStatusChanged);
       socket.off("service:deleted", onServiceDeleted);
       socket.off("connect", onReconnect);
-      for (const timer of lockTimersRef.current.values()) clearTimeout(timer);
+      for (const timer of timers.values()) clearTimeout(timer);
     };
   }, [fetchServiceRequests]);
 

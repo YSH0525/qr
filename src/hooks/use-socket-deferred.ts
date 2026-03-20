@@ -27,15 +27,16 @@ export function useSocketDeferred() {
 
     socket.emit("join:admin");
 
-    fetchDeferred();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data fetch
+    void fetchDeferred();
 
     const onDeferredUpdated = () => {
-      fetchDeferred();
+      void fetchDeferred();
     };
 
     const onReconnect = () => {
       socket.emit("join:admin");
-      fetchDeferred();
+      void fetchDeferred();
     };
 
     socket.on("deferred:updated", onDeferredUpdated);

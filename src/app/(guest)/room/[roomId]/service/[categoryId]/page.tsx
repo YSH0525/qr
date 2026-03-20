@@ -136,7 +136,8 @@ export default function ServiceRequestPage({
       const current = prev[item.id]?.quantity || 0;
       const next = current + delta;
       if (next <= 0) {
-        const { [item.id]: _, ...rest } = prev;
+        const { [item.id]: _removed, ...rest } = prev;
+        void _removed;
         return rest;
       }
       return { ...prev, [item.id]: { name: item.name, quantity: next } };
@@ -226,7 +227,7 @@ export default function ServiceRequestPage({
 
       if (!res.ok) throw new Error("요청 실패");
 
-      const data = await res.json();
+      await res.json();
 
       router.push(`/room/${roomId}/orders`);
     } catch {

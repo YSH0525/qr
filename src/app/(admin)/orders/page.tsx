@@ -17,7 +17,6 @@ import {
 import {
   ORDER_STATUS_LABELS,
   PAYMENT_METHOD_LABELS,
-  PAYMENT_STATUS_LABELS,
   SERVICE_TYPE_LABELS,
   SERVICE_STATUS_LABELS,
 } from "@/types";
@@ -26,7 +25,7 @@ import {
   PREFERRED_TIME_LABELS,
   SUPPLY_ITEM_LABELS,
 } from "@/types/service";
-import type { OrderStatus, PaymentStatus } from "@/types";
+import type { OrderStatus } from "@/types";
 import type { ServiceRequest } from "@/types/service";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
@@ -89,16 +88,6 @@ export default function OrdersPage() {
       completed: "outline",
       rejected: "destructive",
       cancelled: "destructive",
-    };
-    return colors[status] || "default";
-  };
-
-  const paymentStatusColor = (status: PaymentStatus) => {
-    const colors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      pending: "default",
-      paid: "outline",
-      failed: "destructive",
-      deferred: "secondary",
     };
     return colors[status] || "default";
   };

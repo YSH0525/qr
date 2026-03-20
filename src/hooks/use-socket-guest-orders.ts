@@ -24,7 +24,8 @@ export function useSocketGuestOrders(roomId: string) {
 
     socket.emit("join:room", { roomId });
 
-    fetchData();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data fetch
+    void fetchData();
 
     const onOrderStatusChanged = (data: { orderId: string; status: string; updatedAt: string; rejectionReason?: string }) => {
       setOrders((prev) =>
@@ -48,7 +49,7 @@ export function useSocketGuestOrders(roomId: string) {
 
     const onReconnect = () => {
       socket.emit("join:room", { roomId });
-      fetchData();
+      void fetchData();
     };
 
     socket.on("order:status-changed", onOrderStatusChanged);
