@@ -58,7 +58,17 @@ export async function PATCH(
     updateData.rejectionReason = rejectionReason;
   }
 
-  // Restore stock when rejecting/cancelling product orders
+  // Emit socket events FIRST for fast UI response
+  const statusPayload = { orderId, status, updatedAt, ...(status === "rejected" && rejectionReason ? { rejectionReason } : {}) };
+  emitToAdmin("order:status-changed", statusPayload);
+  if (orderData.roomUuid) {
+    emitToRoom(orderData.roomUuid, "order:status-changed", statusPayload);
+  }
+
+  // Persist to DB
+  await updateDoc(orderDoc.ref, updateData);
+
+  // Restore stock when rejecting/cancelling product orders (non-blocking)
   const currentStatus = orderData.status;
   const isProduct = !orderData.type || orderData.type === "product";
 
@@ -68,31 +78,28 @@ export async function PATCH(
     currentStatus !== "rejected" &&
     currentStatus !== "cancelled"
   ) {
-    const itemsSnap = await getDocs(
-      collection(firestore, "orders", orderDoc.id, "items")
-    );
-    for (const itemDoc of itemsSnap.docs) {
-      const itemData = itemDoc.data() as { menuItemId: string; quantity: number };
-      const menuRef = doc(firestore, "menuItems", itemData.menuItemId);
-      const menuSnap = await getDoc(menuRef);
-      if (menuSnap.exists()) {
-        const menuData = menuSnap.data() as { stock?: number | null };
-        if (menuData.stock !== null && menuData.stock !== undefined) {
-          await updateDoc(menuRef, { stockUsed: increment(-itemData.quantity) });
+    void (async () => {
+      try {
+        const itemsSnap = await getDocs(
+          collection(firestore, "orders", orderDoc.id, "items")
+        );
+        for (const itemDoc of itemsSnap.docs) {
+          const itemData = itemDoc.data() as { menuItemId: string; quantity: number };
+          const menuRef = doc(firestore, "menuItems", itemData.menuItemId);
+          const menuSnap = await getDoc(menuRef);
+          if (menuSnap.exists()) {
+            const menuData = menuSnap.data() as { stock?: number | null };
+            if (menuData.stock !== null && menuData.stock !== undefined) {
+              await updateDoc(menuRef, { stockUsed: increment(-itemData.quantity) });
+            }
+          }
         }
+      } catch (e) {
+        console.error("Stock restore failed:", e);
       }
-    }
+    })();
   }
-
-  await updateDoc(orderDoc.ref, updateData);
 
   const updated = { id: orderDoc.id, ...orderDoc.data(), ...updateData };
-
-  const statusPayload = { orderId, status, updatedAt, ...(status === "rejected" && rejectionReason ? { rejectionReason } : {}) };
-  emitToAdmin("order:status-changed", statusPayload);
-  if (orderData.roomUuid) {
-    emitToRoom(orderData.roomUuid, "order:status-changed", statusPayload);
-  }
-
   return NextResponse.json(updated);
 }
