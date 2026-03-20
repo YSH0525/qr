@@ -9,6 +9,7 @@ import {
 } from "firebase/firestore";
 import { getNextDailySeq } from "@/lib/daily-seq";
 import { format } from "date-fns";
+import { emitToAdmin } from "@/lib/socket-server";
 
 function generateRequestId(): string {
   const date = format(new Date(), "yyyyMMdd");
@@ -89,7 +90,10 @@ export async function POST(req: NextRequest) {
       requestData
     );
 
-    return NextResponse.json({ id: docRef.id, ...requestData }, { status: 201 });
+    const fullRequest = { id: docRef.id, ...requestData };
+    emitToAdmin("service:created", fullRequest);
+
+    return NextResponse.json(fullRequest, { status: 201 });
   } catch (e) {
     console.error("Quick service request error:", e);
     return NextResponse.json({ error: "서비스 요청 실패" }, { status: 500 });

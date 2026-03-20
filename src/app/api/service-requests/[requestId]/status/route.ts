@@ -7,6 +7,7 @@ import {
   where,
   updateDoc,
 } from "firebase/firestore";
+import { emitToAdmin, emitToRoom } from "@/lib/socket-server";
 
 export async function PATCH(
   req: NextRequest,
@@ -37,6 +38,13 @@ export async function PATCH(
   await updateDoc(docRef, { status, updatedAt });
 
   const updated = { id: snap.docs[0].id, ...snap.docs[0].data(), status, updatedAt };
+
+  const reqData = snap.docs[0].data() as { roomUuid?: string };
+  const statusPayload = { requestId, status, updatedAt };
+  emitToAdmin("service:status-changed", statusPayload);
+  if (reqData.roomUuid) {
+    emitToRoom(reqData.roomUuid, "service:status-changed", statusPayload);
+  }
 
   return NextResponse.json(updated);
 }

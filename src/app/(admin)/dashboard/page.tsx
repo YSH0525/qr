@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useFirestoreOrders, useFirestoreServiceRequests } from "@/hooks/use-firestore-orders";
+import { useSocketOrders, useSocketServiceRequests } from "@/hooks/use-socket-orders";
+import { useSocketDeferred } from "@/hooks/use-socket-deferred";
 import { useNotificationSound } from "@/hooks/use-audio";
 
 import { Button } from "@/components/ui/button";
@@ -15,7 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Volume2, X, Trash2 } from "lucide-react";
+import { Volume2, Trash2 } from "lucide-react";
 import type { OrderWithItems } from "@/types";
 import type { ServiceRequest } from "@/types/service";
 import {
@@ -34,12 +35,6 @@ import {
   SettlementModal,
   type SettlementPreviewData,
 } from "@/components/admin/settlement-modal";
-
-interface DeferredPayment {
-  room: { id: string; roomNumber: string; roomId: string };
-  totalDeferred: number;
-  orderCount: number;
-}
 
 const DASHBOARD_ORDER_STATUSES = ["pending", "accepted", "preparing"];
 const DASHBOARD_SERVICE_STATUSES = ["requested", "accepted"];
@@ -65,17 +60,17 @@ export default function DashboardPage() {
     orders,
     optimisticUpdate: optimisticOrderUpdate,
     releaseOptimisticLock: releaseOrderLock,
-  } = useFirestoreOrders(DASHBOARD_ORDER_STATUSES);
+  } = useSocketOrders(DASHBOARD_ORDER_STATUSES);
 
   const {
     serviceRequests,
     optimisticUpdate: optimisticServiceUpdate,
     releaseOptimisticLock: releaseServiceLock,
-  } = useFirestoreServiceRequests(DASHBOARD_SERVICE_STATUSES);
+  } = useSocketServiceRequests(DASHBOARD_SERVICE_STATUSES);
 
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [flashScreen, setFlashScreen] = useState(false);
-  const [deferredPayments, setDeferredPayments] = useState<DeferredPayment[]>([]);
+  const { deferredPayments, fetchDeferred } = useSocketDeferred();
   const [settlementPreview, setSettlementPreview] = useState<SettlementPreviewData | null>(null);
   const [settlementModalOpen, setSettlementModalOpen] = useState(false);
   const { playNewOrderAlert, playAcceptSound, playCompleteSound, playServiceRequestAlert } =
@@ -136,17 +131,7 @@ export default function DashboardPage() {
     setAudioEnabled(true);
   }, [playAcceptSound]);
 
-  // 후불 정산 폴링
-  const fetchDeferred = useCallback(async () => {
-    const res = await fetch("/api/payments/deferred");
-    if (res.ok) setDeferredPayments(await res.json());
-  }, []);
-
-  useEffect(() => {
-    fetchDeferred();
-    const poll = setInterval(fetchDeferred, 10000);
-    return () => clearInterval(poll);
-  }, [fetchDeferred]);
+  // 후불 정산은 useSocketDeferred 훅으로 처리
 
   /* ── 핸들러 ── */
   const patchOrder = async (orderId: string, status: string, rollback: string, extra?: Record<string, unknown>) => {

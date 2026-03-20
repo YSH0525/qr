@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, use } from "react";
+import { use } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,6 +14,7 @@ import {
 import type { OrderStatus, OrderWithItems, RejectionReasonValue } from "@/types";
 import type { ServiceRequest, ServiceRequestStatus } from "@/types/service";
 import { SERVICE_TYPE_LABELS, CLEANING_LEVEL_LABELS } from "@/types/service";
+import { useSocketGuestOrders } from "@/hooks/use-socket-guest-orders";
 
 const SERVICE_ICON_MAP: Record<string, React.ElementType> = {
   Sparkles,
@@ -143,25 +144,9 @@ export default function GuestOrdersPage({
 }) {
   const { roomId } = use(params);
   const router = useRouter();
-  const [orders, setOrders] = useState<OrderWithItems[]>([]);
-  const [services, setServices] = useState<ServiceRequest[]>([]);
+  const { orders, services } = useSocketGuestOrders(roomId);
 
   const formatPrice = (n: number) => n.toLocaleString("ko-KR");
-
-  const fetchData = useCallback(async () => {
-    const [ordersRes, servicesRes] = await Promise.all([
-      fetch(`/api/orders?roomId=${roomId}`),
-      fetch(`/api/service-requests?roomId=${roomId}`),
-    ]);
-    if (ordersRes.ok) setOrders(await ordersRes.json());
-    if (servicesRes.ok) setServices(await servicesRes.json());
-  }, [roomId]);
-
-  useEffect(() => {
-    fetchData();
-    const poll = setInterval(fetchData, 10000);
-    return () => clearInterval(poll);
-  }, [fetchData]);
 
   const activeOrders = orders.filter(
     (o) => !["completed", "cancelled", "rejected"].includes(o.status)

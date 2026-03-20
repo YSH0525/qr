@@ -1,58 +1,28 @@
 "use client";
 
-import { use, useEffect, useRef, useState } from "react";
+import { use, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
-
-type PaymentResult = "pending" | "completed" | "not_found" | "timeout";
+import { useSocketPaymentStatus } from "@/hooks/use-socket-payment-status";
 
 function WaitingContent({ roomId }: { roomId: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const orderId = searchParams.get("orderId");
-  const [result, setResult] = useState<PaymentResult>("pending");
-  const pollCountRef = useRef(0);
+  const { status: result } = useSocketPaymentStatus(orderId);
 
   useEffect(() => {
-    if (!orderId) return;
-
-    const poll = setInterval(async () => {
-      pollCountRef.current++;
-
-      // 최대 60회 (2초 간격 × 60 = 2분) 후 타임아웃
-      if (pollCountRef.current > 60) {
-        clearInterval(poll);
-        setResult("timeout");
-        return;
-      }
-
-      try {
-        const res = await fetch(`/api/payments/kakaopay/status?orderId=${orderId}`);
-        if (!res.ok) return;
-        const data = await res.json();
-
-        if (data.status === "completed") {
-          clearInterval(poll);
-          setResult("completed");
-          // 1초 후 성공 페이지로 이동
-          setTimeout(() => {
-            router.replace(`/room/${roomId}/payment/success?orderId=${orderId}`);
-          }, 1000);
-        } else if (data.status === "not_found") {
-          clearInterval(poll);
-          setResult("not_found");
-        }
-      } catch {
-        // 네트워크 오류는 무시하고 계속 polling
-      }
-    }, 2000);
-
-    return () => clearInterval(poll);
-  }, [orderId, roomId, router]);
+    if (result === "completed" && orderId) {
+      const timer = setTimeout(() => {
+        router.replace(`/room/${roomId}/payment/success?orderId=${orderId}`);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [result, orderId, roomId, router]);
 
   if (!orderId) {
     return (

@@ -7,6 +7,7 @@ import {
   where,
   deleteDoc,
 } from "firebase/firestore";
+import { emitToAdmin } from "@/lib/socket-server";
 
 export async function DELETE(
   _req: NextRequest,
@@ -26,6 +27,8 @@ export async function DELETE(
   }
 
   await deleteDoc(snap.docs[0].ref);
+
+  emitToAdmin("service:deleted", { requestId });
 
   return NextResponse.json({ success: true });
 }

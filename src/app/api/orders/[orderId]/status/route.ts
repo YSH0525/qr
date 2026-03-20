@@ -10,6 +10,7 @@ import {
   getDoc,
   increment,
 } from "firebase/firestore";
+import { emitToAdmin, emitToRoom } from "@/lib/socket-server";
 
 export async function PATCH(
   req: NextRequest,
@@ -82,6 +83,13 @@ export async function PATCH(
   await updateDoc(orderDoc.ref, updateData);
 
   const updated = { id: orderDoc.id, ...orderDoc.data(), ...updateData };
+
+  const orderFullData = orderDoc.data() as { roomUuid?: string };
+  const statusPayload = { orderId, status, updatedAt, ...(status === "rejected" && rejectionReason ? { rejectionReason } : {}) };
+  emitToAdmin("order:status-changed", statusPayload);
+  if (orderFullData.roomUuid) {
+    emitToRoom(orderFullData.roomUuid, "order:status-changed", statusPayload);
+  }
 
   return NextResponse.json(updated);
 }

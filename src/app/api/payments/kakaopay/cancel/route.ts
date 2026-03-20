@@ -8,6 +8,7 @@ import {
   where,
 } from "firebase/firestore";
 import { getCallbackBaseUrl } from "@/lib/constants";
+import { emitToPayment } from "@/lib/socket-server";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -33,6 +34,8 @@ export async function GET(req: NextRequest) {
   const data = docRef.data() as { roomUuid: string };
 
   await deleteDoc(docRef.ref);
+
+  emitToPayment(orderId, "payment:status-changed", { orderId, status: "not_found" });
 
   return NextResponse.redirect(
     `${baseUrl}/room/${data.roomUuid}?payment=cancel`
