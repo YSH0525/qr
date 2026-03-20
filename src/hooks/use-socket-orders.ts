@@ -117,12 +117,18 @@ export function useSocketOrders(statusFilter?: string[]) {
     socket.on("order:deleted", onOrderDeleted);
     socket.on("connect", onReconnect);
 
+    // Polling fallback: refresh every 15s in case socket events are missed
+    const pollInterval = setInterval(() => {
+      fetchOrders();
+    }, 15_000);
+
     const timers = lockTimersRef.current;
     return () => {
       socket.off("order:created", onOrderCreated);
       socket.off("order:status-changed", onOrderStatusChanged);
       socket.off("order:deleted", onOrderDeleted);
       socket.off("connect", onReconnect);
+      clearInterval(pollInterval);
       for (const timer of timers.values()) clearTimeout(timer);
     };
   }, [fetchOrders]);
@@ -183,9 +189,11 @@ export function useSocketServiceRequests(statusFilter?: string[]) {
       if (res.ok) {
         const data = await res.json();
         setServiceRequests(data);
+      } else {
+        console.error("[useSocketServiceRequests] fetch failed:", res.status, await res.text().catch(() => ""));
       }
-    } catch {
-      // ignore
+    } catch (e) {
+      console.error("[useSocketServiceRequests] fetch error:", e);
     } finally {
       setLoading(false);
     }
@@ -241,12 +249,18 @@ export function useSocketServiceRequests(statusFilter?: string[]) {
     socket.on("service:deleted", onServiceDeleted);
     socket.on("connect", onReconnect);
 
+    // Polling fallback: refresh every 15s in case socket events are missed
+    const pollInterval = setInterval(() => {
+      fetchServiceRequests();
+    }, 15_000);
+
     const timers = lockTimersRef.current;
     return () => {
       socket.off("service:created", onServiceCreated);
       socket.off("service:status-changed", onServiceStatusChanged);
       socket.off("service:deleted", onServiceDeleted);
       socket.off("connect", onReconnect);
+      clearInterval(pollInterval);
       for (const timer of timers.values()) clearTimeout(timer);
     };
   }, [fetchServiceRequests]);
