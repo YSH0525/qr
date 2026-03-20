@@ -1,7 +1,5 @@
 export type ServiceType = "cleaning" | "checkout_extension" | "amenity";
 
-export type ServiceRequestStatus = "requested" | "accepted" | "completed";
-
 export type CleaningLevel = "full" | "light" | "dnd";
 export type PreferredTime = "morning" | "afternoon" | "anytime";
 export type SupplyItem = "towel" | "water" | "amenity";
@@ -19,12 +17,6 @@ export const SERVICE_TYPE_LABELS: Record<ServiceType, string> = {
   cleaning: "연박 청소",
   checkout_extension: "체크아웃 연장",
   amenity: "비품 요청",
-};
-
-export const SERVICE_STATUS_LABELS: Record<ServiceRequestStatus, string> = {
-  requested: "요청됨",
-  accepted: "접수됨",
-  completed: "완료",
 };
 
 export const CLEANING_LEVEL_LABELS: Record<CleaningLevel, string> = {
@@ -75,29 +67,4 @@ export interface ServiceRequestItem {
   itemId: string;
   name: string;
   quantity: number;
-}
-
-export interface ServiceRequest {
-  id: string;
-  requestId: string;
-  categoryId: string;
-  categoryName: string;
-  categoryIcon: string;
-  type: ServiceType;
-  roomId: string;
-  roomUuid: string;
-  roomNumber: string;
-  status: ServiceRequestStatus;
-  note: string | null;
-  items: ServiceRequestItem[];
-  cleaningOptions: CleaningOptions | null;
-  extensionHours: number | null;
-  extensionAmount: number | null;
-  freeExtension: boolean;
-  paymentStatus?: string | null;
-  paymentMethod?: string | null;
-  kakaoTid?: string | null;
-  dailySeq?: number;
-  createdAt: string;
-  updatedAt: string;
 }

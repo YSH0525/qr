@@ -105,6 +105,7 @@ export async function GET(req: NextRequest) {
 
         const orderRef = await addDoc(collection(firestore, "orders"), {
           orderId: data.orderId,
+          type: "product",
           dailySeq,
           roomId: data.roomId,
           roomUuid: data.roomUuid,
@@ -130,6 +131,7 @@ export async function GET(req: NextRequest) {
         const fullOrder = {
           id: orderRef.id,
           orderId: data.orderId,
+          type: "product",
           dailySeq,
           roomId: data.roomId,
           roomUuid: data.roomUuid,

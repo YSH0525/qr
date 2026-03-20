@@ -89,10 +89,15 @@ function EasyTapHubContent({
     if (isClosed || towelLoading) return;
     setTowelLoading(true);
     try {
-      const res = await fetch("/api/service-requests/quick", {
+      const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ roomId, type: "towel", quantity: qty }),
+        body: JSON.stringify({
+          roomId,
+          type: "amenity",
+          categoryId: "quick-towel",
+          items: [{ itemId: "towel", name: "수건", quantity: qty }],
+        }),
       });
       if (res.ok) {
         router.push(`/room/${roomId}/orders`);
@@ -120,10 +125,15 @@ function EasyTapHubContent({
     if (!inquiryText.trim() || inquiryLoading) return;
     setInquiryLoading(true);
     try {
-      const res = await fetch("/api/service-requests/quick", {
+      const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ roomId, type: "inquiry", note: inquiryText.trim() }),
+        body: JSON.stringify({
+          roomId,
+          type: "amenity",
+          categoryId: "quick-inquiry",
+          note: inquiryText.trim(),
+        }),
       });
       if (res.ok) {
         setToast({ message: "문의가 접수되었습니다", type: "success" });

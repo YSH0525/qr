@@ -32,9 +32,9 @@ export async function POST(
   }
 
   const roomDoc = roomSnap.docs[0];
-  const roomData = roomDoc.data() as { roomNumber: string };
+  const roomData = roomDoc.data() as { roomNumber: string; roomId: string };
 
-  // Get all deferred orders for this room
+  // Get all deferred orders for this room (unified collection)
   const deferredSnap = await getDocs(
     query(
       collection(firestore, "orders"),
@@ -47,62 +47,61 @@ export async function POST(
   const settledAt = new Date().toISOString();
   let totalAmount = 0;
 
-  // Settle each order and collect full details with items
+  // Settle each order
   const settledOrders = await Promise.all(
-    deferredSnap.docs.map(async (orderDoc) => {
-      await updateDoc(orderDoc.ref, {
-        paymentStatus: "paid",
-        updatedAt: settledAt,
-      });
+    deferredSnap.docs
+      .filter((d) => {
+        const data = d.data() as { type?: string };
+        return !data.type || data.type === "product";
+      })
+      .map(async (orderDoc) => {
+        await updateDoc(orderDoc.ref, {
+          paymentStatus: "paid",
+          updatedAt: settledAt,
+        });
 
-      const orderData = orderDoc.data() as {
-        orderId: string;
-        totalAmount: number;
-        createdAt: string;
-        note: string | null;
-      };
-      totalAmount += orderData.totalAmount;
+        const orderData = orderDoc.data() as {
+          orderId: string;
+          totalAmount: number;
+          createdAt: string;
+          note: string | null;
+        };
+        totalAmount += orderData.totalAmount;
 
-      // Get order items from subcollection
-      const itemsSnap = await getDocs(
-        collection(firestore, "orders", orderDoc.id, "items")
-      );
-      const items = itemsSnap.docs.map((d) => d.data() as {
-        menuItemName: string;
-        menuItemPrice: number;
-        quantity: number;
-        subtotal: number;
-      });
+        const itemsSnap = await getDocs(
+          collection(firestore, "orders", orderDoc.id, "items")
+        );
+        const items = itemsSnap.docs.map((d) => d.data() as {
+          menuItemName: string;
+          menuItemPrice: number;
+          quantity: number;
+          subtotal: number;
+        });
 
-      return {
-        orderId: orderData.orderId,
-        totalAmount: orderData.totalAmount,
-        createdAt: orderData.createdAt,
-        note: orderData.note,
-        items,
-      };
+        return {
+          orderId: orderData.orderId,
+          totalAmount: orderData.totalAmount,
+          createdAt: orderData.createdAt,
+          note: orderData.note,
+          items,
+        };
+      })
+  );
+
+  // Settle service-type orders (checkout extensions etc.)
+  const settledExtensions = deferredSnap.docs
+    .filter((d) => {
+      const data = d.data() as { type?: string };
+      return data.type && data.type !== "product";
     })
-  );
-
-  // Settle checkout extension fees from service requests
-  const roomUuid = (roomDoc.data() as { roomId: string }).roomId;
-  const extensionSnap = await getDocs(
-    query(
-      collection(firestore, "serviceRequests"),
-      where("roomUuid", "==", roomUuid),
-      where("paymentStatus", "==", "deferred")
-    )
-  );
-
-  const settledExtensions = await Promise.all(
-    extensionSnap.docs.map(async (extDoc) => {
-      await updateDoc(extDoc.ref, {
+    .map((extDoc) => {
+      updateDoc(extDoc.ref, {
         paymentStatus: "paid",
         updatedAt: settledAt,
       });
 
       const extData = extDoc.data() as {
-        requestId: string;
+        orderId: string;
         categoryName: string;
         extensionHours: number;
         extensionAmount: number;
@@ -111,28 +110,27 @@ export async function POST(
       totalAmount += extData.extensionAmount || 0;
 
       return {
-        requestId: extData.requestId,
+        requestId: extData.orderId,
         categoryName: extData.categoryName,
         extensionHours: extData.extensionHours,
         extensionAmount: extData.extensionAmount,
         createdAt: extData.createdAt,
       };
-    })
-  );
+    });
 
   // 정산 내역을 settlements 컬렉션에 저장
   await addDoc(collection(firestore, "settlements"), {
     roomNumber: roomData.roomNumber,
-    roomId: roomUuid,
+    roomId: roomData.roomId,
     totalAmount,
-    orderCount: deferredSnap.size + extensionSnap.size,
+    orderCount: deferredSnap.size,
     settledAt,
   });
 
   emitToAdmin("deferred:updated", {});
 
   return NextResponse.json({
-    settled: deferredSnap.size + extensionSnap.size,
+    settled: deferredSnap.size,
     totalAmount,
     roomNumber: roomData.roomNumber,
     settledAt,

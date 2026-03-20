@@ -12,25 +12,30 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useSocketServiceRequests } from "@/hooks/use-socket-orders";
+import { useSocketOrders } from "@/hooks/use-socket-orders";
 import { useNotificationSound } from "@/hooks/use-audio";
 import { toast } from "sonner";
 import {
-  SERVICE_TYPE_LABELS,
-  SERVICE_STATUS_LABELS,
+  ORDER_TYPE_LABELS,
+  ORDER_STATUS_LABELS,
+} from "@/types";
+import {
   CLEANING_LEVEL_LABELS,
   PREFERRED_TIME_LABELS,
   SUPPLY_ITEM_LABELS,
 } from "@/types/service";
+import type { OrderWithItems, OrderStatus } from "@/types";
 
 const STATUS_COLORS: Record<string, string> = {
-  requested: "bg-orange-100 text-orange-700",
+  pending: "bg-orange-100 text-orange-700",
   accepted: "bg-blue-100 text-blue-700",
   completed: "bg-green-100 text-green-700",
 };
 
 export default function ServicesPage() {
-  const { serviceRequests: requests } = useSocketServiceRequests();
+  // Only show non-product orders
+  const { orders: allOrders } = useSocketOrders();
+  const requests = allOrders.filter((o) => o.type !== "product");
   const [filter, setFilter] = useState<string>("all");
   const { playServiceRequestAlert, playAcceptSound, playCompleteSound } = useNotificationSound();
 
@@ -41,7 +46,7 @@ export default function ServicesPage() {
   useEffect(() => {
     if (requests.length === 0 && isFirstLoadRef.current) return;
 
-    const currentIds = new Set(requests.map((r) => r.requestId));
+    const currentIds = new Set(requests.map((r) => r.orderId));
 
     if (isFirstLoadRef.current) {
       prevIdsRef.current = currentIds;
@@ -50,7 +55,7 @@ export default function ServicesPage() {
     }
 
     for (const req of requests) {
-      if (!prevIdsRef.current.has(req.requestId)) {
+      if (!prevIdsRef.current.has(req.orderId)) {
         playServiceRequestAlert();
       }
     }
@@ -58,23 +63,42 @@ export default function ServicesPage() {
     prevIdsRef.current = currentIds;
   }, [requests, playServiceRequestAlert]);
 
-  const updateStatus = async (requestId: string, status: string) => {
+  const updateStatus = async (orderId: string, status: string) => {
     if (status === "accepted") playAcceptSound();
     if (status === "completed") playCompleteSound();
 
-    const res = await fetch(`/api/service-requests/${requestId}/status`, {
+    const res = await fetch(`/api/orders/${orderId}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     });
     if (res.ok) {
-      toast.success(`요청 상태가 "${SERVICE_STATUS_LABELS[status as keyof typeof SERVICE_STATUS_LABELS]}"(으)로 변경되었습니다`);
+      toast.success(`요청 상태가 "${ORDER_STATUS_LABELS[status as OrderStatus]}"(으)로 변경되었습니다`);
     }
   };
 
   const formatTime = (iso: string) => {
     const d = new Date(iso);
     return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  };
+
+  const summarize = (req: OrderWithItems) => {
+    if (req.type === "checkout_extension" && req.extensionHours) {
+      return `${req.extensionHours}시간 연장${req.freeExtension ? " (무료 - 리뷰)" : req.extensionAmount ? ` (${req.extensionAmount.toLocaleString()}원)` : ""}`;
+    }
+    if (req.type === "cleaning" && req.cleaningOptions) {
+      const co = req.cleaningOptions;
+      const parts: string[] = [CLEANING_LEVEL_LABELS[co.serviceLevel]];
+      if (co.preferredTime && co.serviceLevel !== "dnd") {
+        parts.push(PREFERRED_TIME_LABELS[co.preferredTime]);
+      }
+      if (co.contactlessSupplies.length > 0) {
+        parts.push("비품: " + co.contactlessSupplies.map((s: keyof typeof SUPPLY_ITEM_LABELS) => SUPPLY_ITEM_LABELS[s]).join(", "));
+      }
+      return parts.join(" · ");
+    }
+    if (req.serviceItems?.length) return req.serviceItems.map((i) => `${i.name} x${i.quantity}`).join(", ");
+    return req.categoryName || ORDER_TYPE_LABELS[req.type];
   };
 
   const filtered =
@@ -85,14 +109,14 @@ export default function ServicesPage() {
       <h1 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 shrink-0">서비스 요청 내역</h1>
 
       <div className="flex gap-2 mb-4 shrink-0 flex-wrap">
-        {["all", "requested", "accepted", "completed"].map((s) => (
+        {(["all", "pending", "accepted", "completed"] as const).map((s) => (
           <Button
             key={s}
             size="sm"
             variant={filter === s ? "default" : "outline"}
             onClick={() => setFilter(s)}
           >
-            {s === "all" ? "전체" : SERVICE_STATUS_LABELS[s as keyof typeof SERVICE_STATUS_LABELS]}
+            {s === "all" ? "전체" : ORDER_STATUS_LABELS[s]}
             {s !== "all" && (
               <Badge variant="secondary" className="ml-1">
                 {requests.filter((r) => r.status === s).length}
@@ -110,7 +134,7 @@ export default function ServicesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="hidden md:table-cell">요청 ID</TableHead>
+                <TableHead className="hidden md:table-cell">주문 ID</TableHead>
                 <TableHead>객실</TableHead>
                 <TableHead>서비스</TableHead>
                 <TableHead className="hidden md:table-cell">상세</TableHead>
@@ -121,67 +145,29 @@ export default function ServicesPage() {
             </TableHeader>
             <TableBody>
               {filtered.map((req) => (
-                <TableRow key={req.id}>
+                <TableRow key={req.orderId}>
                   <TableCell className="font-mono text-xs hidden md:table-cell">
-                    {req.requestId}
+                    {req.orderId}
                   </TableCell>
                   <TableCell className="font-semibold">
                     {req.roomNumber}호
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline">
-                      {SERVICE_TYPE_LABELS[req.type]}
+                      {ORDER_TYPE_LABELS[req.type]}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-sm text-gray-500 max-w-48 hidden md:table-cell">
-                    {req.type === "checkout_extension" && req.extensionHours && (
-                      <span className="block">{req.extensionHours}시간 연장{req.freeExtension ? " (무료 - 리뷰)" : req.extensionAmount ? ` (${req.extensionAmount.toLocaleString()}원)` : ""}</span>
-                    )}
-                    {req.type === "cleaning" && req.cleaningOptions && (
-                      <>
-                        <span className="block font-medium">
-                          {CLEANING_LEVEL_LABELS[req.cleaningOptions.serviceLevel]}
-                        </span>
-                        {req.cleaningOptions.preferredTime &&
-                          req.cleaningOptions.serviceLevel !== "dnd" && (
-                            <span className="block text-xs">
-                              {PREFERRED_TIME_LABELS[req.cleaningOptions.preferredTime]}
-                            </span>
-                          )}
-                        {!req.cleaningOptions.linenChange &&
-                          req.cleaningOptions.serviceLevel !== "dnd" && (
-                            <span className="block text-xs text-green-600">
-                              시트 교체 없음 (Eco)
-                            </span>
-                          )}
-                        {req.cleaningOptions.contactlessSupplies.length > 0 && (
-                          <span className="block text-xs truncate">
-                            비품: {req.cleaningOptions.contactlessSupplies
-                              .map((s) => SUPPLY_ITEM_LABELS[s])
-                              .join(", ")}
-                            {req.cleaningOptions.leaveAtDoor && " (문 앞)"}
-                          </span>
-                        )}
-                        {req.cleaningOptions.trashRemovalOnly && (
-                          <span className="block text-xs text-orange-500">
-                            쓰레기 수거만
-                          </span>
-                        )}
-                      </>
-                    )}
-                    {req.items && req.items.length > 0 && (
-                      <span className="block truncate">{req.items.map((i) => `${i.name} x${i.quantity}`).join(", ")}</span>
-                    )}
+                    {summarize(req)}
                     {req.note && (
                       <span className="block text-orange-500 truncate">{req.note}</span>
                     )}
-                    {!req.items?.length && !req.extensionHours && !req.cleaningOptions && !req.note && "-"}
                   </TableCell>
                   <TableCell>
                     <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[req.status]}`}
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[req.status] || ""}`}
                     >
-                      {SERVICE_STATUS_LABELS[req.status]}
+                      {ORDER_STATUS_LABELS[req.status]}
                     </span>
                   </TableCell>
                   <TableCell className="text-sm hidden md:table-cell">
@@ -189,10 +175,10 @@ export default function ServicesPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
-                      {req.status === "requested" && (
+                      {req.status === "pending" && (
                         <Button
                           size="sm"
-                          onClick={() => updateStatus(req.requestId, "accepted")}
+                          onClick={() => updateStatus(req.orderId, "accepted")}
                         >
                           접수
                         </Button>
@@ -201,7 +187,7 @@ export default function ServicesPage() {
                         <Button
                           size="sm"
                           className="bg-green-600 hover:bg-green-700"
-                          onClick={() => updateStatus(req.requestId, "completed")}
+                          onClick={() => updateStatus(req.orderId, "completed")}
                         >
                           완료
                         </Button>

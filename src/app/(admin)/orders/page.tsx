@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useSocketOrders, useSocketServiceRequests } from "@/hooks/use-socket-orders";
+import { useSocketOrders } from "@/hooks/use-socket-orders";
 import { useNotificationSound } from "@/hooks/use-audio";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,26 +16,23 @@ import {
 } from "@/components/ui/table";
 import {
   ORDER_STATUS_LABELS,
+  ORDER_TYPE_LABELS,
   PAYMENT_METHOD_LABELS,
-  SERVICE_TYPE_LABELS,
-  SERVICE_STATUS_LABELS,
 } from "@/types";
 import {
   CLEANING_LEVEL_LABELS,
   PREFERRED_TIME_LABELS,
   SUPPLY_ITEM_LABELS,
 } from "@/types/service";
-import type { OrderStatus } from "@/types";
-import type { ServiceRequest } from "@/types/service";
+import type { OrderStatus, OrderType, OrderWithItems } from "@/types";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 
-type ViewFilter = "all" | "orders" | "services";
+type ViewFilter = "all" | OrderType;
 
 export default function OrdersPage() {
   const { orders } = useSocketOrders();
-  const { serviceRequests } = useSocketServiceRequests();
-  const { playNewOrderAlert, playServiceRequestAlert } = useNotificationSound();
+  const { playNewOrderAlert } = useNotificationSound();
   const [viewFilter, setViewFilter] = useState<ViewFilter>("all");
 
   // 새 주문 알림 감지
@@ -58,26 +55,6 @@ export default function OrdersPage() {
     prevOrderIdsRef.current = currentIds;
   }, [orders, playNewOrderAlert]);
 
-  // 새 서비스 요청 알림 감지
-  const prevServiceIdsRef = useRef<Set<string>>(new Set());
-  const isFirstServiceLoadRef = useRef(true);
-
-  useEffect(() => {
-    if (serviceRequests.length === 0 && isFirstServiceLoadRef.current) return;
-    const currentIds = new Set(serviceRequests.map((r) => r.requestId));
-    if (isFirstServiceLoadRef.current) {
-      prevServiceIdsRef.current = currentIds;
-      isFirstServiceLoadRef.current = false;
-      return;
-    }
-    for (const req of serviceRequests) {
-      if (!prevServiceIdsRef.current.has(req.requestId)) {
-        playServiceRequestAlert();
-      }
-    }
-    prevServiceIdsRef.current = currentIds;
-  }, [serviceRequests, playServiceRequestAlert]);
-
   const formatPrice = (price: number) => price.toLocaleString("ko-KR") + "원";
 
   const statusColor = (status: OrderStatus) => {
@@ -92,59 +69,51 @@ export default function OrdersPage() {
     return colors[status] || "default";
   };
 
-  const serviceStatusColor = (status: string): "default" | "secondary" | "destructive" | "outline" => {
-    const colors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      requested: "default",
-      accepted: "secondary",
-      completed: "outline",
-    };
-    return colors[status] || "default";
-  };
-
-  const summarizeService = (req: ServiceRequest) => {
-    if (req.type === "checkout_extension" && req.extensionHours) {
-      return `${req.extensionHours}시간 연장${req.freeExtension ? " (무료)" : req.extensionAmount ? ` (${formatPrice(req.extensionAmount)})` : ""}`;
+  const summarize = (order: OrderWithItems) => {
+    if (order.type === "product") {
+      return order.items.map((i) => `${i.menuItemName}x${i.quantity}`).join(", ");
     }
-    if (req.type === "cleaning" && req.cleaningOptions) {
-      const parts: string[] = [CLEANING_LEVEL_LABELS[req.cleaningOptions.serviceLevel]];
-      if (req.cleaningOptions.preferredTime && req.cleaningOptions.serviceLevel !== "dnd") {
-        parts.push(PREFERRED_TIME_LABELS[req.cleaningOptions.preferredTime]);
+    if (order.type === "checkout_extension" && order.extensionHours) {
+      return `${order.extensionHours}시간 연장${order.freeExtension ? " (무료)" : order.extensionAmount ? ` (${formatPrice(order.extensionAmount)})` : ""}`;
+    }
+    if (order.type === "cleaning" && order.cleaningOptions) {
+      const co = order.cleaningOptions;
+      const parts: string[] = [CLEANING_LEVEL_LABELS[co.serviceLevel]];
+      if (co.preferredTime && co.serviceLevel !== "dnd") {
+        parts.push(PREFERRED_TIME_LABELS[co.preferredTime]);
       }
-      if (req.cleaningOptions.contactlessSupplies.length > 0) {
-        parts.push("비품: " + req.cleaningOptions.contactlessSupplies.map((i) => SUPPLY_ITEM_LABELS[i]).join(", "));
+      if (co.contactlessSupplies.length > 0) {
+        parts.push("비품: " + co.contactlessSupplies.map((i: keyof typeof SUPPLY_ITEM_LABELS) => SUPPLY_ITEM_LABELS[i]).join(", "));
       }
       return parts.join(" · ");
     }
-    if (req.items?.length) return req.items.map((i) => `${i.name} x${i.quantity}`).join(", ");
-    return req.categoryName;
+    if (order.serviceItems?.length) return order.serviceItems.map((i) => `${i.name} x${i.quantity}`).join(", ");
+    return order.categoryName || ORDER_TYPE_LABELS[order.type];
   };
 
-  // 통합 행 생성
-  type UnifiedRow =
-    | { kind: "order"; data: typeof orders[number]; time: string }
-    | { kind: "service"; data: ServiceRequest; time: string };
+  const filteredOrders = viewFilter === "all"
+    ? orders
+    : orders.filter((o) => o.type === viewFilter);
 
-  const allRows: UnifiedRow[] = [];
-
-  if (viewFilter === "all" || viewFilter === "orders") {
-    allRows.push(...orders.map((o) => ({ kind: "order" as const, data: o, time: o.createdAt })));
-  }
-  if (viewFilter === "all" || viewFilter === "services") {
-    allRows.push(...serviceRequests.map((s) => ({ kind: "service" as const, data: s, time: s.createdAt })));
+  const filterCounts: Record<string, number> = { all: orders.length };
+  for (const o of orders) {
+    filterCounts[o.type] = (filterCounts[o.type] || 0) + 1;
   }
 
-  allRows.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+  const filters: { key: ViewFilter; label: string }[] = [
+    { key: "all", label: "전체" },
+    { key: "product", label: "주문" },
+    { key: "cleaning", label: "청소" },
+    { key: "checkout_extension", label: "연장" },
+    { key: "amenity", label: "비품" },
+  ];
 
   return (
     <div className="p-3 md:p-6 h-full flex flex-col overflow-hidden">
       <h1 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 shrink-0">주문/서비스 내역</h1>
 
       <div className="flex gap-2 mb-4 shrink-0 flex-wrap">
-        {([
-          { key: "all", label: "전체", count: orders.length + serviceRequests.length },
-          { key: "orders", label: "주문", count: orders.length },
-          { key: "services", label: "서비스", count: serviceRequests.length },
-        ] as const).map((f) => (
+        {filters.map((f) => (
           <Button
             key={f.key}
             size="sm"
@@ -152,7 +121,7 @@ export default function OrdersPage() {
             onClick={() => setViewFilter(f.key)}
           >
             {f.label}
-            <Badge variant="secondary" className="ml-1">{f.count}</Badge>
+            <Badge variant="secondary" className="ml-1">{filterCounts[f.key] || 0}</Badge>
           </Button>
         ))}
       </div>
@@ -175,67 +144,38 @@ export default function OrdersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {allRows.map((row) => {
-                if (row.kind === "order") {
-                  const order = row.data;
-                  return (
-                    <TableRow
-                      key={order.orderId}
-                      className={order.status === "pending" ? "bg-orange-50" : undefined}
-                    >
-                      <TableCell>
-                        <Badge variant="outline" className="text-[10px]">주문</Badge>
-                      </TableCell>
-                      <TableCell className="font-semibold">{order.roomNumber}호</TableCell>
-                      <TableCell className="text-sm max-w-[120px] md:max-w-none truncate md:whitespace-normal">
-                        {order.items.map((i) => `${i.menuItemName}x${i.quantity}`).join(", ")}
-                      </TableCell>
-                      <TableCell>{formatPrice(order.totalAmount)}</TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {PAYMENT_METHOD_LABELS[order.paymentMethod]}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={statusColor(order.status)}>
-                          {ORDER_STATUS_LABELS[order.status]}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-xs text-gray-500 hidden md:table-cell">
-                        {format(new Date(order.createdAt), "MM/dd HH:mm", { locale: ko })}
-                      </TableCell>
-                    </TableRow>
-                  );
-                } else {
-                  const req = row.data;
-                  return (
-                    <TableRow
-                      key={req.requestId}
-                      className={req.status === "requested" ? "bg-orange-50" : undefined}
-                    >
-                      <TableCell>
-                        <Badge variant="outline" className="text-[10px]">
-                          {SERVICE_TYPE_LABELS[req.type]}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="font-semibold">{req.roomNumber}호</TableCell>
-                      <TableCell className="text-sm max-w-[120px] md:max-w-none truncate md:whitespace-normal">
-                        {summarizeService(req)}
-                        {req.note && <span className="text-orange-500 ml-1 text-xs">[{req.note}]</span>}
-                      </TableCell>
-                      <TableCell className="text-gray-300">-</TableCell>
-                      <TableCell className="hidden md:table-cell text-gray-300">-</TableCell>
-                      <TableCell>
-                        <Badge variant={serviceStatusColor(req.status)}>
-                          {SERVICE_STATUS_LABELS[req.status]}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-xs text-gray-500 hidden md:table-cell">
-                        {format(new Date(req.createdAt), "MM/dd HH:mm", { locale: ko })}
-                      </TableCell>
-                    </TableRow>
-                  );
-                }
-              })}
-              {allRows.length === 0 && (
+              {filteredOrders.map((order) => (
+                <TableRow
+                  key={order.orderId}
+                  className={order.status === "pending" ? "bg-orange-50" : undefined}
+                >
+                  <TableCell>
+                    <Badge variant="outline" className="text-[10px]">
+                      {ORDER_TYPE_LABELS[order.type]}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="font-semibold">{order.roomNumber}호</TableCell>
+                  <TableCell className="text-sm max-w-[120px] md:max-w-none truncate md:whitespace-normal">
+                    {summarize(order)}
+                    {order.note && <span className="text-orange-500 ml-1 text-xs">[{order.note}]</span>}
+                  </TableCell>
+                  <TableCell>
+                    {order.totalAmount > 0 ? formatPrice(order.totalAmount) : <span className="text-gray-300">-</span>}
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    {order.paymentMethod ? PAYMENT_METHOD_LABELS[order.paymentMethod] : <span className="text-gray-300">-</span>}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={statusColor(order.status)}>
+                      {ORDER_STATUS_LABELS[order.status]}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-xs text-gray-500 hidden md:table-cell">
+                    {format(new Date(order.createdAt), "MM/dd HH:mm", { locale: ko })}
+                  </TableCell>
+                </TableRow>
+              ))}
+              {filteredOrders.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center text-gray-400 py-8">
                     내역이 없습니다

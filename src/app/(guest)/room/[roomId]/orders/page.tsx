@@ -8,12 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, UtensilsCrossed, Clock, Sparkles, Package } from "lucide-react";
 import {
   ORDER_STATUS_LABELS,
+  ORDER_TYPE_LABELS,
   PAYMENT_METHOD_LABELS,
   REJECTION_REASON_LABELS,
 } from "@/types";
-import type { OrderStatus, RejectionReasonValue } from "@/types";
-import type { ServiceRequest, ServiceRequestStatus } from "@/types/service";
-import { SERVICE_TYPE_LABELS, CLEANING_LEVEL_LABELS } from "@/types/service";
+import type { RejectionReasonValue, OrderWithItems } from "@/types";
+import { CLEANING_LEVEL_LABELS } from "@/types/service";
 import { useSocketGuestOrders } from "@/hooks/use-socket-guest-orders";
 
 const SERVICE_ICON_MAP: Record<string, React.ElementType> = {
@@ -36,14 +36,16 @@ function timeAgo(dateStr: string): string {
 }
 
 // Order stepper: 대기중 → 접수 → 준비중 → 완료
-const ORDER_STEPS = ["pending", "accepted", "preparing", "completed"] as const;
-const ORDER_STEP_LABELS = ["대기중\nPending", "접수\nAccepted", "준비중\nPreparing", "완료\nDone"];
+const PRODUCT_STEPS = ["pending", "accepted", "preparing", "completed"] as const;
+const PRODUCT_STEP_LABELS = ["대기중\nPending", "접수\nAccepted", "준비중\nPreparing", "완료\nDone"];
 
-// Service stepper: 접수 → 처리중 → 완료
-const SERVICE_STEPS = ["requested", "accepted", "completed"] as const;
-const SERVICE_STEP_LABELS = ["접수\nReceived", "처리중\nProcessing", "완료\nDone"];
+// Service stepper: 대기중 → 접수 → 완료
+const SERVICE_STEPS = ["pending", "accepted", "completed"] as const;
+const SERVICE_STEP_LABELS = ["대기중\nPending", "접수\nProcessing", "완료\nDone"];
 
-function OrderStepper({ status, rejectionReason }: { status: OrderStatus; rejectionReason?: string }) {
+function OrderStepper({ order }: { order: OrderWithItems }) {
+  const { status, rejectionReason, type } = order;
+
   if (status === "rejected" || status === "cancelled") {
     return (
       <div className="space-y-1">
@@ -58,11 +60,15 @@ function OrderStepper({ status, rejectionReason }: { status: OrderStatus; reject
       </div>
     );
   }
-  const currentIdx = ORDER_STEPS.indexOf(status as typeof ORDER_STEPS[number]);
+
+  const isProduct = type === "product";
+  const steps = isProduct ? PRODUCT_STEPS : SERVICE_STEPS;
+  const labels = isProduct ? PRODUCT_STEP_LABELS : SERVICE_STEP_LABELS;
+  const currentIdx = (steps as readonly string[]).indexOf(status);
 
   return (
     <div className="flex items-center gap-1">
-      {ORDER_STEPS.map((step, i) => {
+      {steps.map((step, i) => {
         const isActive = i <= currentIdx;
         const isCurrent = i === currentIdx;
         return (
@@ -87,47 +93,7 @@ function OrderStepper({ status, rejectionReason }: { status: OrderStatus; reject
                   isActive ? "text-blue-600 font-semibold" : "text-gray-400"
                 }`}
               >
-                {ORDER_STEP_LABELS[i]}
-              </span>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function ServiceStepper({ status }: { status: ServiceRequestStatus }) {
-  const currentIdx = SERVICE_STEPS.indexOf(status);
-
-  return (
-    <div className="flex items-center gap-1">
-      {SERVICE_STEPS.map((step, i) => {
-        const isActive = i <= currentIdx;
-        const isCurrent = i === currentIdx;
-        return (
-          <div key={step} className="flex items-center gap-1">
-            {i > 0 && (
-              <div
-                className={`h-0.5 w-4 ${isActive ? "bg-blue-500" : "bg-gray-200"}`}
-              />
-            )}
-            <div className="flex flex-col items-center">
-              <div
-                className={`w-3 h-3 rounded-full border-2 ${
-                  isActive
-                    ? isCurrent
-                      ? "bg-blue-500 border-blue-500"
-                      : "bg-blue-500 border-blue-500"
-                    : "bg-white border-gray-300"
-                }`}
-              />
-              <span
-                className={`text-[10px] mt-0.5 whitespace-pre-line text-center ${
-                  isActive ? "text-blue-600 font-semibold" : "text-gray-400"
-                }`}
-              >
-                {SERVICE_STEP_LABELS[i]}
+                {labels[i]}
               </span>
             </div>
           </div>
@@ -144,38 +110,38 @@ export default function GuestOrdersPage({
 }) {
   const { roomId } = use(params);
   const router = useRouter();
-  const { orders, services } = useSocketGuestOrders(roomId);
+  const { orders } = useSocketGuestOrders(roomId);
 
   const formatPrice = (n: number) => n.toLocaleString("ko-KR");
 
   const activeOrders = orders.filter(
     (o) => !["completed", "cancelled", "rejected"].includes(o.status)
-  );
-  const activeServices = services.filter((s) => s.status !== "completed");
+  ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-  const hasActive = activeOrders.length + activeServices.length > 0;
-
-  // 주문과 서비스요청을 하나의 리스트로 합쳐서 시간순 정렬
-  const activeItems = [
-    ...activeOrders.map((o) => ({ type: "order" as const, data: o, createdAt: o.createdAt })),
-    ...activeServices.map((s) => ({ type: "service" as const, data: s, createdAt: s.createdAt })),
-  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-  function getServiceDetail(svc: ServiceRequest): string {
+  function getOrderDetail(order: OrderWithItems): string {
+    if (order.type === "product") {
+      return order.items.map((i) => `${i.menuItemName} x${i.quantity}`).join(", ");
+    }
     const parts: string[] = [];
-    if (svc.cleaningOptions) {
-      parts.push(CLEANING_LEVEL_LABELS[svc.cleaningOptions.serviceLevel]);
+    if (order.cleaningOptions) {
+      parts.push(CLEANING_LEVEL_LABELS[order.cleaningOptions.serviceLevel]);
     }
-    if (svc.extensionHours) {
-      parts.push(`${svc.extensionHours}시간 연장${svc.freeExtension ? " (무료)" : ""}`);
+    if (order.extensionHours) {
+      parts.push(`${order.extensionHours}시간 연장${order.freeExtension ? " (무료)" : ""}`);
     }
-    if (svc.items.length > 0) {
-      parts.push(svc.items.map((it) => `${it.name} x${it.quantity}`).join(", "));
+    if (order.serviceItems && order.serviceItems.length > 0) {
+      parts.push(order.serviceItems.map((it) => `${it.name} x${it.quantity}`).join(", "));
     }
-    if (svc.note) {
-      parts.push(svc.note);
+    if (order.note) {
+      parts.push(order.note);
     }
     return parts.join(", ");
+  }
+
+  function getOrderIcon(order: OrderWithItems) {
+    if (order.type === "product") return UtensilsCrossed;
+    if (order.categoryIcon) return SERVICE_ICON_MAP[order.categoryIcon] || Package;
+    return Package;
   }
 
   return (
@@ -195,102 +161,65 @@ export default function GuestOrdersPage({
       </div>
 
       <div className="max-w-lg mx-auto px-5 py-4 space-y-6">
-        {!hasActive && (
+        {activeOrders.length === 0 && (
           <div className="text-center py-16">
             <p className="text-gray-400">진행중인 주문이 없습니다</p>
             <p className="text-gray-300 text-sm mt-1">No active orders</p>
           </div>
         )}
 
-        {/* 진행중 */}
-        {hasActive && (
+        {activeOrders.length > 0 && (
           <div>
             <h2 className="text-sm font-semibold text-gray-500 mb-3">진행중 <span className="font-normal text-gray-400">In Progress</span></h2>
             <div className="space-y-3">
-              {activeItems.map((item) => {
-                if (item.type === "order") {
-                  const order = item.data;
-                  return (
-                    <Card key={`order-${order.id}`} className={order.status === "rejected" ? "border-red-300 bg-red-50" : ""}>
-                      <CardContent className="p-4 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <UtensilsCrossed className="w-4 h-4 text-orange-500" />
-                            <span className="text-xs font-mono text-gray-500">
-                              {order.orderId}
-                            </span>
-                          </div>
-                          <span className="text-xs text-gray-400">
-                            {timeAgo(order.createdAt)}
+              {activeOrders.map((order) => {
+                const IconComponent = getOrderIcon(order);
+                const detail = getOrderDetail(order);
+                const iconColor = order.type === "product" ? "text-orange-500" : "text-blue-500";
+
+                return (
+                  <Card key={order.orderId} className={order.status === "rejected" ? "border-red-300 bg-red-50" : ""}>
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <IconComponent className={`w-4 h-4 ${iconColor}`} />
+                          <span className="text-xs font-mono text-gray-500">
+                            {order.orderId}
                           </span>
                         </div>
+                        <span className="text-xs text-gray-400">
+                          {timeAgo(order.createdAt)}
+                        </span>
+                      </div>
 
-                        <OrderStepper status={order.status} rejectionReason={order.rejectionReason} />
+                      <OrderStepper order={order} />
 
-                        <div className="text-sm text-gray-600">
-                          {order.items.map((mi, i) => (
-                            <span key={i}>
-                              {i > 0 && ", "}
-                              {mi.menuItemName} x{mi.quantity}
-                            </span>
-                          ))}
-                        </div>
+                      {detail && (
+                        <div className="text-sm text-gray-600">{detail}</div>
+                      )}
 
-                        <div className="flex items-center justify-between">
-                          <Badge variant="outline" className="text-xs">
-                            {PAYMENT_METHOD_LABELS[order.paymentMethod]}
-                          </Badge>
+                      <div className="flex items-center justify-between">
+                        <Badge variant="outline" className="text-xs">
+                          {ORDER_TYPE_LABELS[order.type]}
+                        </Badge>
+                        {order.totalAmount > 0 && (
                           <span className="font-semibold text-sm">
                             {formatPrice(order.totalAmount)}원
                           </span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                } else {
-                  const svc = item.data;
-                  const SvcIcon = SERVICE_ICON_MAP[svc.categoryIcon] || Package;
-                  const detail = getServiceDetail(svc);
-                  return (
-                    <Card key={`svc-${svc.id}`}>
-                      <CardContent className="p-4 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <SvcIcon className="w-4 h-4 text-blue-500" />
-                            <span className="text-xs font-mono text-gray-500">
-                              {svc.requestId}
-                            </span>
-                          </div>
-                          <span className="text-xs text-gray-400">
-                            {timeAgo(svc.createdAt)}
-                          </span>
-                        </div>
-
-                        <ServiceStepper status={svc.status} />
-
-                        {detail && (
-                          <div className="text-sm text-gray-600">{detail}</div>
                         )}
-
-                        <div className="flex items-center justify-between">
-                          <Badge variant="outline" className="text-xs">
-                            {SERVICE_TYPE_LABELS[svc.type]}
+                        {order.paymentMethod && (
+                          <Badge variant="outline" className="text-xs ml-1">
+                            {PAYMENT_METHOD_LABELS[order.paymentMethod]}
                           </Badge>
-                          {svc.extensionAmount != null && svc.extensionAmount > 0 && (
-                            <span className="font-semibold text-sm">
-                              {formatPrice(svc.extensionAmount)}원
-                            </span>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                }
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
               })}
             </div>
           </div>
         )}
-
       </div>
     </div>
   );
