@@ -14,6 +14,7 @@ export const menuItemSchema = z.object({
   name: z.string().min(1, "메뉴명을 입력하세요"),
   description: z.string().optional(),
   price: z.number().int().min(0, "가격은 0 이상이어야 합니다"),
+  costPrice: z.number().int().min(0, "원가는 0 이상이어야 합니다").nullable().optional(),
   imageUrl: z.string().optional(),
   isAvailable: z.boolean().optional(),
 });

@@ -3,6 +3,8 @@ import { firestore } from "@/lib/firebase";
 import {
   collection,
   getDocs,
+  getDoc,
+  doc,
   query,
   where,
   orderBy,
@@ -24,6 +26,7 @@ interface OrderDoc {
 interface OrderItemDoc {
   menuItemName: string;
   menuItemPrice: number;
+  costPrice?: number | null;
   quantity: number;
   subtotal: number;
 }
@@ -162,10 +165,10 @@ async function getDailyAnalytics(params: URLSearchParams) {
     }
   }
 
-  // Top menu items
+  // Top menu items (with cost tracking)
   const itemMap = new Map<
     string,
-    { name: string; quantity: number; revenue: number }
+    { name: string; quantity: number; revenue: number; totalCost: number }
   >();
   for (const order of validOrders) {
     const items = orderItems[order.id] || [];
@@ -174,16 +177,33 @@ async function getDailyAnalytics(params: URLSearchParams) {
         name: item.menuItemName,
         quantity: 0,
         revenue: 0,
+        totalCost: 0,
       };
       existing.quantity += item.quantity;
       existing.revenue += item.subtotal;
+      existing.totalCost += (item.costPrice ?? 0) * item.quantity;
       itemMap.set(item.menuItemName, existing);
     }
   }
 
   const topItems = [...itemMap.values()]
     .sort((a, b) => b.quantity - a.quantity)
-    .slice(0, 10);
+    .slice(0, 10)
+    .map((i) => ({
+      ...i,
+      profit: i.revenue - i.totalCost,
+      profitRate: i.revenue > 0 ? Math.round(((i.revenue - i.totalCost) / i.revenue) * 100) : 0,
+    }));
+
+  // Profit totals
+  const totalCost = [...itemMap.values()].reduce((sum, i) => sum + i.totalCost, 0);
+  const totalProfit = totalRevenue - totalCost;
+  const profitRate = totalRevenue > 0 ? Math.round((totalProfit / totalRevenue) * 100) : 0;
+
+  // Incentive
+  const settingsSnap = await getDoc(doc(firestore, "settings", "incentive"));
+  const incentiveRate = settingsSnap.exists() ? (settingsSnap.data().incentiveRate ?? 10) : 10;
+  const incentiveAmount = Math.round(totalProfit * incentiveRate / 100);
 
   // Room stats
   const roomMap = new Map<
@@ -232,6 +252,11 @@ async function getDailyAnalytics(params: URLSearchParams) {
     paymentBreakdown,
     topItems,
     roomStats,
+    totalCost,
+    totalProfit,
+    profitRate,
+    incentiveRate,
+    incentiveAmount,
   });
 }
 
@@ -341,10 +366,10 @@ async function getMonthlyAnalytics(params: URLSearchParams) {
     }
   }
 
-  // Top items for the month
+  // Top items for the month (with cost tracking)
   const itemMap = new Map<
     string,
-    { name: string; quantity: number; revenue: number }
+    { name: string; quantity: number; revenue: number; totalCost: number }
   >();
   for (const order of validOrders) {
     const items = orderItems[order.id] || [];
@@ -353,16 +378,33 @@ async function getMonthlyAnalytics(params: URLSearchParams) {
         name: item.menuItemName,
         quantity: 0,
         revenue: 0,
+        totalCost: 0,
       };
       existing.quantity += item.quantity;
       existing.revenue += item.subtotal;
+      existing.totalCost += (item.costPrice ?? 0) * item.quantity;
       itemMap.set(item.menuItemName, existing);
     }
   }
 
   const topItems = [...itemMap.values()]
     .sort((a, b) => b.quantity - a.quantity)
-    .slice(0, 10);
+    .slice(0, 10)
+    .map((i) => ({
+      ...i,
+      profit: i.revenue - i.totalCost,
+      profitRate: i.revenue > 0 ? Math.round(((i.revenue - i.totalCost) / i.revenue) * 100) : 0,
+    }));
+
+  // Profit totals
+  const totalCost = [...itemMap.values()].reduce((sum, i) => sum + i.totalCost, 0);
+  const totalProfit = totalRevenue - totalCost;
+  const profitRate = totalRevenue > 0 ? Math.round((totalProfit / totalRevenue) * 100) : 0;
+
+  // Incentive
+  const settingsSnap = await getDoc(doc(firestore, "settings", "incentive"));
+  const incentiveRate = settingsSnap.exists() ? (settingsSnap.data().incentiveRate ?? 10) : 10;
+  const incentiveAmount = Math.round(totalProfit * incentiveRate / 100);
 
   // Hourly heatmap (aggregated across the month)
   const hourlyRevenue = Array.from({ length: 24 }, (_, h) => ({
@@ -440,5 +482,10 @@ async function getMonthlyAnalytics(params: URLSearchParams) {
     roomStats,
     bestDay,
     worstDay: worstActiveDay,
+    totalCost,
+    totalProfit,
+    profitRate,
+    incentiveRate,
+    incentiveAmount,
   });
 }

@@ -45,6 +45,7 @@ interface MenuItem {
   name: string;
   description: string | null;
   price: number;
+  costPrice: number | null;
   imageUrl: string | null;
   isAvailable: boolean;
   isBest: boolean;
@@ -286,6 +287,11 @@ export default function MenuPage() {
                     </div>
                     <p className="text-sm text-gray-500">
                       {formatPrice(item.price)}
+                      {item.costPrice != null && (
+                        <span className="text-xs text-gray-400 ml-1">
+                          / 원가 {formatPrice(item.costPrice)}
+                        </span>
+                      )}
                       <span className="text-xs text-gray-400 ml-2">
                         순서: {item.displayOrder}
                       </span>
@@ -538,6 +544,7 @@ function MenuForm({
 }) {
   const [name, setName] = useState(item?.name || "");
   const [price, setPrice] = useState(item?.price?.toString() || "");
+  const [costPrice, setCostPrice] = useState(item?.costPrice?.toString() ?? "");
   const [categoryId, setCategoryId] = useState(
     item?.categoryId?.toString() || categories[0]?.id?.toString() || ""
   );
@@ -580,6 +587,7 @@ function MenuForm({
     const body = {
       name,
       price: parseInt(price),
+      costPrice: costPrice === "" ? null : parseInt(costPrice),
       categoryId,
       description: description || null,
       imageUrl: imageUrl || null,
@@ -644,6 +652,19 @@ function MenuForm({
           onChange={(e) => setPrice(e.target.value)}
           required
         />
+      </div>
+      <div>
+        <label className="text-sm font-medium">원가 (원)</label>
+        <Input
+          type="number"
+          value={costPrice}
+          onChange={(e) => setCostPrice(e.target.value)}
+          placeholder="비워두면 미입력"
+          min="0"
+        />
+        <p className="text-xs text-gray-400 mt-1">
+          수익분석에 사용됩니다. 비워두면 매출 전액이 이익으로 계산됩니다.
+        </p>
       </div>
       <div>
         <label className="text-sm font-medium">설명 (선택)</label>

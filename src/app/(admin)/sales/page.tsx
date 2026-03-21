@@ -25,6 +25,13 @@ import {
   LineChart,
   Line,
 } from "recharts";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   TrendingUp,
   TrendingDown,
@@ -36,6 +43,10 @@ import {
   DollarSign,
   BarChart3,
   Clock,
+  Settings,
+  Percent,
+  Wallet,
+  Award,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
@@ -53,6 +64,9 @@ interface TopItem {
   name: string;
   quantity: number;
   revenue: number;
+  totalCost: number;
+  profit: number;
+  profitRate: number;
 }
 
 interface RoomStat {
@@ -94,6 +108,12 @@ interface AnalyticsData {
   paymentBreakdown: PaymentBreakdown;
   topItems: TopItem[];
   roomStats: RoomStat[];
+  // Profit analysis
+  totalCost: number;
+  totalProfit: number;
+  profitRate: number;
+  incentiveRate: number;
+  incentiveAmount: number;
   // Monthly-specific
   dailyRevenue?: DailyData[];
   bestDay?: DailyData;
@@ -124,6 +144,8 @@ export default function SalesPage() {
   );
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [incentiveDialogOpen, setIncentiveDialogOpen] = useState(false);
+  const [incentiveRateInput, setIncentiveRateInput] = useState("");
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -179,6 +201,20 @@ export default function SalesPage() {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleSaveIncentiveRate = async () => {
+    const rate = parseFloat(incentiveRateInput);
+    if (isNaN(rate) || rate < 0 || rate > 100) return;
+    const res = await fetch("/api/settings/incentive", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ incentiveRate: rate }),
+    });
+    if (res.ok) {
+      setIncentiveDialogOpen(false);
+      fetchData();
+    }
   };
 
   if (loading || !data) {
@@ -386,6 +422,71 @@ export default function SalesPage() {
         </div>
       </div>
 
+      {/* Profit Analysis Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-6 print:gap-2 print:mb-3">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
+              <Wallet className="w-4 h-4" />
+              총 원가
+            </div>
+            <p className="text-2xl font-bold text-gray-600">
+              {formatPrice(data.totalCost)}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-green-200">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
+              <TrendingUp className="w-4 h-4" />
+              순이익
+            </div>
+            <p className={`text-2xl font-bold ${data.totalProfit >= 0 ? "text-green-600" : "text-red-600"}`}>
+              {formatPrice(data.totalProfit)}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
+              <Percent className="w-4 h-4" />
+              이익률
+            </div>
+            <p className="text-2xl font-bold text-blue-600">
+              {data.profitRate}%
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-purple-200">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between text-sm text-gray-500 mb-1">
+              <div className="flex items-center gap-2">
+                <Award className="w-4 h-4" />
+                인센티브
+              </div>
+              <button
+                onClick={() => {
+                  setIncentiveRateInput(String(data.incentiveRate));
+                  setIncentiveDialogOpen(true);
+                }}
+                className="print:hidden"
+              >
+                <Settings className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" />
+              </button>
+            </div>
+            <p className="text-2xl font-bold text-purple-600">
+              {formatPrice(data.incentiveAmount)}
+            </p>
+            <p className="text-xs text-gray-400 mt-1">
+              순이익의 {data.incentiveRate}%
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6 print:gap-2 print:mb-3">
         {/* Revenue Chart */}
@@ -534,6 +635,7 @@ export default function SalesPage() {
                 데이터가 없습니다
               </p>
             ) : (
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -541,6 +643,9 @@ export default function SalesPage() {
                     <TableHead>메뉴명</TableHead>
                     <TableHead className="text-right">판매량</TableHead>
                     <TableHead className="text-right">매출</TableHead>
+                    <TableHead className="text-right">원가</TableHead>
+                    <TableHead className="text-right">순이익</TableHead>
+                    <TableHead className="text-right">이익률</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -556,10 +661,20 @@ export default function SalesPage() {
                       <TableCell className="text-right text-sm">
                         {formatPrice(item.revenue)}
                       </TableCell>
+                      <TableCell className="text-right text-sm text-gray-500">
+                        {formatPrice(item.totalCost)}
+                      </TableCell>
+                      <TableCell className={`text-right text-sm font-medium ${item.profit >= 0 ? "text-green-600" : "text-red-600"}`}>
+                        {formatPrice(item.profit)}
+                      </TableCell>
+                      <TableCell className="text-right text-sm">
+                        {item.profitRate}%
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -704,6 +819,39 @@ export default function SalesPage() {
         출력일시: {format(new Date(), "yyyy-MM-dd HH:mm")}
       </div>
       </div>
+
+      {/* Incentive Rate Dialog */}
+      <Dialog open={incentiveDialogOpen} onOpenChange={setIncentiveDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>인센티브 비율 설정</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">비율 (%)</label>
+              <Input
+                type="number"
+                value={incentiveRateInput}
+                onChange={(e) => setIncentiveRateInput(e.target.value)}
+                min="0"
+                max="100"
+                step="0.1"
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                순이익의 몇 %를 인센티브로 지급할지 설정합니다.
+              </p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIncentiveDialogOpen(false)}>
+                취소
+              </Button>
+              <Button onClick={handleSaveIncentiveRate}>
+                저장
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

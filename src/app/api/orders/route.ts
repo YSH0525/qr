@@ -141,6 +141,7 @@ async function handleProductOrder(body: Record<string, unknown>) {
     menuItemId: string;
     menuItemName: string;
     menuItemPrice: number;
+    costPrice: number | null;
     quantity: number;
     subtotal: number;
   }[] = [];
@@ -161,6 +162,7 @@ async function handleProductOrder(body: Record<string, unknown>) {
         const data = snap.data() as {
           name: string;
           price: number;
+          costPrice?: number | null;
           stock?: number | null;
           stockUsed?: number;
         };
@@ -178,6 +180,7 @@ async function handleProductOrder(body: Record<string, unknown>) {
           menuItemId: snap.id,
           menuItemName: data.name,
           menuItemPrice: data.price,
+          costPrice: data.costPrice ?? null,
           quantity: orderItem.quantity,
           subtotal,
         });

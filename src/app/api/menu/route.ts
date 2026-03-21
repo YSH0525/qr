@@ -69,6 +69,7 @@ export async function POST(req: NextRequest) {
       name: body.name,
       description: body.description || null,
       price: Number(body.price),
+      costPrice: body.costPrice !== undefined ? (body.costPrice === null ? null : Number(body.costPrice)) : null,
       imageUrl: body.imageUrl || null,
       isAvailable: body.isAvailable ?? true,
       isBest: body.isBest ?? false,
