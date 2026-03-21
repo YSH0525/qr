@@ -108,7 +108,8 @@ interface AnalyticsData {
   paymentBreakdown: PaymentBreakdown;
   topItems: TopItem[];
   roomStats: RoomStat[];
-  // Profit analysis
+  // Profit analysis (product orders only)
+  productRevenue: number;
   totalCost: number;
   totalProfit: number;
   profitRate: number;
@@ -422,8 +423,20 @@ export default function SalesPage() {
         </div>
       </div>
 
-      {/* Profit Analysis Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-6 print:gap-2 print:mb-3">
+      {/* Profit Analysis Cards (Product Sales Only) */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4 mb-4 md:mb-6 print:gap-2 print:mb-3">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
+              <ShoppingCart className="w-4 h-4" />
+              물품 매출
+            </div>
+            <p className="text-2xl font-bold text-blue-600">
+              {formatPrice(data.productRevenue)}
+            </p>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
