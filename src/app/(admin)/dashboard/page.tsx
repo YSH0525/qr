@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSocketOrders } from "@/hooks/use-socket-orders";
 import { useSocketDeferred } from "@/hooks/use-socket-deferred";
-import { useNotificationSound } from "@/hooks/use-audio";
+import { useNotificationSound, usePendingOrderAlert } from "@/hooks/use-audio";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -63,6 +63,8 @@ export default function DashboardPage() {
   const [settlementModalOpen, setSettlementModalOpen] = useState(false);
   const { playNewOrderAlert, playAcceptSound, playCompleteSound } =
     useNotificationSound();
+  const hasPendingOrders = orders.some((o) => o.status === "pending");
+  usePendingOrderAlert(hasPendingOrders);
 
   // 새 주문 감지
   const prevOrderIdsRef = useRef<Set<string>>(new Set());

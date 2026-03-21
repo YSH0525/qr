@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 export function useNotificationSound() {
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -87,4 +87,20 @@ export function useNotificationSound() {
     playServiceRequestAlert: playDingDong,
     playCompleteSound,
   };
+}
+
+/**
+ * pending 주문이 있는 동안 5초 간격으로 알림음을 반복 재생합니다.
+ * 접수 처리되어 pending 주문이 없어지면 자동으로 멈춥니다.
+ */
+export function usePendingOrderAlert(hasPending: boolean) {
+  const { playNewOrderAlert } = useNotificationSound();
+
+  useEffect(() => {
+    if (!hasPending) return;
+    const interval = setInterval(() => {
+      playNewOrderAlert();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [hasPending, playNewOrderAlert]);
 }

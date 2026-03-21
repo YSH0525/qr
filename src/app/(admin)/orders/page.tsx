@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useSocketOrders } from "@/hooks/use-socket-orders";
-import { useNotificationSound } from "@/hooks/use-audio";
+import { useNotificationSound, usePendingOrderAlert } from "@/hooks/use-audio";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,8 @@ type ViewFilter = "all" | OrderType;
 export default function OrdersPage() {
   const { orders } = useSocketOrders();
   const { playNewOrderAlert } = useNotificationSound();
+  const hasPendingOrders = orders.some((o) => o.status === "pending");
+  usePendingOrderAlert(hasPendingOrders);
   const [viewFilter, setViewFilter] = useState<ViewFilter>("all");
 
   // 새 주문 알림 감지
