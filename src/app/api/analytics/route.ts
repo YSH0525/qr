@@ -195,10 +195,11 @@ async function getDailyAnalytics(params: URLSearchParams) {
       profitRate: i.revenue > 0 ? Math.round(((i.revenue - i.totalCost) / i.revenue) * 100) : 0,
     }));
 
-  // Profit totals
+  // Profit totals (product orders only)
+  const productRevenue = productOrders.reduce((sum, o) => sum + o.totalAmount, 0);
   const totalCost = [...itemMap.values()].reduce((sum, i) => sum + i.totalCost, 0);
-  const totalProfit = totalRevenue - totalCost;
-  const profitRate = totalRevenue > 0 ? Math.round((totalProfit / totalRevenue) * 100) : 0;
+  const totalProfit = productRevenue - totalCost;
+  const profitRate = productRevenue > 0 ? Math.round((totalProfit / productRevenue) * 100) : 0;
 
   // Incentive
   const settingsSnap = await getDoc(doc(firestore, "settings", "incentive"));
@@ -252,6 +253,7 @@ async function getDailyAnalytics(params: URLSearchParams) {
     paymentBreakdown,
     topItems,
     roomStats,
+    productRevenue,
     totalCost,
     totalProfit,
     profitRate,
@@ -396,10 +398,11 @@ async function getMonthlyAnalytics(params: URLSearchParams) {
       profitRate: i.revenue > 0 ? Math.round(((i.revenue - i.totalCost) / i.revenue) * 100) : 0,
     }));
 
-  // Profit totals
+  // Profit totals (product orders only)
+  const productRevenue = productOrders.reduce((sum, o) => sum + o.totalAmount, 0);
   const totalCost = [...itemMap.values()].reduce((sum, i) => sum + i.totalCost, 0);
-  const totalProfit = totalRevenue - totalCost;
-  const profitRate = totalRevenue > 0 ? Math.round((totalProfit / totalRevenue) * 100) : 0;
+  const totalProfit = productRevenue - totalCost;
+  const profitRate = productRevenue > 0 ? Math.round((totalProfit / productRevenue) * 100) : 0;
 
   // Incentive
   const settingsSnap = await getDoc(doc(firestore, "settings", "incentive"));
@@ -482,6 +485,7 @@ async function getMonthlyAnalytics(params: URLSearchParams) {
     roomStats,
     bestDay,
     worstDay: worstActiveDay,
+    productRevenue,
     totalCost,
     totalProfit,
     profitRate,
