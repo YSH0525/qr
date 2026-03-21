@@ -95,6 +95,8 @@ export default function OrdersPage() {
     ? orders
     : orders.filter((o) => o.type === viewFilter);
 
+  const displayOrders = filteredOrders.slice(0, 10);
+
   const filterCounts: Record<string, number> = { all: orders.length };
   for (const o of orders) {
     filterCounts[o.type] = (filterCounts[o.type] || 0) + 1;
@@ -128,7 +130,7 @@ export default function OrdersPage() {
 
       <Card className="flex-1 min-h-0 flex flex-col">
         <CardHeader className="shrink-0">
-          <CardTitle>전체 목록</CardTitle>
+          <CardTitle>전체 목록 (최근 {Math.min(filteredOrders.length, 10)}건 / 총 {filteredOrders.length}건)</CardTitle>
         </CardHeader>
         <CardContent className="flex-1 min-h-0 overflow-y-auto">
           <Table>
@@ -144,7 +146,7 @@ export default function OrdersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredOrders.map((order) => (
+              {displayOrders.map((order) => (
                 <TableRow
                   key={order.orderId}
                   className={order.status === "pending" ? "bg-orange-50" : undefined}
@@ -175,7 +177,7 @@ export default function OrdersPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {filteredOrders.length === 0 && (
+              {displayOrders.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center text-gray-400 py-8">
                     내역이 없습니다
