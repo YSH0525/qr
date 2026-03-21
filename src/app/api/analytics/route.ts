@@ -11,6 +11,7 @@ import {
 interface OrderDoc {
   id: string;
   orderId: string;
+  type?: string;
   roomNumber: string;
   status: string;
   paymentMethod: string;
@@ -93,20 +94,25 @@ async function getDailyAnalytics(params: URLSearchParams) {
     ...(d.data() as Omit<OrderDoc, "id">),
   }));
 
-  // Fetch items for current day orders
-  const orderItems: Record<string, OrderItemDoc[]> = {};
-  for (const order of orders) {
-    const itemsSnap = await getDocs(
-      collection(firestore, "orders", order.id, "items")
-    );
-    orderItems[order.id] = itemsSnap.docs.map(
-      (d) => d.data() as OrderItemDoc
-    );
-  }
-
   // Calculate stats (exclude rejected/cancelled)
   const validOrders = orders.filter(
     (o) => o.status !== "rejected" && o.status !== "cancelled"
+  );
+
+  // Fetch items only for valid product orders, in parallel
+  const productOrders = validOrders.filter(
+    (o) => !o.type || o.type === "product"
+  );
+  const orderItems: Record<string, OrderItemDoc[]> = {};
+  await Promise.all(
+    productOrders.map(async (order) => {
+      const itemsSnap = await getDocs(
+        collection(firestore, "orders", order.id, "items")
+      );
+      orderItems[order.id] = itemsSnap.docs.map(
+        (d) => d.data() as OrderItemDoc
+      );
+    })
   );
   const totalRevenue = validOrders.reduce((sum, o) => sum + o.totalAmount, 0);
   const orderCount = orders.length;
@@ -270,19 +276,24 @@ async function getMonthlyAnalytics(params: URLSearchParams) {
     ...(d.data() as Omit<OrderDoc, "id">),
   }));
 
-  // Fetch items for all orders
-  const orderItems: Record<string, OrderItemDoc[]> = {};
-  for (const order of orders) {
-    const itemsSnap = await getDocs(
-      collection(firestore, "orders", order.id, "items")
-    );
-    orderItems[order.id] = itemsSnap.docs.map(
-      (d) => d.data() as OrderItemDoc
-    );
-  }
-
   const validOrders = orders.filter(
     (o) => o.status !== "rejected" && o.status !== "cancelled"
+  );
+
+  // Fetch items only for valid product orders, in parallel
+  const productOrders = validOrders.filter(
+    (o) => !o.type || o.type === "product"
+  );
+  const orderItems: Record<string, OrderItemDoc[]> = {};
+  await Promise.all(
+    productOrders.map(async (order) => {
+      const itemsSnap = await getDocs(
+        collection(firestore, "orders", order.id, "items")
+      );
+      orderItems[order.id] = itemsSnap.docs.map(
+        (d) => d.data() as OrderItemDoc
+      );
+    })
   );
   const totalRevenue = validOrders.reduce((sum, o) => sum + o.totalAmount, 0);
   const orderCount = orders.length;
