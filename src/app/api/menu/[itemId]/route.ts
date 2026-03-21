@@ -22,6 +22,7 @@ export async function PUT(
     if (body.isBest !== undefined) updateData.isBest = body.isBest;
     if (body.stock !== undefined) updateData.stock = body.stock;
     if (body.stockUsed !== undefined) updateData.stockUsed = body.stockUsed;
+    if (body.costPrice !== undefined) updateData.costPrice = body.costPrice;
 
     await setDoc(ref, updateData, { merge: true });
 

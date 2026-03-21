@@ -97,6 +97,7 @@ export interface OrderItem {
   menuItemId?: string;
   menuItemName: string;
   menuItemPrice: number;
+  costPrice?: number | null;
   quantity: number;
   subtotal: number;
 }
