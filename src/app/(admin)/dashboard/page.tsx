@@ -16,7 +16,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Volume2, Trash2 } from "lucide-react";
+import { Volume2, Trash2, Printer, Bluetooth, BluetoothOff } from "lucide-react";
+import { useAutoPrint } from "@/hooks/use-auto-print";
 import type { OrderWithItems } from "@/types";
 import {
   ORDER_STATUS_LABELS,
@@ -49,6 +50,18 @@ export default function DashboardPage() {
     optimisticUpdate,
     releaseOptimisticLock,
   } = useSocketOrders(DASHBOARD_STATUSES);
+
+  const {
+    autoPrintEnabled,
+    toggleAutoPrint,
+    isAutoPrintSupported,
+    isPrinterConnected,
+    printerName,
+    connectPrinter,
+    disconnectPrinter,
+    isPrinting,
+    printOrder,
+  } = useAutoPrint(orders);
 
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [flashScreen, setFlashScreen] = useState(false);
@@ -239,12 +252,59 @@ export default function DashboardPage() {
             활성 {activeOrders.length}
           </Badge>
         </div>
-        {!audioEnabled && (
-          <Button variant="outline" onClick={enableAudio} className="animate-pulse border-orange-300 text-orange-600 hover:bg-orange-50">
-            <Volume2 className="w-4 h-4 mr-2" />
-            알림 소리 켜기
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {/* 프린터 연결/자동출력 컨트롤 */}
+          {isAutoPrintSupported && (
+            <>
+              {isPrinterConnected ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={disconnectPrinter}
+                  className="border-blue-300 text-blue-600 hover:bg-blue-50"
+                  title={`프린터: ${printerName}`}
+                >
+                  <Bluetooth className="w-4 h-4 mr-1" />
+                  <span className="hidden sm:inline">{printerName || "프린터"}</span>
+                  <span className="sm:hidden">연결됨</span>
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={connectPrinter}
+                  className="border-gray-300 text-gray-500 hover:bg-gray-50"
+                >
+                  <BluetoothOff className="w-4 h-4 mr-1" />
+                  <span className="hidden sm:inline">프린터 연결</span>
+                  <span className="sm:hidden">프린터</span>
+                </Button>
+              )}
+              <Button
+                variant={autoPrintEnabled ? "default" : "outline"}
+                size="sm"
+                onClick={toggleAutoPrint}
+                disabled={!isPrinterConnected}
+                className={
+                  autoPrintEnabled
+                    ? "bg-green-600 hover:bg-green-700 text-white"
+                    : "border-gray-300 text-gray-500"
+                }
+                title={autoPrintEnabled ? "자동 출력 켜짐" : "자동 출력 꺼짐"}
+              >
+                <Printer className="w-4 h-4 mr-1" />
+                <span className="hidden sm:inline">자동출력</span>
+                {autoPrintEnabled && <span className="ml-1 text-xs">ON</span>}
+              </Button>
+            </>
+          )}
+          {!audioEnabled && (
+            <Button variant="outline" onClick={enableAudio} className="animate-pulse border-orange-300 text-orange-600 hover:bg-orange-50">
+              <Volume2 className="w-4 h-4 mr-2" />
+              알림 소리 켜기
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* 후불 미정산 */}
@@ -333,6 +393,7 @@ export default function DashboardPage() {
                             onComplete={handleComplete}
                             onReject={handleReject}
                             onDelete={handleDelete}
+                            onPrint={isPrinterConnected ? printOrder : undefined}
                           />
                         </div>
                       </TableCell>
@@ -411,12 +472,14 @@ function OrderActions({
   onComplete,
   onReject,
   onDelete,
+  onPrint,
 }: {
   order: OrderWithItems;
   onAccept: (o: OrderWithItems) => void;
   onComplete: (o: OrderWithItems) => void;
   onReject: (id: string, reason: string) => void;
   onDelete: (o: OrderWithItems) => void;
+  onPrint?: (o: OrderWithItems) => void;
 }) {
   const [showRejectReasons, setShowRejectReasons] = useState(false);
 
@@ -461,6 +524,17 @@ function OrderActions({
       )}
       {(order.status === "accepted" || order.status === "preparing") && (
         <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => onComplete(order)}>완료</Button>
+      )}
+      {onPrint && (
+        <Button
+          size="sm"
+          variant="ghost"
+          className="text-gray-400 hover:text-blue-500 px-1"
+          onClick={() => onPrint(order)}
+          title="영수증 출력"
+        >
+          <Printer className="w-4 h-4" />
+        </Button>
       )}
       <Button
         size="sm"
