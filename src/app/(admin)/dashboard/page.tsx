@@ -407,29 +407,84 @@ export default function DashboardPage() {
             <div className="md:hidden space-y-2">
               {activeOrders.map((order, idx) => (
                 <div key={order.orderId} className={`rounded-lg border p-3 ${ROW_BG[order.status]}`}>
-                  <div className="flex items-center justify-between mb-1">
+                  {/* 상단: 객실번호, 유형, 상태, 시간 */}
+                  <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-gray-400 font-mono">
                         #{order.dailySeq ?? idx + 1}
                       </span>
-                      <span className="font-semibold text-sm">
+                      <span className="font-bold text-base">
                         {order.roomNumber}호
                       </span>
                       <Badge variant="outline" className="text-[10px]">
                         {ORDER_TYPE_LABELS[order.type]}
                       </Badge>
-                    </div>
-                    <span className="text-xs text-gray-400">{timeAgo(order.createdAt)}</span>
-                  </div>
-                  <p className="text-sm text-gray-700 truncate mb-2">{summarize(order)}</p>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1">
                       <Badge
                         variant={order.status === "pending" ? "destructive" : "secondary"}
                         className="text-[10px]"
                       >
                         {ORDER_STATUS_LABELS[order.status]}
                       </Badge>
+                    </div>
+                    <span className="text-xs text-gray-400 shrink-0">{timeAgo(order.createdAt)}</span>
+                  </div>
+
+                  {/* 주문 상세 내용 */}
+                  <div className="bg-white/60 rounded-md px-3 py-2 mb-2 space-y-1">
+                    {/* 상품 주문: 개별 항목 목록 */}
+                    {order.type === "product" && order.items.length > 0 && (
+                      <div className="space-y-0.5">
+                        {order.items.map((item, i) => (
+                          <div key={i} className="flex justify-between text-sm">
+                            <span className="text-gray-800">{item.menuItemName} <span className="text-gray-500">x{item.quantity}</span></span>
+                            <span className="text-gray-600 shrink-0 ml-2">{formatPrice(item.subtotal)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* 연박 청소 상세 */}
+                    {order.type === "cleaning" && (
+                      <div className="text-sm text-gray-700 space-y-0.5">
+                        <p>{summarize(order)}</p>
+                      </div>
+                    )}
+
+                    {/* 체크아웃 연장 상세 */}
+                    {order.type === "checkout_extension" && (
+                      <p className="text-sm text-gray-700">{summarize(order)}</p>
+                    )}
+
+                    {/* 비품 요청: 개별 항목 */}
+                    {order.type === "amenity" && order.serviceItems && order.serviceItems.length > 0 && (
+                      <div className="space-y-0.5">
+                        {order.serviceItems.map((item, i) => (
+                          <p key={i} className="text-sm text-gray-700">- {item.name} x{item.quantity}</p>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* 비품 요청: serviceItems 없는 경우 summarize */}
+                    {order.type === "amenity" && (!order.serviceItems || order.serviceItems.length === 0) && (
+                      <p className="text-sm text-gray-700">{summarize(order)}</p>
+                    )}
+
+                    {/* 요청사항 */}
+                    {order.note && (
+                      <div className="border-t border-dashed border-gray-300 pt-1 mt-1">
+                        <p className="text-xs text-orange-600 whitespace-pre-wrap break-words">
+                          <span className="font-semibold">요청사항:</span> {order.note}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 하단: 금액 + 결제방법 + 액션 버튼 */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {order.totalAmount > 0 && (
+                        <span className="font-bold text-sm">{formatPrice(order.totalAmount)}</span>
+                      )}
                       {order.paymentMethod && (
                         <Badge variant="secondary" className="text-[10px]">
                           {PAYMENT_METHOD_LABELS[order.paymentMethod]}
@@ -443,6 +498,7 @@ export default function DashboardPage() {
                         onComplete={handleComplete}
                         onReject={handleReject}
                         onDelete={handleDelete}
+                        onPrint={isPrinterConnected ? printOrder : undefined}
                       />
                     </div>
                   </div>
