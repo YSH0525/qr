@@ -12,11 +12,17 @@ import {
 import { v4 as uuidv4 } from "uuid";
 
 export async function GET() {
-  const snap = await getDocs(
-    query(collection(firestore, "rooms"), orderBy("roomNumber"))
-  );
-  const allRooms = snap.docs.map((d) => ({ ...d.data(), id: d.id }));
-  return NextResponse.json(allRooms);
+  try {
+    const snap = await getDocs(
+      query(collection(firestore, "rooms"), orderBy("roomNumber"))
+    );
+    const allRooms = snap.docs.map((d) => ({ ...d.data(), id: d.id }));
+    return NextResponse.json(allRooms);
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "객실 목록 조회 실패";
+    console.error("Rooms fetch error:", e);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {

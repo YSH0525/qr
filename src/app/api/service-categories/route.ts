@@ -9,19 +9,25 @@ import {
 } from "firebase/firestore";
 
 export async function GET() {
-  const snap = await getDocs(
-    query(
-      collection(firestore, "serviceCategories"),
-      orderBy("displayOrder", "asc")
-    )
-  );
+  try {
+    const snap = await getDocs(
+      query(
+        collection(firestore, "serviceCategories"),
+        orderBy("displayOrder", "asc")
+      )
+    );
 
-  const categories = snap.docs.map((d) => ({
-    id: d.id,
-    ...d.data(),
-  }));
+    const categories = snap.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+    }));
 
-  return NextResponse.json(categories);
+    return NextResponse.json(categories);
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "서비스 카테고리 조회 실패";
+    console.error("Service categories fetch error:", e);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {

@@ -10,33 +10,39 @@ import {
 } from "firebase/firestore";
 
 export async function GET() {
-  const catSnap = await getDocs(
-    query(collection(firestore, "menuCategories"), orderBy("displayOrder"))
-  );
+  try {
+    const catSnap = await getDocs(
+      query(collection(firestore, "menuCategories"), orderBy("displayOrder"))
+    );
 
-  const itemSnap = await getDocs(
-    query(collection(firestore, "menuItems"), orderBy("displayOrder"))
-  );
+    const itemSnap = await getDocs(
+      query(collection(firestore, "menuItems"), orderBy("displayOrder"))
+    );
 
-  interface MenuItemData {
-    categoryId: string;
-    [key: string]: unknown;
-  }
+    interface MenuItemData {
+      categoryId: string;
+      [key: string]: unknown;
+    }
 
-  const items = itemSnap.docs.map((d) => ({
-    ...(d.data() as MenuItemData),
-    id: d.id,
-  }));
-
-  const result = catSnap.docs
-    .filter((d) => d.data().isActive !== false)
-    .map((d) => ({
-      ...d.data(),
+    const items = itemSnap.docs.map((d) => ({
+      ...(d.data() as MenuItemData),
       id: d.id,
-      items: items.filter((item) => item.categoryId === d.id),
     }));
 
-  return NextResponse.json(result);
+    const result = catSnap.docs
+      .filter((d) => d.data().isActive !== false)
+      .map((d) => ({
+        ...d.data(),
+        id: d.id,
+        items: items.filter((item) => item.categoryId === d.id),
+      }));
+
+    return NextResponse.json(result);
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "메뉴 목록 조회 실패";
+    console.error("Menu fetch error:", e);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {
